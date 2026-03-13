@@ -1,0 +1,1 @@
+src/pages/Admin.tsx(180,34): error TS2304: Cannot find name 'setShowAdd'.

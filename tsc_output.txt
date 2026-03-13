@@ -1,0 +1,16 @@
+src/App.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/Catalogue.tsx(2,18): error TS6133: 'Filter' is declared but its value is never read.
+src/components/Catalogue.tsx(46,19): error TS6133: 'error' is declared but its value is never read.
+src/components/Hero.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/Layout.tsx(10,9): error TS6133: 'location' is declared but its value is never read.
+src/pages/Admin.tsx(6,3): error TS6133: 'Settings' is declared but its value is never read.
+src/pages/Admin.tsx(7,3): error TS6133: 'Download' is declared but its value is never read.
+src/pages/Admin.tsx(66,10): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Admin.tsx(132,10): error TS6133: 'showAdd' is declared but its value is never read.
+src/pages/Home.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Home.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/Home.tsx(2,10): error TS6133: 'Search' is declared but its value is never read.
+src/pages/Home.tsx(2,18): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/Home.tsx(5,1): error TS6133: 'supabase' is declared but its value is never read.
+src/pages/Home.tsx(8,17): error TS6133: 'setStats' is declared but its value is never read.
+src/pages/Register.tsx(16,9): error TS6133: 'navigate' is declared but its value is never read.

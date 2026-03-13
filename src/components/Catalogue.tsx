@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, ChevronDown, Package, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, ChevronDown, Package, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
@@ -14,6 +14,7 @@ interface Product {
   año_fin: number;
   precio: number;
   stock: number;
+  imagenes: string[];
 }
 
 const Catalogue = () => {
@@ -25,11 +26,7 @@ const Catalogue = () => {
   const { profile, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
 
-  useEffect(() => {
-    fetchProducts();
-  }, [filters]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from('productos')
@@ -43,11 +40,16 @@ const Catalogue = () => {
       query = query.eq('marca', filters.marca);
     }
 
-    const { data, error } = await query.limit(20);
+    const { data } = await query.limit(20);
     
     if (data) setProducts(data);
     setLoading(false);
-  };
+  }, [search, filters.marca]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +111,15 @@ const Catalogue = () => {
           {products.map((product) => (
             <div key={product.id} className="card-rubi flex flex-col group overflow-hidden p-0 h-full">
               <div className="aspect-square bg-slate-100 flex items-center justify-center relative overflow-hidden">
-                <Package size={48} className="text-slate-300" />
+                {product.imagenes && product.imagenes.length > 0 ? (
+                  <img 
+                    src={product.imagenes[0]} 
+                    alt={product.nombre} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                ) : (
+                  <Package size={48} className="text-slate-300" />
+                )}
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-100 flex items-center space-x-1">
                   <span className="text-[10px] font-black text-secondary uppercase tracking-tight">{product.marca}</span>
                 </div>

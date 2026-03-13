@@ -1,0 +1,3 @@
+src/components/Layout.tsx(2,16): error TS6133: 'useLocation' is declared but its value is never read.
+src/pages/Admin.tsx(128,10): error TS6133: 'showAdd' is declared but its value is never read.
+src/pages/Register.tsx(2,16): error TS6133: 'useNavigate' is declared but its value is never read.

@@ -1,0 +1,15 @@
+
+> refaccionaria-rubi@0.0.0 lint
+> eslint .
+
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx
+   63:38  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  128:44  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  129:10  error  'showAdd' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  207:40  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  222:26  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  261:35  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+Ô£û 6 problems (6 errors, 0 warnings)
+

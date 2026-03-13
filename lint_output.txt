@@ -1,0 +1,183 @@
+
+> refaccionaria-rubi@0.0.0 lint
+> eslint .
+
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\App.tsx
+  18:9  error    Error: Cannot access variable before it is declared
+
+`fetchProfile` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\App.tsx:18:9
+  16 |     supabase.auth.getSession().then(({ data: { session } }) => {
+  17 |       if (session) {
+> 18 |         fetchProfile(session.user.id);
+     |         ^^^^^^^^^^^^ `fetchProfile` accessed before it is declared
+  19 |       }
+  20 |     });
+  21 |
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\App.tsx:34:3
+  32 |   }, []);
+  33 |
+> 34 |   async function fetchProfile(uid: string) {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |     const { data, error } = await supabase
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |       .from('perfiles')
+     ÔÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |   }
+     | ^^^^ `fetchProfile` is declared here
+  45 |
+  46 |   return (
+  47 |     <Router>  react-hooks/immutability
+  32:6  warning  React Hook useEffect has missing dependencies: 'fetchProfile' and 'setProfile'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Catalogue.tsx
+   2:18  error    'Filter' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  29:5   error    Error: Cannot access variable before it is declared
+
+`fetchProducts` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Catalogue.tsx:29:5
+  27 |
+  28 |   useEffect(() => {
+> 29 |     fetchProducts();
+     |     ^^^^^^^^^^^^^ `fetchProducts` accessed before it is declared
+  30 |   }, [filters]);
+  31 |
+  32 |   const fetchProducts = async () => {
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Catalogue.tsx:32:3
+  30 |   }, [filters]);
+  31 |
+> 32 |   const fetchProducts = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |     setLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^
+> 34 |     let query = supabase
+     ÔÇª
+     | ^^^^^^^^^^^^^^^^^^^^^
+> 49 |     setLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^
+> 50 |   };
+     | ^^^^^ `fetchProducts` is declared here
+  51 |
+  52 |   const handleSearch = (e: React.FormEvent) => {
+  53 |     e.preventDefault();  react-hooks/immutability
+  30:6   warning  React Hook useEffect has a missing dependency: 'fetchProducts'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  46:19  error    'error' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Layout.tsx
+  10:9  error  'location' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx
+    6:3   error  'Settings' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+    7:3   error  'Download' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   41:53  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+   65:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+   66:10  error  'loading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   69:5   error  Error: Cannot access variable before it is declared
+
+`fetchUsers` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:69:5
+  67 |
+  68 |   useEffect(() => {
+> 69 |     fetchUsers();
+     |     ^^^^^^^^^^ `fetchUsers` accessed before it is declared
+  70 |   }, []);
+  71 |
+  72 |   const fetchUsers = async () => {
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:72:3
+  70 |   }, []);
+  71 |
+> 72 |   const fetchUsers = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 73 |     const { data } = await supabase.from('perfiles').select('*').order('creado_at', { ascending: false });
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 74 |     if (data) setUsers(data);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 75 |     setLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 76 |   };
+     | ^^^^^ `fetchUsers` is declared here
+  77 |
+  78 |   const updateStatus = async (uid: string, status: string) => {
+  79 |     await supabase.from('perfiles').update({ estatus: status }).eq('id', uid);  react-hooks/immutability
+  131:44  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  132:10  error  'showAdd' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  135:5   error  Error: Cannot access variable before it is declared
+
+`fetchProducts` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:135:5
+  133 |
+  134 |   useEffect(() => {
+> 135 |     fetchProducts();
+      |     ^^^^^^^^^^^^^ `fetchProducts` accessed before it is declared
+  136 |   }, []);
+  137 |
+  138 |   const fetchProducts = async () => {
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:138:3
+  136 |   }, []);
+  137 |
+> 138 |   const fetchProducts = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 139 |     const { data } = await supabase.from('productos').select('*').limit(50);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 140 |     if (data) setProducts(data);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 141 |   };
+      | ^^^^^ `fetchProducts` is declared here
+  142 |
+  143 |   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  144 |     const file = e.target.files?.[0];                                                                                                                                                                                                                            react-hooks/immutability
+  208:40  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  211:5   error  Error: Cannot access variable before it is declared
+
+`fetchOrders` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:211:5
+  209 |
+  210 |   useEffect(() => {
+> 211 |     fetchOrders();
+      |     ^^^^^^^^^^^ `fetchOrders` accessed before it is declared
+  212 |   }, []);
+  213 |
+  214 |   const fetchOrders = async () => {
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:214:3
+  212 |   }, []);
+  213 |
+> 214 |   const fetchOrders = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 215 |     const { data } = await supabase.from('pedidos').select('*').order('creado_at', { ascending: false });
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 216 |     if (data) setOrders(data);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 217 |   };
+      | ^^^^^ `fetchOrders` is declared here
+  218 |
+  219 |   const exportOrders = () => {
+  220 |     // Logic for technical export format (SKU, Qty)                                                                                                                                                                                  react-hooks/immutability
+  222:26  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+  261:35  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Home.tsx
+  1:27  error  'useEffect' is defined but never used          @typescript-eslint/no-unused-vars
+  2:10  error  'Search' is defined but never used             @typescript-eslint/no-unused-vars
+  2:18  error  'Filter' is defined but never used             @typescript-eslint/no-unused-vars
+  5:10  error  'supabase' is defined but never used           @typescript-eslint/no-unused-vars
+  8:17  error  'setStats' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Register.tsx
+  16:9  error  'navigate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+Ô£û 26 problems (24 errors, 2 warnings)
+

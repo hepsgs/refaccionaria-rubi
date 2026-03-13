@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Building2, UserPlus, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -13,7 +13,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Warehouse, Clock, Settings2 } from 'lucide-react';
+import { Warehouse, Clock, Settings2 } from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
-import { supabase } from '../lib/supabase';
 
 const Home = () => {
-  const [stats, setStats] = useState({ products: '15K+', clients: '500+', years: '20+' });
+  const stats = { products: '15K+', clients: '500+', years: '20+' };
 
   return (
     <div className="space-y-20 pb-20">

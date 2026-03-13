@@ -1,6 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #e11d48;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
+  --color-background: #f8fafc;
+  --color-card: #ffffff;
+  --color-card-foreground: #1e293b;
+  --radius-rubi: 40px;
+  --shadow-soft: 0 10px 30px -10px rgba(30, 41, 59, 0.1);
+}
+
 
 @layer base {
   body {

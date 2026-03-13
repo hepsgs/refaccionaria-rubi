@@ -1,13 +1,25 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Shield } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, Settings } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { profile, cart } = useStore();
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const { profile, cart, updateQuantity, removeFromCart } = useStore();
   const location = useLocation();
+
+  React.useEffect(() => {
+    if (location.hash) {
+      const element = document.getElementById(location.hash.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -68,7 +80,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
-                  to={link.path}
+                  to={link.path + (link.hash || '')}
                   className="text-secondary font-medium hover:text-primary transition-colors"
                 >
                   {link.name}
@@ -83,7 +95,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <Shield size={24} />
                 </Link>
               )}
-              <div className="relative cursor-pointer p-2 group" onClick={handleCheckout}>
+              <div 
+                className="relative cursor-pointer p-2 group" 
+                onClick={() => setIsCartOpen(true)}
+              >
                 <ShoppingCart className="text-secondary group-hover:text-primary transition-colors" size={24} />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
@@ -124,7 +139,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {navLinks.map((link) => (
               <Link
                 key={link.name}
-                to={link.path}
+                to={link.path + (link.hash || '')}
                 className="block text-secondary font-medium px-4 py-2 hover:bg-slate-50 rounded-lg"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -138,10 +153,213 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {profile?.es_admin && (
                 <Link to="/admin" className="btn-secondary text-center">Panel Admin</Link>
               )}
+              <button 
+                onClick={() => { setIsCartOpen(true); setIsMenuOpen(false); }}
+                className="btn-secondary flex items-center justify-center space-x-2"
+              >
+                <ShoppingCart size={20} />
+                <span>Carrito ({cartCount})</span>
+              </button>
             </div>
           </div>
         )}
       </nav>
+
+      {/* Cart Drawer */}
+      <div 
+        className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      >
+        <div className="absolute inset-0 bg-secondary/40 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
+        <div 
+          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transition-transform duration-500 transform ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        >
+          <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                  <ShoppingCart size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-secondary uppercase tracking-tight">Tu Pedido</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{cartCount} Artículos</p>
+                </div>
+              </div>
+              <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="flex-grow overflow-y-auto p-6 space-y-6">
+              {cart.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                    <ShoppingCart size={40} />
+                  </div>
+                  <p className="text-slate-500 font-medium">Tu carrito está vacío</p>
+                  <button onClick={() => setIsCartOpen(false)} className="btn-secondary px-6">Ver catálogo</button>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex space-x-4 group animate-in slide-in-from-right-4 duration-300">
+                    <div className="w-20 h-20 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100">
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Package size={24} />
+                      </div>
+                    </div>
+                    <div className="flex-grow space-y-1">
+                      <p className="text-[10px] font-bold text-primary tracking-widest uppercase">{item.sku}</p>
+                      <h4 className="text-sm font-bold text-secondary leading-tight line-clamp-2">{item.nombre}</h4>
+                      <p className="text-sm font-black text-secondary">${item.precio}</p>
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center border border-slate-100 rounded-lg p-1">
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                            className="w-6 h-6 flex items-center justify-center hover:bg-slate-50 rounded-md transition-colors"
+                          >
+                            <span className="text-slate-400">-</span>
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-secondary">{item.cantidad}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                            className="w-6 h-6 flex items-center justify-center hover:bg-slate-50 rounded-md transition-colors"
+                          >
+                            <span className="text-slate-400">+</span>
+                          </button>
+                        </div>
+                        <button 
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-[10px] font-bold text-rose-400 hover:text-rose-500 uppercase tracking-widest px-2"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-4">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Estimado</p>
+                    <p className="text-3xl font-black text-secondary leading-none">
+                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleCheckout}
+                  className="w-full btn-primary py-4 flex items-center justify-center space-x-3 shadow-xl shadow-primary/20 group"
+                >
+                  <span className="font-black uppercase tracking-widest text-sm">Generar Orden</span>
+                  <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cart Drawer */}
+      <div 
+        className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      >
+        <div className="absolute inset-0 bg-secondary/40 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
+        <div 
+          className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transition-transform duration-500 transform ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        >
+          <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                  <ShoppingCart size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-secondary uppercase tracking-tight">Tu Pedido</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{cartCount} Artículos</p>
+                </div>
+              </div>
+              <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="flex-grow overflow-y-auto p-6 space-y-6">
+              {cart.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                    <ShoppingCart size={40} />
+                  </div>
+                  <p className="text-slate-500 font-medium">Tu carrito está vacío</p>
+                  <button onClick={() => setIsCartOpen(false)} className="btn-secondary px-6">Ver catálogo</button>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex space-x-4 group animate-in slide-in-from-right-4 duration-300">
+                    <div className="w-20 h-20 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100">
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Package size={24} />
+                      </div>
+                    </div>
+                    <div className="flex-grow space-y-1">
+                      <p className="text-[10px] font-bold text-primary tracking-widest uppercase">{item.sku}</p>
+                      <h4 className="text-sm font-bold text-secondary leading-tight line-clamp-2">{item.nombre}</h4>
+                      <p className="text-sm font-black text-secondary">${item.precio}</p>
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center border border-slate-100 rounded-lg p-1">
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                            className="w-6 h-6 flex items-center justify-center hover:bg-slate-50 rounded-md transition-colors"
+                          >
+                            <span className="text-slate-400">-</span>
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-secondary">{item.cantidad}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                            className="w-6 h-6 flex items-center justify-center hover:bg-slate-50 rounded-md transition-colors"
+                          >
+                            <span className="text-slate-400">+</span>
+                          </button>
+                        </div>
+                        <button 
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-[10px] font-bold text-rose-400 hover:text-rose-500 uppercase tracking-widest px-2"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="p-6 bg-slate-50 border-t border-slate-100 space-y-4">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Estimado</p>
+                    <p className="text-3xl font-black text-secondary leading-none">
+                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleCheckout}
+                  className="w-full btn-primary py-4 flex items-center justify-center space-x-3 shadow-xl shadow-primary/20 group"
+                >
+                  <span className="font-black uppercase tracking-widest text-sm">Generar Orden</span>
+                  <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Content */}
       <main className="flex-grow">

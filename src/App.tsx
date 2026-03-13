@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { useStore } from './store/useStore';
@@ -10,6 +10,18 @@ import Admin from './pages/Admin';
 
 function App() {
   const setProfile = useStore((state) => state.setProfile);
+
+  const fetchProfile = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from('perfiles')
+      .select('*')
+      .eq('id', uid)
+      .single();
+    
+    if (data && !error) {
+      setProfile(data);
+    }
+  }, [setProfile]);
 
   useEffect(() => {
     // Check initial session
@@ -29,19 +41,7 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  async function fetchProfile(uid: string) {
-    const { data, error } = await supabase
-      .from('perfiles')
-      .select('*')
-      .eq('id', uid)
-      .single();
-    
-    if (data && !error) {
-      setProfile(data);
-    }
-  }
+  }, [fetchProfile, setProfile]);
 
   return (
     <Router>

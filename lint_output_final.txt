@@ -1,0 +1,80 @@
+
+> refaccionaria-rubi@0.0.0 lint
+> eslint .
+
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Catalogue.tsx
+  49:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\components\Catalogue.tsx:49:5
+  47 |
+  48 |   useEffect(() => {
+> 49 |     fetchProducts();
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  50 |   }, [fetchProducts]);
+  51 |
+  52 |   const handleSearch = (e: React.FormEvent) => {  react-hooks/set-state-in-effect
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx
+   63:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   71:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:71:5
+  69 |
+  70 |   useEffect(() => {
+> 71 |     fetchUsers();
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  72 |   }, [fetchUsers]);
+  73 |
+  74 |   const updateStatus = async (uid: string, status: string) => {                           react-hooks/set-state-in-effect
+  127:44  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  136:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:136:5
+  134 |
+  135 |   useEffect(() => {
+> 136 |     fetchProducts();
+      |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  137 |   }, [fetchProducts]);
+  138 |
+  139 |   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {  react-hooks/set-state-in-effect
+  204:40  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  212:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\hepsg\Downloads\refaccionariarubi\refaccionaria-rubi\src\pages\Admin.tsx:212:5
+  210 |
+  211 |   useEffect(() => {
+> 212 |     fetchOrders();
+      |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  213 |   }, [fetchOrders]);
+  214 |
+  215 |   const exportOrders = () => {                                                 react-hooks/set-state-in-effect
+  218:26  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  257:35  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+Ô£û 9 problems (9 errors, 0 warnings)
+
