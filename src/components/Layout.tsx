@@ -70,15 +70,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-white font-black text-xl">R</span>
-              </div>
-              <div>
-                <span className="text-secondary font-black text-xl tracking-tighter block leading-none">RUBI</span>
-                <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Refaccionaria</span>
-              </div>
+              {useStore.getState().config?.logo_url ? (
+                <img 
+                  src={useStore.getState().config.logo_url} 
+                  alt="Logo" 
+                  className="h-12 w-auto object-contain"
+                />
+              ) : (
+                <>
+                  <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                    <span className="text-white font-black text-xl">R</span>
+                  </div>
+                  <div>
+                    <span className="text-secondary font-black text-xl tracking-tighter block leading-none">RUBI</span>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Refaccionaria</span>
+                  </div>
+                </>
+              )}
             </Link>
 
             {/* Desktop Nav */}

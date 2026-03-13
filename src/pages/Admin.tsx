@@ -26,10 +26,13 @@ const Admin = () => {
   const [settings, setSettings] = useState<any>({
     smtp_host: '',
     smtp_port: '587',
+    smtp_security: 'tls',
+    smtp_sender_name: 'Refaccionaria Rubi',
     smtp_user: '',
     smtp_pass: '',
     smtp_from: '',
-    site_url: window.location.origin
+    site_url: window.location.origin,
+    logo_url: ''
   });
   const [testingSMTP, setTestingSMTP] = useState(false);
   const profile = useStore(state => state.profile);
@@ -138,16 +141,7 @@ const Admin = () => {
                   <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                   <span>Servidor de Correo</span>
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="smtp.gmail.com"
-                      value={settings.smtp_host}
-                      onChange={(e) => setSettings({...settings, smtp_host: e.target.value})}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
                     <input 
@@ -156,6 +150,18 @@ const Admin = () => {
                       value={settings.smtp_port}
                       onChange={(e) => setSettings({...settings, smtp_port: e.target.value})}
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Modo de Seguridad</label>
+                    <select 
+                      className="input-rubi py-3"
+                      value={settings.smtp_security}
+                      onChange={(e) => setSettings({...settings, smtp_security: e.target.value})}
+                    >
+                      <option value="none">Sin Seguridad (Puerto 25/587)</option>
+                      <option value="tls">STARTTLS (Puerto 587)</option>
+                      <option value="ssl">SSL/TLS (Puerto 465)</option>
+                    </select>
                   </div>
                 </div>
                 <div className="space-y-4 pt-2">
@@ -184,26 +190,87 @@ const Admin = () => {
               <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
                 <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
                   <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                  <span>Configuración de Envío</span>
+                  <span>Identidad y Envío</span>
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Remitente (Email)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre del Remitente</label>
                     <input 
                       className="input-rubi" 
-                      placeholder="Refaccionaria Rubi <ventas@rubi.com>"
+                      placeholder="Refaccionaria Rubi"
+                      value={settings.smtp_sender_name}
+                      onChange={(e) => setSettings({...settings, smtp_sender_name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email Remitente (De:)</label>
+                    <input 
+                      className="input-rubi" 
+                      placeholder="ventas@rubi.com"
                       value={settings.smtp_from}
                       onChange={(e) => setSettings({...settings, smtp_from: e.target.value})}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para enlaces en correos)</label>
                     <input 
                       className="input-rubi" 
                       placeholder="http://localhost:5173"
                       value={settings.site_url}
                       onChange={(e) => setSettings({...settings, site_url: e.target.value})}
                     />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-50">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Logo de la Empresa</label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-24 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
+                        {settings.logo_url ? (
+                          <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <ImageIcon size={32} className="text-slate-300" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="file"
+                          id="logo-upload"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            try {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `logo-${Math.random()}.${fileExt}`;
+                              
+                              const { error: uploadError } = await supabase.storage
+                                .from('branding')
+                                .upload(fileName, file);
+
+                              if (uploadError) throw uploadError;
+
+                              const { data: { publicUrl } } = supabase.storage
+                                .from('branding')
+                                .getPublicUrl(fileName);
+
+                              setSettings({ ...settings, logo_url: publicUrl });
+                            } catch (error: any) {
+                              alert('Error al subir logo: ' + error.message);
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor="logo-upload"
+                          className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
+                        >
+                          <Upload size={14} />
+                          <span>Cambiar Logo</span>
+                        </label>
+                        <p className="text-[10px] text-slate-400">Dimensión recomendada: 500x500px. PNG o SVG preferido.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

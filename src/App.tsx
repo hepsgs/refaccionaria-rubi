@@ -10,7 +10,12 @@ import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 
 function App() {
-  const setProfile = useStore((state) => state.setProfile);
+  const { setProfile, setConfig } = useStore();
+
+  const fetchConfig = useCallback(async () => {
+    const { data } = await supabase.from('configuracion').select('*').single();
+    if (data) setConfig(data);
+  }, [setConfig]);
 
   const fetchProfile = useCallback(async (uid: string) => {
     const { data, error } = await supabase
@@ -25,6 +30,8 @@ function App() {
   }, [setProfile]);
 
   useEffect(() => {
+    fetchConfig();
+
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -42,7 +49,7 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile, setProfile]);
+  }, [fetchProfile, fetchConfig, setProfile]);
 
   return (
     <Router>

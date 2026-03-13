@@ -36,7 +36,39 @@ serve(async (req) => {
       throw new Error("Forbidden: Admin access required");
     }
 
-    const { nombre_completo, email, empresa, es_admin } = await req.json();
+    const body = await req.json();
+    const { nombre_completo, email, empresa, es_admin, test, settings: testSettings } = body;
+
+    // Handle Test Mode
+    if (test && testSettings) {
+      const client = new SmtpClient();
+      const config = {
+        hostname: testSettings.smtp_host,
+        port: parseInt(testSettings.smtp_port || "587"),
+        username: testSettings.smtp_user,
+        password: testSettings.smtp_pass,
+      };
+
+      if (testSettings.smtp_security === 'ssl') {
+        await client.connectTLS(config);
+      } else {
+        await client.connect(config);
+      }
+
+      await client.send({
+        from: testSettings.smtp_from || testSettings.smtp_user,
+        to: testSettings.smtp_user, // Send test to self
+        subject: "Prueba de Conexión SMTP - Refaccionaria Rubi",
+        content: `La configuración SMTP es correcta. 
+        Enviado desde: ${testSettings.site_url || 'Refaccionaria Rubi'}`,
+      });
+
+      await client.close();
+      return new Response(JSON.stringify({ success: true, message: "Prueba exitosa" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // 1. Generate a random password
     const password = Math.random().toString(36).slice(-10);
@@ -54,8 +86,6 @@ serve(async (req) => {
     const user = authData.user;
 
     // 3. Update public.perfiles
-    // Note: A trigger usually handles profile creation on auth.users insert, 
-    // but we update it here to ensure data consistency and set admin role.
     const { error: profileError } = await supabaseClient
       .from("perfiles")
       .update({
@@ -67,7 +97,6 @@ serve(async (req) => {
       .eq("id", user.id);
 
     if (profileError) {
-      // If update fails, maybe insert? (In case trigger didn't run yet)
       const { error: insertError } = await supabaseClient
         .from("perfiles")
         .upsert({
@@ -80,21 +109,30 @@ serve(async (req) => {
       if (insertError) throw insertError;
     }
 
-    // 4. Send Email via SMTP
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
-    const smtpFrom = Deno.env.get("SMTP_FROM") || smtpUser;
+    // 4. Send Email via SMTP using DB configuration (fallback to ENV)
+    const { data: dbConfig } = await supabaseClient.from('configuracion').select('*').single();
+    
+    const smtpHost = dbConfig?.smtp_host || Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(dbConfig?.smtp_port?.toString() || Deno.env.get("SMTP_PORT") || "587");
+    const smtpUser = dbConfig?.smtp_user || Deno.env.get("SMTP_USER");
+    const smtpPass = dbConfig?.smtp_pass || Deno.env.get("SMTP_PASS");
+    const smtpFrom = dbConfig?.smtp_from || Deno.env.get("SMTP_FROM") || smtpUser;
+    const smtpSecurity = dbConfig?.smtp_security || 'tls';
 
     if (smtpHost && smtpUser && smtpPass) {
       const client = new SmtpClient();
-      await client.connectTLS({
+      const config = {
         hostname: smtpHost,
         port: smtpPort,
         username: smtpUser,
         password: smtpPass,
-      });
+      };
+
+      if (smtpSecurity === 'ssl') {
+        await client.connectTLS(config);
+      } else {
+        await client.connect(config);
+      }
 
       await client.send({
         from: smtpFrom,
@@ -109,7 +147,7 @@ serve(async (req) => {
           Correo: ${email}
           Contraseña: ${password}
           
-          Puedes iniciar sesión en: ${Deno.env.get("SITE_URL") || 'http://localhost:5173'}
+          Puedes iniciar sesión en: ${dbConfig?.site_url || Deno.env.get("SITE_URL") || 'http://localhost:5173'}
           
           ¡Saludos!
           Equipo de Refaccionaria Rubi

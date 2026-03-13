@@ -19,8 +19,10 @@ interface UserProfile {
 
 interface AppState {
   profile: UserProfile | null;
+  config: any | null;
   cart: CartItem[];
   setProfile: (profile: UserProfile | null) => void;
+  setConfig: (config: any | null) => void;
   addToCart: (item: Omit<CartItem, 'cantidad'>) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, cantidad: number) => void;
@@ -29,8 +31,10 @@ interface AppState {
 
 export const useStore = create<AppState>((set) => ({
   profile: null,
+  config: null,
   cart: [],
   setProfile: (profile) => set({ profile }),
+  setConfig: (config) => set({ config }),
   addToCart: (item) => set((state) => {
     const existing = state.cart.find((i) => i.id === item.id);
     if (existing) {
