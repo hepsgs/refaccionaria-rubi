@@ -98,7 +98,7 @@ const Admin = () => {
                   onClick={async () => {
                     setTestingSMTP(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+                      const { error } = await supabase.functions.invoke('admin-create-user', {
                         body: { test: true, settings }
                       });
                       if (error) throw error;

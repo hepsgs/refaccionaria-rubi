@@ -59,7 +59,26 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Contraseña</label>
+              <div className="flex justify-between items-center pr-6">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Contraseña</label>
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    if (!email) {
+                      setError('Por favor ingresa tu correo para restablecer la contraseña.');
+                      return;
+                    }
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/login`,
+                    });
+                    if (error) setError(error.message);
+                    else alert('Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.');
+                  }}
+                  className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input
