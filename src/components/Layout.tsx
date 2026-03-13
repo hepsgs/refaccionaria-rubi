@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, Settings } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const [orderSuccess, setOrderSuccess] = React.useState(false);
   const { profile, cart, updateQuantity, removeFromCart } = useStore();
   const location = useLocation();
 
@@ -33,19 +34,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     
     if (cart.length === 0) return;
 
-    const total = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
-    
-    const { data, error } = await supabase.from('pedidos').insert({
-      cliente_id: profile.id,
-      items: cart.map(i => ({ sku: i.sku, cantidad: i.cantidad, precio_unitario: i.precio })),
-      total: total,
-      estatus: 'pendiente'
-    }).select().single();
+    try {
+      const total = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+      
+      const { error } = await supabase.from('pedidos').insert({
+        cliente_id: profile.id,
+        items: cart.map(i => ({ sku: i.sku, cantidad: i.cantidad, precio_unitario: i.precio })),
+        total: total,
+        estatus: 'pendiente'
+      }).select().single();
 
-    if (!error) {
-      alert(`¡Pedido #${data.id.slice(0,8)} realizado con éxito!`);
-      useStore.getState().clearCart();
-    } else {
+      if (error) throw error;
+      
+      setOrderSuccess(true);
+      // Clear cart
+      cart.forEach(item => removeFromCart(item.id));
+      setIsCartOpen(false);
+    } catch (error: any) {
+      console.error('Error:', error);
       alert('Error al procesar el pedido: ' + error.message);
     }
   };
@@ -108,11 +114,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </div>
               {profile ? (
                 <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-secondary leading-none">{profile.nombre_completo}</p>
-                    <p className="text-[10px] text-slate-400 uppercase">{profile.empresa}</p>
-                  </div>
-                  <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-primary transition-colors">
+                  <Link to="/perfil" className="flex items-center space-x-3 group">
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-secondary leading-none group-hover:text-primary transition-colors">{profile.nombre_completo}</p>
+                      <p className="text-[10px] text-slate-400 uppercase">{profile.empresa}</p>
+                    </div>
+                    <div className="p-2 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                      <User size={18} />
+                    </div>
+                  </Link>
+                  <div className="w-px h-8 bg-slate-100 mx-2" />
+                  <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
                     <LogOut size={20} />
                   </button>
                 </div>
@@ -365,6 +377,28 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-grow">
         {children}
       </main>
+
+      {/* Success Modal */}
+      {orderSuccess && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setOrderSuccess(false)} />
+          <div className="bg-white rounded-[40px] p-12 max-w-sm w-full text-center shadow-2xl relative animate-in zoom-in duration-300">
+            <div className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <CheckCircle2 size={48} />
+            </div>
+            <h3 className="text-3xl font-black text-secondary uppercase tracking-tight mb-2">¡Pedido Generado!</h3>
+            <p className="text-slate-500 font-medium mb-8 leading-relaxed">
+              Tu pedido ha sido registrado con éxito. Te contactaremos pronto para la entrega.
+            </p>
+            <button 
+              onClick={() => setOrderSuccess(false)}
+              className="w-full btn-primary py-4 rounded-2xl shadow-xl shadow-primary/20"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-secondary text-white py-12">

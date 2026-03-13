@@ -12,6 +12,7 @@ interface UserProfile {
   id: string;
   nombre_completo: string;
   empresa: string;
+  email_alternativo?: string;
   estatus: 'pendiente' | 'aprobado';
   es_admin: boolean;
 }

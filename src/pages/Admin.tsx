@@ -912,6 +912,7 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const fetchOrders = useCallback(async () => {
     const { data } = await supabase.from('pedidos').select('*').order('creado_at', { ascending: false });
@@ -927,12 +928,13 @@ const OrderManagement = () => {
       o.items.map((item: any) => ({
         'Numero de Parte': item.sku,
         'Cantidad': item.cantidad,
-        'Pedido ID': o.id
+        'Pedido ID': o.id,
+        'Folio': o.folio || 'N/A'
       }))
     );
     
     const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Numero de Parte,Cantidad"].concat(exportData.map(e => `${e['Numero de Parte']},${e['Cantidad']}`)).join("\n");
+      + ["Numero de Parte,Cantidad,Folio"].concat(exportData.map(e => `${e['Numero de Parte']},${e['Cantidad']},${e['Folio']}`)).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -955,38 +957,134 @@ const OrderManagement = () => {
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {orders.length === 0 ? (
-          <div className="py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
+          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
             No hay pedidos registrados aún.
           </div>
         ) : orders.map((o) => (
-          <div key={o.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-slate-200 transition-all">
+          <div 
+            key={o.id} 
+            onClick={() => setSelectedOrder(o)}
+            className="p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer group"
+          >
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
                   <Package size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pedido #{o.id.slice(0,8)}</p>
-                  <p className="text-sm text-secondary font-bold">{new Date(o.creado_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
+                    {o.folio ? `Folio #${o.folio}` : `ID: #${o.id.slice(0,6)}`}
+                  </p>
+                  <p className="text-sm text-secondary font-bold">{new Date(o.creado_at).toLocaleDateString()}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-black text-primary tracking-tight">${o.total.toLocaleString()}</p>
-                <span className="text-[10px] font-black uppercase text-green-600 bg-green-50 px-2 py-1 rounded-lg">Pagado</span>
+                <p className="text-xl font-black text-primary tracking-tight leading-none mb-1">${o.total.toLocaleString()}</p>
+                <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg ${
+                  o.estatus === 'entregado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                }`}>
+                  {o.estatus}
+                </span>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
-              {o.items.map((item: any, i: number) => (
-                <span key={i} className="bg-white px-4 py-2 rounded-xl text-[10px] font-black border border-slate-200 text-secondary shadow-sm">
-                  {item.sku} <span className="text-primary mx-1">×</span> {item.cantidad}
+              {o.items.slice(0, 3).map((item: any, i: number) => (
+                <span key={i} className="bg-white px-3 py-1.5 rounded-xl text-[9px] font-black border border-slate-200 text-secondary shadow-sm">
+                  {item.sku} <span className="text-primary mx-0.5">×</span> {item.cantidad}
                 </span>
               ))}
+              {o.items.length > 3 && (
+                <span className="bg-slate-100 px-3 py-1.5 rounded-xl text-[9px] font-black text-slate-500">
+                  +{o.items.length - 3} más
+                </span>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Order Details Modal Admin */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setSelectedOrder(null)} />
+          <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300">
+            <button 
+              onClick={() => setSelectedOrder(null)}
+              className="absolute right-6 top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                <ClipboardList size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Detalle Maestro de Pedido</p>
+                <h3 className="text-3xl font-black text-secondary uppercase tracking-tight">
+                  {selectedOrder.folio ? `Folio #${selectedOrder.folio}` : `ID: ${selectedOrder.id.slice(0, 12)}...`}
+                </h3>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
+                <p className="font-bold text-secondary text-xs truncate">ID: {selectedOrder.cliente_id}</p>
+                <p className="text-[10px] text-slate-500 mt-1">Fecha: {new Date(selectedOrder.creado_at).toLocaleString()}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
+                <div className="flex items-center space-x-2">
+                  <span className={`w-2 h-2 rounded-full ${selectedOrder.estatus === 'entregado' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                  <span className="font-bold text-secondary uppercase text-sm">{selectedOrder.estatus}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Productos Solicitados</p>
+              {selectedOrder.items?.map((item: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                      <Package size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-secondary">{item.sku}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Cant: {item.cantidad} <span className="mx-2 text-slate-200">|</span> Unit: ${item.precio_unitario}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total</p>
+                <p className="text-4xl font-black text-secondary tracking-tighter">${selectedOrder.total.toLocaleString()}</p>
+              </div>
+              <div className="flex space-x-3">
+                <button 
+                  onClick={() => window.print()} 
+                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                  <FileDown size={20} />
+                </button>
+                <button 
+                  onClick={() => setSelectedOrder(null)}
+                  className="btn-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
