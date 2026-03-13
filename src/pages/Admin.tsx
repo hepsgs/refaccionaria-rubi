@@ -140,15 +140,47 @@ const ProductManagement = () => {
     if (data) setProducts(data);
   };
 
+  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n');
+      const productsToUpsert = lines.slice(1).map(line => {
+        const [sku, nombre, precio, stock, marca] = line.split(',');
+        if (!sku) return null;
+        return { 
+          sku: sku.trim(), 
+          nombre: nombre?.trim(), 
+          precio: parseFloat(precio), 
+          stock: parseInt(stock), 
+          marca: marca?.trim() 
+        };
+      }).filter(p => p !== null);
+
+      const { error } = await supabase.from('productos').upsert(productsToUpsert, { onConflict: 'sku' });
+      if (!error) {
+        alert('Importación completada con éxito');
+        fetchProducts();
+      } else {
+        alert('Error en importación: ' + error.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black text-secondary">Catálogo de Productos</h2>
         <div className="flex space-x-3">
-          <button className="btn-secondary flex items-center space-x-2 py-2">
+          <label className="btn-secondary flex items-center space-x-2 py-2 cursor-pointer">
             <Upload size={18} />
             <span>Importar CSV</span>
-          </button>
+            <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+          </label>
           <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center space-x-2 py-2">
             <Plus size={18} />
             <span>Nuevo Producto</span>

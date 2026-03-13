@@ -13,6 +13,31 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     await supabase.auth.signOut();
   };
 
+  const handleCheckout = async () => {
+    if (!profile) {
+      alert('Por favor inicia sesión para realizar pedidos.');
+      return;
+    }
+    
+    if (cart.length === 0) return;
+
+    const total = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+    
+    const { data, error } = await supabase.from('pedidos').insert({
+      cliente_id: profile.id,
+      items: cart.map(i => ({ sku: i.sku, cantidad: i.cantidad, precio_unitario: i.precio })),
+      total: total,
+      estatus: 'pendiente'
+    }).select().single();
+
+    if (!error) {
+      alert(`¡Pedido #${data.id.slice(0,8)} realizado con éxito!`);
+      useStore.getState().clearCart();
+    } else {
+      alert('Error al procesar el pedido: ' + error.message);
+    }
+  };
+
   const navLinks = [
     { name: 'Inicio', path: '/' },
     { name: 'Catálogo', path: '/', hash: '#catalogo' }, // Home and scroll
@@ -58,7 +83,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <Shield size={24} />
                 </Link>
               )}
-              <div className="relative cursor-pointer p-2 group">
+              <div className="relative cursor-pointer p-2 group" onClick={handleCheckout}>
                 <ShoppingCart className="text-secondary group-hover:text-primary transition-colors" size={24} />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
