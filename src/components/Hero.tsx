@@ -1,6 +1,9 @@
 import { ArrowRight } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 const Hero = () => {
+  const config = useStore(state => state.config);
+
   return (
     <div className="relative overflow-hidden bg-secondary py-20 lg:py-32">
       {/* Background patterns */}
@@ -15,12 +18,12 @@ const Hero = () => {
             </div>
             
             <h1 className="text-5xl lg:text-7xl font-black text-white leading-none tracking-tighter">
-              LA PIEZA QUE <br />
-              <span className="text-primary">TU MOTOR NECESITA</span>.
+              {config?.hero_title_1 || 'LA PIEZA QUE'} <br />
+              <span className="text-primary">{config?.hero_title_2 || 'TU MOTOR NECESITA'}</span>.
             </h1>
             
-            <p className="text-slate-400 text-lg max-w-lg leading-relaxed">
-              Gestión profesional de refacciones para talleres y empresas. Búsqueda técnica instantánea y stock real garantizado.
+            <p className="text-slate-400 text-lg max-w-lg leading-relaxed whitespace-pre-line">
+              {config?.hero_subtitle || 'Gestión profesional de refacciones para talleres y empresas. Búsqueda técnica instantánea y stock real garantizado.'}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">

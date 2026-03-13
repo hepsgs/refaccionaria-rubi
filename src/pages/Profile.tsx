@@ -56,8 +56,7 @@ const Profile = () => {
         .update({
           nombre_completo: form.nombre_completo,
           empresa: form.empresa,
-          email_alternativo: form.email_alternativo,
-          actualizado_at: new Date().toISOString()
+          email_alternativo: form.email_alternativo
         })
         .eq('id', profile?.id);
 

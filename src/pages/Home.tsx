@@ -1,8 +1,10 @@
 import { Warehouse, Clock, Settings2 } from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
+import { useStore } from '../store/useStore';
 
 const Home = () => {
+  const config = useStore(state => state.config);
   const stats = { products: '15K+', clients: '500+', years: '20+' };
 
   return (
@@ -44,10 +46,10 @@ const Home = () => {
           </div>
           <div className="space-y-6">
             <h2 className="text-4xl md:text-5xl font-black text-secondary leading-tight">
-              Respaldando tu industria con <span className="text-primary">Precisión y Confianza</span>.
+              {config?.about_title_1 || 'Respaldando tu industria con'} <span className="text-primary">{config?.about_title_2 || 'Precisión y Confianza'}</span>.
             </h2>
-            <p className="text-slate-600 text-lg leading-relaxed">
-              En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.
+            <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-line">
+              {config?.about_text || 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.'}
             </p>
             <ul className="space-y-3">
               {['Calidad certificada en cada pieza', 'Atención técnica personalizada', 'Entrega eficiente y garantizada'].map((item) => (

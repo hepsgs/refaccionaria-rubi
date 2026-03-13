@@ -8,7 +8,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [orderSuccess, setOrderSuccess] = React.useState(false);
-  const { profile, cart, updateQuantity, removeFromCart } = useStore();
+  const { profile, cart, updateQuantity, removeFromCart, config } = useStore();
   const location = useLocation();
 
   React.useEffect(() => {
@@ -410,39 +410,61 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       {/* Footer */}
-      <footer className="bg-secondary text-white py-12">
+      <footer className="bg-secondary text-white py-12 mt-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-2 mb-6">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-white font-black">R</span>
-                </div>
-                <span className="font-black text-xl tracking-tighter">RUBI</span>
-              </div>
-              <p className="text-slate-400 max-w-sm">
-                Líderes en refacciones industriales y automotrices. Más de 15,000 productos a tu disposición con la mejor calidad y servicio técnico.
+              <Link to="/" className="flex items-center space-x-3 mb-6">
+                {config?.logo_url ? (
+                  <img 
+                    src={config.logo_url} 
+                    alt="Logo Footer" 
+                    className="h-20 w-auto object-contain" 
+                  />
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+                      <span className="text-white font-black text-2xl">
+                        {config?.platform_name ? config.platform_name.charAt(0).toUpperCase() : 'R'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-white font-black text-2xl tracking-tighter block leading-none">
+                        {config?.platform_name ? config.platform_name.toUpperCase() : 'RUBI'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </Link>
+              <p className="text-slate-400 max-w-sm text-sm">
+                {config?.footer_description || 'Líderes en refacciones industriales y automotrices. Más de 15,000 productos a tu disposición con la mejor calidad y servicio técnico.'}
               </p>
             </div>
             <div>
-              <h4 className="font-bold mb-4">Empresa</h4>
+              <h4 className="font-bold mb-4 text-white">Empresa</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#nosotros" className="hover:text-primary transition-colors">Sobre Nosotros</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contacto</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Aviso de Privacidad</a></li>
+                <li><a href="#titulos" className="hover:text-primary transition-colors">Sobre Nosotros</a></li>
+                <li><a href="#contacto" className="hover:text-primary transition-colors">Contacto</a></li>
+                <li><a href="#privacidad" className="hover:text-primary transition-colors">Aviso de Privacidad</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4">Contacto</h4>
+              <h4 className="font-bold mb-4 text-white">Contacto</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li>ventas@refaccionariarubi.com</li>
-                <li>+52 (000) 000 0000</li>
-                <li>Dirección de la empresa</li>
+                <li className="flex items-center space-x-2">
+                  <span>{config?.footer_contact_email || 'ventas@refaccionariarubi.com'}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span>{config?.footer_contact_phone || '+52 (000) 000 0000'}</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span>{config?.footer_contact_address || 'Dirección de la empresa'}</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-xs">
-            © {new Date().getFullYear()} Refaccionaria Rubi. Todos los derechos reservados.
+          <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-slate-500 text-xs text-center md:text-left">
+            <p>© {new Date().getFullYear()} {config?.platform_name || 'Refaccionaria Rubi'}. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

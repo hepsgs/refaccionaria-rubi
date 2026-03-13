@@ -20,9 +20,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config' | 'cms'>('users');
   const [settings, setSettings] = useState<any>({
     smtp_host: '',
     smtp_port: '587',
@@ -32,7 +34,13 @@ const Admin = () => {
     smtp_pass: '',
     smtp_from: '',
     site_url: window.location.origin,
-    logo_url: ''
+    logo_url: '',
+    hero_title_1: 'LA PIEZA QUE',
+    hero_title_2: 'TU MOTOR NECESITA',
+    hero_subtitle: 'Gestión profesional de refacciones para talleres y empresas. Búsqueda técnica instantánea y stock real garantizado.',
+    about_title_1: 'Respaldando tu industria con',
+    about_title_2: 'Precisión y Confianza',
+    about_text: 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.'
   });
   const [testingSMTP, setTestingSMTP] = useState(false);
   const profile = useStore(state => state.profile);
@@ -62,6 +70,7 @@ const Admin = () => {
             { id: 'users', label: 'Usuarios', icon: Users },
             { id: 'products', label: 'Productos', icon: Package },
             { id: 'orders', label: 'Pedidos', icon: ClipboardList },
+            { id: 'cms', label: 'Página Web', icon: ImagePlus },
             { id: 'config', label: 'Configuración', icon: Settings },
           ].map((tab) => (
             <button
@@ -84,6 +93,153 @@ const Admin = () => {
         {activeTab === 'users' && <UserManagement />}
         {activeTab === 'products' && <ProductManagement />}
         {activeTab === 'orders' && <OrderManagement />}
+        {activeTab === 'cms' && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                  <ImagePlus size={32} />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">CMS Landing Page</h2>
+                  <p className="text-slate-500 font-medium text-sm">Modifica los textos principales de la página de inicio.</p>
+                </div>
+              </div>
+              <button 
+                onClick={async () => {
+                  const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
+                  if (!error) alert('Textos guardados correctamente.');
+                  else alert('Error: ' + error.message);
+                }}
+                className="btn-primary px-8"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                  <span>Sección Principal (Hero)</span>
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.hero_title_1}
+                      onChange={(e) => setSettings({...settings, hero_title_1: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.hero_title_2}
+                      onChange={(e) => setSettings({...settings, hero_title_2: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
+                    <textarea 
+                      className="input-rubi min-h-[100px] resize-none py-3" 
+                      value={settings.hero_subtitle}
+                      onChange={(e) => setSettings({...settings, hero_subtitle: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                  <span>Sección Nosotros</span>
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Negra)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.about_title_1}
+                      onChange={(e) => setSettings({...settings, about_title_1: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.about_title_2}
+                      onChange={(e) => setSettings({...settings, about_title_2: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Descriptivo</label>
+                    <textarea 
+                      className="input-rubi min-h-[100px] resize-none py-3" 
+                      value={settings.about_text}
+                      onChange={(e) => setSettings({...settings, about_text: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-rubi bg-slate-50/50 border-slate-100 space-y-6 p-6 md:col-span-2">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                  <span>Configuración de Generales y Footer</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre de la Plataforma</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.platform_name || ''}
+                      placeholder="Ej: Refaccionaria Rubi"
+                      onChange={(e) => setSettings({...settings, platform_name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Descripción (Footer)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.footer_description || ''}
+                      placeholder="Breve descripción de la empresa"
+                      onChange={(e) => setSettings({...settings, footer_description: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email de Contacto</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.footer_contact_email || ''}
+                      placeholder="ventas@empresa.com"
+                      onChange={(e) => setSettings({...settings, footer_contact_email: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Teléfono de Contacto</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.footer_contact_phone || ''}
+                      placeholder="+52 (000) 000 0000"
+                      onChange={(e) => setSettings({...settings, footer_contact_phone: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Dirección Física</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.footer_contact_address || ''}
+                      placeholder="Dirección completa de la sucursal"
+                      onChange={(e) => setSettings({...settings, footer_contact_address: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {activeTab === 'config' && (
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
@@ -101,10 +257,27 @@ const Admin = () => {
                   onClick={async () => {
                     setTestingSMTP(true);
                     try {
-                      const { error } = await supabase.functions.invoke('admin-create-user', {
+                      const { data, error } = await supabase.functions.invoke('admin-create-user', {
                         body: { test: true, settings }
                       });
-                      if (error) throw error;
+                      if (error) {
+                        console.error('SMTP test function error:', error);
+                        // Extract error message from Edge Function response format
+                        let errorMessage = error.message;
+                        if (error.context && error.context.json) {
+                          try {
+                            const errData = await error.context.json();
+                            errorMessage = errData.error || errorMessage;
+                          } catch (e) { /* ignore parse error */ }
+                        }
+                        throw new Error(errorMessage);
+                      }
+                      
+                      // Check for internal success flag
+                      if (data && !data.success) {
+                         throw new Error(data.error || 'Error desconocido en la prueba SMTP.');
+                      }
+
                       alert('Correo de prueba enviado correctamente.');
                     } catch (error: any) {
                       alert('Error: ' + error.message);
@@ -141,7 +314,16 @@ const Admin = () => {
                   <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                   <span>Servidor de Correo</span>
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
+                    <input 
+                      className="input-rubi" 
+                      placeholder="smtp.gmail.com"
+                      value={settings.smtp_host}
+                      onChange={(e) => setSettings({...settings, smtp_host: e.target.value})}
+                    />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
                     <input 
@@ -982,7 +1164,24 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const fetchOrders = useCallback(async () => {
-    const { data } = await supabase.from('pedidos').select('*').order('creado_at', { ascending: false });
+    // Select the order and also the joined client profile using the foreign key cliente_id -> id
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select(`
+        *,
+        perfiles!pedidos_cliente_id_fkey (
+          nombre_completo,
+          empresa,
+          email_alternativo
+        )
+      `)
+      .order('creado_at', { ascending: false });
+      
+    if (error) {
+      console.error("Error fetching orders:", error);
+    }
+    if (data) setOrders(data);
+      
     if (data) setOrders(data);
   }, []);
 
@@ -990,25 +1189,98 @@ const OrderManagement = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const exportOrders = () => {
-    const exportData = orders.flatMap(o => 
-      o.items.map((item: any) => ({
-        'Numero de Parte': item.sku,
-        'Cantidad': item.cantidad,
-        'Pedido ID': o.id,
-        'Folio': o.folio || 'N/A'
-      }))
-    );
+  const exportSingleOrderCSV = (order: any) => {
+    if (!order) return;
+    const exportData = order.items.map((item: any) => ({
+      'Numero de Parte': item.sku,
+      'Cantidad': item.cantidad,
+      'Pedido ID': order.id,
+      'Folio': order.folio || 'N/A'
+    }));
     
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Numero de Parte,Cantidad,Folio"].concat(exportData.map(e => `${e['Numero de Parte']},${e['Cantidad']},${e['Folio']}`)).join("\n");
+    // Add BOM for Excel UTF-8 recognition
+    const BOM = "\uFEFF";
+    const header = "Numero de Parte,Cantidad,Folio\n";
+    const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
+    const csvContent = BOM + header + rows;
     
-    const encodedUri = encodeURI(csvContent);
+    // Create Blob to avoid URI constraints
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `pedidos_rubi_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.setAttribute("download", `pedido_${order.folio || order.id.slice(0,8)}.csv`);
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportSingleOrderPDF = (order: any) => {
+    if (!order) return;
+    
+    // Explicitly define parameters to prevent corrupted generation in some environments
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text('Refaccionaria Rubi', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text('Detalle de Pedido', 14, 28);
+    
+    // Order Info
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Folio: ${order.folio || 'N/A'}`, 14, 40);
+    doc.text(`Fecha: ${new Date(order.creado_at).toLocaleString()}`, 14, 46);
+    doc.text(`Estado: ${order.estatus.toUpperCase()}`, 14, 52);
+    
+    // Client Info
+    const clientInfo = order.perfiles || {};
+    doc.text('Cliente:', 100, 40);
+    doc.setFontSize(10);
+    doc.text(`Nombre: ${clientInfo.nombre_completo || 'N/A'}`, 100, 46);
+    doc.text(`Empresa: ${clientInfo.empresa || 'N/A'}`, 100, 52);
+    doc.text(`ID Cliente: ${order.cliente_id}`, 100, 58);
+
+    // Table
+    const tableColumn = ["SKU", "Cantidad", "Precio Unitario", "Subtotal"];
+    const tableRows = order.items.map((item: any) => [
+      item.sku,
+      item.cantidad.toString(),
+      `$${item.precio_unitario.toLocaleString()}`,
+      `$${(item.precio_unitario * item.cantidad).toLocaleString()}`
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 70,
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85] }, // slate-700
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'center' },
+        2: { halign: 'right' },
+        3: { halign: 'right' }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 70;
+    
+    // Total
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Total del Pedido: $${order.total.toLocaleString()}`, 14, finalY + 15);
+
+    doc.save(`Pedido_${order.folio || order.id.slice(0,8)}.pdf`);
   };
 
   return (
@@ -1018,58 +1290,62 @@ const OrderManagement = () => {
           <div className="p-2 bg-secondary text-white rounded-lg"><ClipboardList size={20} /></div>
           <span>Historial de Pedidos</span>
         </h2>
-        <button onClick={exportOrders} className="btn-secondary flex items-center space-x-2 py-2.5 px-6">
-          <FileDown size={18} />
-          <span>Exportar para Software</span>
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.length === 0 ? (
-          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
-            No hay pedidos registrados aún.
-          </div>
-        ) : orders.map((o) => (
-          <div 
-            key={o.id} 
-            onClick={() => setSelectedOrder(o)}
-            className="p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-primary/30 hover:bg-white hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer group"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
-                  <Package size={24} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
-                    {o.folio ? `Folio #${o.folio}` : `ID: #${o.id.slice(0,6)}`}
-                  </p>
-                  <p className="text-sm text-secondary font-bold">{new Date(o.creado_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-primary tracking-tight leading-none mb-1">${o.total.toLocaleString()}</p>
-                <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg ${
-                  o.estatus === 'entregado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
-                }`}>
-                  {o.estatus}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
-              {o.items.slice(0, 3).map((item: any, i: number) => (
-                <span key={i} className="bg-white px-3 py-1.5 rounded-xl text-[9px] font-black border border-slate-200 text-secondary shadow-sm">
-                  {item.sku} <span className="text-primary mx-0.5">×</span> {item.cantidad}
-                </span>
-              ))}
-              {o.items.length > 3 && (
-                <span className="bg-slate-100 px-3 py-1.5 rounded-xl text-[9px] font-black text-slate-500">
-                  +{o.items.length - 3} más
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto rounded-2xl border border-slate-100">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">Folio / ID</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">Fecha</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">Cliente</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">Estatus</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">Total</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 text-right whitespace-nowrap">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {orders.length === 0 ? (
+              <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">No hay pedidos registrados aún.</td></tr>
+            ) : orders.map((o) => (
+              <tr key={o.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group" onClick={() => setSelectedOrder(o)}>
+                <td className="py-5 px-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 group-hover:bg-primary group-hover:text-white transition-all">
+                      <Package size={18} />
+                    </div>
+                    <div>
+                      <span className="font-bold text-secondary uppercase tracking-widest block text-xs">{o.folio ? `Folio #${o.folio}` : `ID: #${o.id.slice(0,6)}`}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">{o.items?.length || 0} items</span>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-5 px-6 text-sm text-slate-500 font-medium">{new Date(o.creado_at).toLocaleDateString()}</td>
+                <td className="py-5 px-6">
+                  <span className="font-bold text-secondary block text-sm">{o.perfiles?.nombre_completo || 'Desconocido'}</span>
+                  <span className="text-xs text-slate-400 block">{o.perfiles?.empresa || 'Empresa No Espec.'}</span>
+                </td>
+                <td className="py-5 px-6">
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider ${
+                    o.estatus === 'entregado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {o.estatus}
+                  </span>
+                </td>
+                <td className="py-5 px-6 text-primary font-black tracking-tight">${o.total.toLocaleString()}</td>
+                <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}
+                    className="p-2.5 bg-slate-100 text-slate-500 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                    title="Ver Detalles"
+                  >
+                    <ClipboardList size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Order Details Modal Admin */}
@@ -1099,8 +1375,9 @@ const OrderManagement = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
-                <p className="font-bold text-secondary text-xs truncate">ID: {selectedOrder.cliente_id}</p>
-                <p className="text-[10px] text-slate-500 mt-1">Fecha: {new Date(selectedOrder.creado_at).toLocaleString()}</p>
+                <p className="font-bold text-secondary text-base truncate">{selectedOrder.perfiles?.nombre_completo || 'Cliente Desconocido'}</p>
+                <p className="font-bold text-slate-500 text-xs truncate mb-1">{selectedOrder.perfiles?.empresa || 'Empresa Desconocida'}</p>
+                <p className="font-medium text-slate-400 text-[10px] truncate">ID: {selectedOrder.cliente_id}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
@@ -1136,10 +1413,20 @@ const OrderManagement = () => {
               </div>
               <div className="flex space-x-3">
                 <button 
-                  onClick={() => window.print()} 
-                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all"
+                  onClick={() => exportSingleOrderCSV(selectedOrder)} 
+                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+                  title="Exportar a CSV"
                 >
                   <FileDown size={20} />
+                  <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">CSV</span>
+                </button>
+                <button 
+                  onClick={() => exportSingleOrderPDF(selectedOrder)} 
+                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+                  title="Exportar a PDF"
+                >
+                  <FileDown size={20} />
+                  <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">PDF</span>
                 </button>
                 <button 
                   onClick={() => setSelectedOrder(null)}

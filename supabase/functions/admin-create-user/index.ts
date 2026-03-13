@@ -21,11 +21,14 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get the user from the JWT
-    const { data: { user: caller }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !caller) throw new Error("Unauthorized");
+    // Extract token
+    const token = authHeader.replace('Bearer ', '');
+    // Get the user from the JWT using the service role client but explicitly checking the token
+    const { data: { user: caller }, error: userError } = await supabaseClient.auth.getUser(token);
+    
+    if (userError || !caller) throw new Error("Unauthorized Token");
 
-    // Check if the caller is an admin
+    // Check if the caller is an admin using Service Role Client to bypass RLS if needed, though they should be able to read it.
     const { data: profile, error: profileCheckError } = await supabaseClient
       .from('perfiles')
       .select('es_admin')
@@ -33,7 +36,7 @@ serve(async (req) => {
       .single();
 
     if (profileCheckError || !profile?.es_admin) {
-      throw new Error("Forbidden: Admin access required");
+      throw new Error(`Forbidden: Admin access required. Caller ID: ${caller?.id}`);
     }
 
     const body = await req.json();
@@ -134,8 +137,12 @@ serve(async (req) => {
         await client.connect(config);
       }
 
+      const fromFormatted = dbConfig?.smtp_sender_name 
+        ? `${dbConfig.smtp_sender_name} <${smtpFrom}>`
+        : smtpFrom;
+
       await client.send({
-        from: smtpFrom,
+        from: fromFormatted,
         to: email,
         subject: "Bienvenido a Refaccionaria Rubi - Tus Accesos",
         content: `

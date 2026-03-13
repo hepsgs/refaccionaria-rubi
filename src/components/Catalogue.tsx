@@ -22,9 +22,22 @@ const Catalogue = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ categoria: '', marca: '', año: '' });
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
   
   const { profile, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
+
+  // Fetch unique brands
+  useEffect(() => {
+    const fetchBrands = async () => {
+      const { data } = await supabase.from('productos').select('marca');
+      if (data) {
+        const brands = Array.from(new Set(data.map(i => i.marca).filter(Boolean)));
+        setAvailableBrands(brands as string[]);
+      }
+    };
+    fetchBrands();
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -78,8 +91,9 @@ const Catalogue = () => {
               onChange={(e) => setFilters({...filters, marca: e.target.value})}
             >
               <option value="">Marca</option>
-              <option value="toyota">Toyota</option>
-              <option value="nissan">Nissan</option>
+              {availableBrands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
             </select>
             <select className="input-rubi py-2 px-4 bg-white text-sm">
               <option value="">Año</option>
