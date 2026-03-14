@@ -14,7 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error("Missing Authorization header");
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -23,23 +25,24 @@ serve(async (req) => {
 
     // Extract token
     const token = authHeader.replace('Bearer ', '');
-    // Get the user from the JWT using the service role client but explicitly checking the token
+    // Get the user from the JWT
     const { data: { user: caller }, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError || !caller) throw new Error("Unauthorized Token");
+    if (userError || !caller) throw new Error("Invalid or expired token");
 
-    // Check if the caller is an admin using Service Role Client to bypass RLS if needed, though they should be able to read it.
+    // Check if the caller is an admin
     const { data: profile, error: profileCheckError } = await supabaseClient
       .from('perfiles')
       .select('es_admin')
       .eq('id', caller.id)
       .single();
 
-    if (profileCheckError || !profile?.es_admin) {
-      throw new Error(`Forbidden: Admin access required. Caller ID: ${caller?.id}`);
-    }
+    if (profileCheckError) throw new Error("Error checking admin status: " + profileCheckError.message);
+    if (!profile?.es_admin) throw new Error("Forbidden: Admin access required");
 
     const body = await req.json();
+    if (!body) throw new Error("Request body is empty");
+    
     const { nombre_completo, email, empresa, es_admin, test, settings: testSettings } = body;
 
     // Handle Test Mode
@@ -57,11 +60,15 @@ serve(async (req) => {
       } else {
         await client.connect(config);
       }
+      
+      // If none but port 587, STARTTLS is often expected. The library might need manual startTLS()
+      // but v0.7.0 usually handles it if configured or we just use connect.
+      // If the user specifies 'tls', we've already done .connect() which is typical for STARTTLS initiation in many clients.
 
       await client.send({
         from: testSettings.smtp_from || testSettings.smtp_user,
-        to: testSettings.smtp_user, // Send test to self
-        subject: "Prueba de Conexión SMTP - Refaccionaria Rubi",
+        to: body.recipient || testSettings.smtp_user, // Use provided recipient or fallback to user
+        subject: `Prueba de Conexión SMTP - ${testSettings.platform_name || 'GML'}`,
         content: `La configuración SMTP es correcta. 
         Enviado desde: ${testSettings.site_url || 'Refaccionaria Rubi'}`,
       });
@@ -144,11 +151,11 @@ serve(async (req) => {
       await client.send({
         from: fromFormatted,
         to: email,
-        subject: "Bienvenido a Refaccionaria Rubi - Tus Accesos",
+        subject: `Bienvenido a ${dbConfig?.platform_name || 'GML'} - Tus Accesos`,
         content: `
           Hola ${nombre_completo},
           
-          Se ha creado tu cuenta en Refaccionaria Rubi.
+          Se ha creado tu cuenta en ${dbConfig?.platform_name || 'GML'}.
           
           Tus accesos son:
           Correo: ${email}
@@ -157,7 +164,7 @@ serve(async (req) => {
           Puedes iniciar sesión en: ${dbConfig?.site_url || Deno.env.get("SITE_URL") || 'http://localhost:5173'}
           
           ¡Saludos!
-          Equipo de Refaccionaria Rubi
+          Equipo de ${dbConfig?.platform_name || 'GML'}
         `,
       });
 

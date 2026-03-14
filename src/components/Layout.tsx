@@ -1,26 +1,59 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = React.useState(false);
+  const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const [orderSuccess, setOrderSuccess] = React.useState(false);
+  const [showScrollTop, setShowScrollTop] = React.useState(false);
   const { profile, cart, updateQuantity, removeFromCart, config } = useStore();
   const location = useLocation();
 
   React.useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  React.useEffect(() => {
     if (location.hash) {
-      const element = document.getElementById(location.hash.substring(1));
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+      const id = location.hash.substring(1);
+      if (id === 'privacidad') {
+        setIsPrivacyOpen(true);
+        return;
       }
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [location]);
+
+  // Handle dynamic document title and favicon
+  React.useEffect(() => {
+    if (config?.platform_name) {
+      document.title = config.platform_name;
+    }
+    
+    if (config?.favicon_url) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = config.favicon_url;
+    }
+  }, [config]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -37,7 +70,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     try {
       const total = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
       
-      const { error } = await supabase.from('pedidos').insert({
+      const { data: orderData, error } = await supabase.from('pedidos').insert({
         cliente_id: profile.id,
         items: cart.map(i => ({ sku: i.sku, cantidad: i.cantidad, precio_unitario: i.precio })),
         total: total,
@@ -45,6 +78,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }).select().single();
 
       if (error) throw error;
+
+      // Send confirmation email asynchronously
+      if (orderData?.id) {
+        supabase.functions.invoke('send-order-confirmation', {
+          body: { order_id: orderData.id }
+        }).catch(err => console.error('Error sending confirmation email:', err));
+      }
       
       setOrderSuccess(true);
       // Clear cart
@@ -71,20 +111,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <Link to="/" className="flex items-center space-x-2">
-              {useStore.getState().config?.logo_url ? (
+              {config?.logo_url ? (
                 <img 
-                  src={useStore.getState().config.logo_url} 
+                  src={config.logo_url} 
                   alt="Logo" 
                   className="h-12 w-auto object-contain"
                 />
               ) : (
                 <>
                   <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                    <span className="text-white font-black text-xl">R</span>
+                    <span className="text-white font-black text-xl">
+                      {config?.abreviatura?.charAt(0) || config?.platform_name?.charAt(0) || 'R'}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-secondary font-black text-xl tracking-tighter block leading-none">RUBI</span>
-                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Refaccionaria</span>
+                    <span className="text-secondary font-black text-xl tracking-tighter block leading-none">
+                      {config?.abreviatura || config?.platform_name?.toUpperCase() || 'TECNOSISMX'}
+                    </span>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{config?.abreviatura ? 'Refaccionaria' : 'Soluciones'}</span>
                   </div>
                 </>
               )}
@@ -409,6 +453,100 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </div>
       )}
 
+      {/* Floating Buttons */}
+      <div className="fixed bottom-8 right-8 z-[60] flex flex-col space-y-4">
+        {showScrollTop && (
+          <button 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="w-14 h-14 bg-white text-secondary rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all border border-slate-100 group"
+          >
+            <ArrowUp size={24} className="group-hover:-translate-y-1 transition-transform" />
+          </button>
+        )}
+        <a 
+          href={`https://wa.me/${config?.whatsapp_number || '5212345678'}?text=${encodeURIComponent(config?.whatsapp_message || 'Hola, me gustaría más información.')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-14 h-14 bg-[#25D366] text-white rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
+        >
+          <MessageCircle size={32} />
+        </a>
+      </div>
+
+      {/* Privacy Modal */}
+      {isPrivacyOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setIsPrivacyOpen(false)} />
+          <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300 flex flex-col">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-2xl font-black text-secondary uppercase tracking-tight">Aviso de Privacidad</h3>
+              <button onClick={() => setIsPrivacyOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <X size={24} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-10 overflow-y-auto text-slate-600 leading-relaxed whitespace-pre-line text-sm">
+              {config?.privacy_policy || 'Contenido legal no configurado todavía.'}
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+              <button 
+                onClick={() => setIsPrivacyOpen(false)}
+                className="btn-primary py-3 px-12 rounded-2xl"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms Modal */}
+      {isTermsOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setIsTermsOpen(false)} />
+          <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300 flex flex-col">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-2xl font-black text-secondary uppercase tracking-tight">Términos y Condiciones</h3>
+              <button onClick={() => setIsTermsOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <X size={24} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-10 overflow-y-auto text-slate-600 leading-relaxed whitespace-pre-line text-sm">
+              {config?.terms_conditions || 'Contenido legal no configurado todavía.'}
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+              <button 
+                onClick={() => setIsTermsOpen(false)}
+                className="btn-primary py-3 px-12 rounded-2xl"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Allied Brands Slider */}
+      {config?.branding_images && config.branding_images.length > 0 && (
+        <section className="bg-white py-12 border-t border-slate-50 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Nuestras Marcas Aliadas</p>
+          </div>
+          <div className="flex animate-marquee whitespace-nowrap">
+            <div className="flex space-x-12 items-center min-w-full justify-around">
+              {config.branding_images.map((img: string, i: number) => (
+                <img key={i} src={img} alt={`Marca ${i}`} className="h-20 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain px-4" />
+              ))}
+            </div>
+            {/* Duplicate for infinite effect */}
+            <div className="flex space-x-12 items-center min-w-full justify-around">
+              {config.branding_images.map((img: string, i: number) => (
+                <img key={`dup-${i}`} src={img} alt={`Marca Dup ${i}`} className="h-20 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain px-4" />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Footer */}
       <footer className="bg-secondary text-white py-12 mt-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -419,52 +557,44 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <img 
                     src={config.logo_url} 
                     alt="Logo Footer" 
-                    className="h-20 w-auto object-contain" 
+                    className="h-16 w-auto object-contain" 
                   />
                 ) : (
-                  <>
-                    <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                      <span className="text-white font-black text-2xl">
-                        {config?.platform_name ? config.platform_name.charAt(0).toUpperCase() : 'R'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-white font-black text-2xl tracking-tighter block leading-none">
-                        {config?.platform_name ? config.platform_name.toUpperCase() : 'RUBI'}
-                      </span>
-                    </div>
-                  </>
+                  <span className="text-white font-black text-2xl tracking-tighter block leading-none">
+                    {config?.abreviatura || config?.platform_name?.toUpperCase() || 'TECNOSISMX'}
+                  </span>
                 )}
               </Link>
               <p className="text-slate-400 max-w-sm text-sm">
-                {config?.footer_description || 'Líderes en refacciones industriales y automotrices. Más de 15,000 productos a tu disposición con la mejor calidad y servicio técnico.'}
+                {config?.footer_description || 'Líderes en soluciones industriales y automotrices.'}
               </p>
             </div>
             <div>
               <h4 className="font-bold mb-4 text-white">Empresa</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#titulos" className="hover:text-primary transition-colors">Sobre Nosotros</a></li>
-                <li><a href="#contacto" className="hover:text-primary transition-colors">Contacto</a></li>
-                <li><a href="#privacidad" className="hover:text-primary transition-colors">Aviso de Privacidad</a></li>
+                <li><Link to="/#nosotros" className="hover:text-primary transition-colors">Sobre Nosotros</Link></li>
+                <li><Link to="/#contacto" className="hover:text-primary transition-colors">Contacto</Link></li>
+                <li><button onClick={() => setIsPrivacyOpen(true)} className="hover:text-primary transition-colors text-left">Aviso de Privacidad</button></li>
+                <li><button onClick={() => setIsTermsOpen(true)} className="hover:text-primary transition-colors text-left">Términos y Condiciones</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4 text-white">Contacto</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
                 <li className="flex items-center space-x-2">
-                  <span>{config?.footer_contact_email || 'ventas@refaccionariarubi.com'}</span>
+                  <span>{config?.footer_contact_email}</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <span>{config?.footer_contact_phone || '+52 (000) 000 0000'}</span>
+                  <span>{config?.footer_contact_phone}</span>
                 </li>
                 <li className="flex items-center space-x-2">
-                  <span>{config?.footer_contact_address || 'Dirección de la empresa'}</span>
+                  <span className="line-clamp-2">{config?.footer_contact_address}</span>
                 </li>
               </ul>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-slate-500 text-xs text-center md:text-left">
-            <p>© {new Date().getFullYear()} {config?.platform_name || 'Refaccionaria Rubi'}. Todos los derechos reservados.</p>
+            <p>© {new Date().getFullYear()} {config?.platform_name}. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

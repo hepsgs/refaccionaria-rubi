@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronDown, Package, ShieldCheck } from 'lucide-react';
+import { Search, ChevronDown, Package, ShieldCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
@@ -24,6 +24,7 @@ const Catalogue = () => {
   const [filters, setFilters] = useState({ categoria: '', marca: '', año: '' });
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
   
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { profile, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
 
@@ -124,13 +125,23 @@ const Catalogue = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product) => (
             <div key={product.id} className="card-rubi flex flex-col group overflow-hidden p-0 h-full">
-              <div className="aspect-square bg-slate-100 flex items-center justify-center relative overflow-hidden">
+              <div 
+                className="aspect-square bg-slate-100 flex items-center justify-center relative overflow-hidden cursor-pointer"
+                onClick={() => setSelectedProduct(product)}
+              >
                 {product.imagenes && product.imagenes.length > 0 ? (
-                  <img 
-                    src={product.imagenes[0]} 
-                    alt={product.nombre} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+                  <>
+                    <img 
+                      src={product.imagenes[0]} 
+                      alt={product.nombre} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    {product.imagenes.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        1/{product.imagenes.length}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <Package size={48} className="text-slate-300" />
                 )}
@@ -139,7 +150,10 @@ const Catalogue = () => {
                 </div>
               </div>
               
-              <div className="p-6 flex-grow flex flex-col justify-between">
+              <div 
+                className="p-6 flex-grow flex flex-col justify-between cursor-pointer"
+                onClick={() => setSelectedProduct(product)}
+              >
                 <div>
                   <p className="text-xs font-bold text-primary mb-1">{product.sku}</p>
                   <h3 className="font-bold text-secondary text-lg leading-tight mb-2 group-hover:text-primary transition-colors">
@@ -177,6 +191,143 @@ const Catalogue = () => {
           ))}
         </div>
       )}
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetailModal 
+          product={selectedProduct} 
+          onClose={() => setSelectedProduct(null)} 
+          addToCart={addToCart}
+          isApproved={isApproved}
+        />
+      )}
+    </div>
+  );
+};
+
+const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: { 
+  product: Product, 
+  onClose: () => void, 
+  addToCart: (p: any) => void,
+  isApproved: boolean
+}) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const images = product.imagenes && product.imagenes.length > 0 ? product.imagenes : [];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={onClose} />
+      <div className="bg-white rounded-[40px] p-0 max-w-4xl w-full shadow-2xl relative animate-in zoom-in duration-300 overflow-hidden flex flex-col md:flex-row">
+        <button 
+          onClick={onClose}
+          className="absolute right-6 top-6 z-10 p-2 text-slate-400 hover:text-secondary bg-white/80 backdrop-blur-sm rounded-xl transition-all shadow-sm"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Image Gallery */}
+        <div className="w-full md:w-1/2 bg-slate-50 relative group">
+          <div className="aspect-square flex items-center justify-center overflow-hidden">
+            {images.length > 0 ? (
+              <img 
+                src={images[currentImageIndex]} 
+                alt={product.nombre} 
+                className="w-full h-full object-cover transition-all duration-500"
+              />
+            ) : (
+              <Package size={120} className="text-slate-200" />
+            )}
+          </div>
+
+          {images.length > 1 && (
+            <div className="absolute inset-x-0 bottom-6 px-6 z-20">
+              <div className="flex items-center justify-center space-x-2 bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/20 overflow-x-auto scrollbar-hide max-w-full">
+                {images.map((img: string, idx: number) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`w-12 h-12 rounded-xl border-2 transition-all flex-shrink-0 overflow-hidden ${idx === currentImageIndex ? 'border-primary ring-2 ring-primary/20' : 'border-white/50 hover:border-white'}`}
+                  >
+                    <img src={img} className="w-full h-full object-cover" alt="" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {images.length > 1 && (
+            <>
+              <button 
+                onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm text-secondary rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button 
+                onClick={() => setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm text-secondary rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Product Info */}
+        <div className="w-full md:w-1/2 p-10 flex flex-col justify-between bg-white">
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">{product.sku}</span>
+                <span className="bg-secondary/5 text-secondary text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">{product.marca}</span>
+              </div>
+              <h2 className="text-3xl font-black text-secondary uppercase tracking-tight leading-none mb-4">{product.nombre}</h2>
+              <p className="text-slate-500 text-sm leading-relaxed">{product.descripcion}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Modelo</p>
+                <p className="font-bold text-secondary">{product.modelo || 'Universal'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aplicación</p>
+                <p className="font-bold text-secondary">
+                  {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-10 border-t border-slate-100">
+            {isApproved ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio Unitario</p>
+                  <p className="text-4xl font-black text-secondary tracking-tighter">${product.precio.toLocaleString()}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    addToCart(product);
+                    onClose();
+                  }}
+                  className="btn-primary h-16 px-8 rounded-2xl shadow-xl shadow-primary/20 flex items-center space-x-3 group"
+                >
+                  <span className="font-black uppercase tracking-wider">Agregar</span>
+                  <ChevronDown size={20} className="-rotate-90 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-full bg-slate-50 rounded-2xl p-6 flex items-center space-x-4 border border-slate-100">
+                <ShieldCheck className="text-primary" size={32} />
+                <div>
+                  <p className="text-xs font-black text-secondary uppercase tracking-widest">Precios de Venta</p>
+                  <p className="text-sm text-slate-500 font-medium">Inicia sesión como mayorista aprobado para ver precios y comprar.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

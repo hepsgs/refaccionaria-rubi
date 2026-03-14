@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Warehouse, Clock, Settings2 } from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
@@ -5,7 +6,16 @@ import { useStore } from '../store/useStore';
 
 const Home = () => {
   const config = useStore(state => state.config);
-  const stats = { products: '15K+', clients: '500+', years: '20+' };
+  const [currentAboutIndex, setCurrentAboutIndex] = useState(0);
+  const aboutImages = config?.about_images || [];
+
+  useEffect(() => {
+    if (aboutImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentAboutIndex((prev) => (prev + 1) % aboutImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [aboutImages.length]);
 
   return (
     <div className="space-y-20 pb-20">
@@ -16,9 +26,9 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { label: 'Refacciones en Stock', value: stats.products, icon: Warehouse },
-            { label: 'Talleres Afiliados', value: stats.clients, icon: Settings2 },
-            { label: 'Años de Experiencia', value: stats.years, icon: Clock },
+            { label: 'Refacciones en Stock', value: config?.stats_products || '15K+', icon: Warehouse },
+            { label: 'Talleres Afiliados', value: config?.stats_clients || '500+', icon: Settings2 },
+            { label: 'Años de Experiencia', value: config?.stats_years || '20+', icon: Clock },
           ].map((stat, i) => (
             <div key={i} className="card-rubi flex items-center space-x-6">
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
@@ -37,10 +47,39 @@ const Home = () => {
       <section id="nosotros" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="relative">
-            <div className="aspect-[4/3] bg-slate-200 rounded-rubi overflow-hidden">
-               <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400">
-                 [Imagen Industrial Rubi]
-               </div>
+            <div className="aspect-[4/3] bg-slate-100 rounded-rubi overflow-hidden shadow-2xl relative">
+              {aboutImages.length > 0 ? (
+                <>
+                  {aboutImages.map((img: string, i: number) => (
+                    <div
+                      key={i}
+                      className={`absolute inset-0 transition-opacity duration-1000 ${
+                        i === currentAboutIndex ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      <img src={img} alt={`Nosotros ${i}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                  
+                  {aboutImages.length > 1 && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+                      {aboutImages.map((_: any, i: number) => (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentAboutIndex(i)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            i === currentAboutIndex ? 'bg-primary w-8' : 'bg-white/50 hover:bg-white'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400">
+                  <Warehouse size={64} />
+                </div>
+              )}
             </div>
             <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-primary rounded-rubi -z-10 opacity-10"></div>
           </div>
@@ -49,7 +88,7 @@ const Home = () => {
               {config?.about_title_1 || 'Respaldando tu industria con'} <span className="text-primary">{config?.about_title_2 || 'Precisión y Confianza'}</span>.
             </h2>
             <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-line">
-              {config?.about_text || 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.'}
+              {config?.about_text || `En ${config?.platform_name || 'nuestra empresa'}, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.`}
             </p>
             <ul className="space-y-3">
               {['Calidad certificada en cada pieza', 'Atención técnica personalizada', 'Entrega eficiente y garantizada'].map((item) => (

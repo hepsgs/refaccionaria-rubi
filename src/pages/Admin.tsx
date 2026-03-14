@@ -4,7 +4,7 @@ import {
   Package, 
   ClipboardList, 
   Plus, 
-  Check, 
+  Check,
   X,
   FileDown,
   Upload,
@@ -13,15 +13,31 @@ import {
   Edit,
   Trash2,
   Search,
-  Image as ImageIcon,
+  ImageIcon,
   ImagePlus,
   AlertTriangle,
-  Settings
+  Settings,
+  Send,
+  Download,
+  FileText
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+const downloadCSV = (content: string, filename: string) => {
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config' | 'cms'>('users');
@@ -40,18 +56,34 @@ const Admin = () => {
     hero_subtitle: 'Gestión profesional de refacciones para talleres y empresas. Búsqueda técnica instantánea y stock real garantizado.',
     about_title_1: 'Respaldando tu industria con',
     about_title_2: 'Precisión y Confianza',
-    about_text: 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.'
+    about_text: 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.',
+    platform_name: 'Refaccionaria Rubi',
+    abreviatura: 'RUBI',
+    footer_description: 'Líderes en refacciones industriales y automotrices. Más de 15,000 productos a tu disposición con la mejor calidad y servicio técnico.',
+    footer_contact_email: 'ventas@refaccionariarubi.com',
+    footer_contact_phone: '+52 (000) 000 0000',
+    footer_contact_address: 'Dirección de la empresa',
+    whatsapp_number: '',
+    whatsapp_message: 'Hola, me gustaría ',
+    stats_products: '15K+',
+    stats_clients: '500+',
+    stats_years: '20+',
+    cms_version_text: 'Catálogo Disponible v2.0',
+    branding_images: [],
+    privacy_policy: '',
+    terms_conditions: '',
+    hero_images: []
   });
+  const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
-  const profile = useStore(state => state.profile);
+  const { profile, config } = useStore();
 
+  // Update local settings state when global config changes
   useEffect(() => {
-    const fetchConfig = async () => {
-      const { data } = await supabase.from('configuracion').select('*').single();
-      if (data) setSettings(data);
-    };
-    fetchConfig();
-  }, []);
+    if (config) {
+      setSettings(config);
+    }
+  }, [config]);
 
   if (!profile?.es_admin) {
     return <div className="p-20 text-center font-bold">Acceso Denegado</div>;
@@ -61,9 +93,9 @@ const Admin = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
         <div>
-          <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">Panel de Control</h1>
-          <p className="text-slate-500 font-medium italic">Gestión de Refaccionaria Rubi</p>
-        </div>
+            <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
+            <p className="text-slate-500 font-medium">Gestión de {settings.platform_name || 'TecnosisMX'}</p>
+          </div>
         
         <div className="flex bg-white p-1.5 rounded-2xl shadow-soft border border-slate-100 overflow-x-auto max-w-full">
           {[
@@ -123,38 +155,74 @@ const Admin = () => {
                   <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                   <span>Sección Principal (Hero)</span>
                 </h3>
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
-                    <input 
-                      className="input-rubi" 
-                      value={settings.hero_title_1}
-                      onChange={(e) => setSettings({...settings, hero_title_1: e.target.value})}
-                    />
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Principal (Hero Slider)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {settings.hero_images?.map((img: string, idx: number) => (
+                          <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                            <img src={img} alt="Hero" className="w-full h-full object-cover" />
+                            <button 
+                              onClick={() => setSettings({...settings, hero_images: settings.hero_images.filter((_: any, i: number) => i !== idx)})}
+                              className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `hero-${Math.random()}.${fileExt}`;
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                if (uploadError) throw uploadError;
+                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
+                              } catch (error: any) { alert('Error: ' + error.message); }
+                            }}
+                          />
+                          <Plus size={24} />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
+                      <input 
+                        className="input-rubi" 
+                        value={settings.hero_title_1}
+                        onChange={(e) => setSettings({...settings, hero_title_1: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                      <input 
+                        className="input-rubi" 
+                        value={settings.hero_title_2}
+                        onChange={(e) => setSettings({...settings, hero_title_2: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
+                      <textarea 
+                        className="input-rubi min-h-[100px] resize-none py-3" 
+                        value={settings.hero_subtitle}
+                        onChange={(e) => setSettings({...settings, hero_subtitle: e.target.value})}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
-                    <input 
-                      className="input-rubi" 
-                      value={settings.hero_title_2}
-                      onChange={(e) => setSettings({...settings, hero_title_2: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
-                    <textarea 
-                      className="input-rubi min-h-[100px] resize-none py-3" 
-                      value={settings.hero_subtitle}
-                      onChange={(e) => setSettings({...settings, hero_subtitle: e.target.value})}
-                    />
-                  </div>
-                </div>
               </div>
 
               <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
                 <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
                   <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                  <span>Sección Nosotros</span>
+                  <span>Sección Nosotros e Imágenes</span>
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1">
@@ -179,6 +247,89 @@ const Admin = () => {
                       className="input-rubi min-h-[100px] resize-none py-3" 
                       value={settings.about_text}
                       onChange={(e) => setSettings({...settings, about_text: e.target.value})}
+                    />
+                  </div>
+                  
+                  {/* Multiple About Images */}
+                  <div className="space-y-2 pt-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería (Sección Nosotros)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {settings.about_images?.map((img: string, idx: number) => (
+                        <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <img src={img} alt="About" className="w-full h-full object-cover" />
+                          <button 
+                            onClick={() => setSettings({...settings, about_images: settings.about_images.filter((_: any, i: number) => i !== idx)})}
+                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `about-${Math.random()}.${fileExt}`;
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                              if (uploadError) throw uploadError;
+                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                              setSettings({ ...settings, about_images: [...(settings.about_images || []), publicUrl] });
+                            } catch (error: any) { alert('Error: ' + error.message); }
+                          }}
+                        />
+                        <Plus size={24} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-rubi bg-slate-50 border-slate-100 space-y-6 p-6 md:col-span-2">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                  <span>Estadísticas y Versión</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Refacciones Stock</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.stats_products || ''}
+                      placeholder="Ej: 15K+"
+                      onChange={(e) => setSettings({...settings, stats_products: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Talleres Afiliados</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.stats_clients || ''}
+                      placeholder="Ej: 500+"
+                      onChange={(e) => setSettings({...settings, stats_clients: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Años Experiencia</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.stats_years || ''}
+                      placeholder="Ej: 20+"
+                      onChange={(e) => setSettings({...settings, stats_years: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Versión Catálogo</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.cms_version_text || ''}
+                      placeholder="Ej: v2.0"
+                      onChange={(e) => setSettings({...settings, cms_version_text: e.target.value})}
                     />
                   </div>
                 </div>
@@ -242,218 +393,290 @@ const Admin = () => {
         )}
         {activeTab === 'config' && (
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-6 border-b border-slate-100">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                   <Settings size={32} />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Ajustes SMTP</h2>
-                  <p className="text-slate-500 font-medium text-sm">Configura las credenciales para el envío de correos automáticos.</p>
+                  <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
+                  <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
                 </div>
               </div>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={async () => {
-                    setTestingSMTP(true);
-                    try {
-                      const { data, error } = await supabase.functions.invoke('admin-create-user', {
-                        body: { test: true, settings }
-                      });
-                      if (error) {
-                        console.error('SMTP test function error:', error);
-                        // Extract error message from Edge Function response format
-                        let errorMessage = error.message;
-                        if (error.context && error.context.json) {
-                          try {
-                            const errData = await error.context.json();
-                            errorMessage = errData.error || errorMessage;
-                          } catch (e) { /* ignore parse error */ }
-                        }
-                        throw new Error(errorMessage);
-                      }
-                      
-                      // Check for internal success flag
-                      if (data && !data.success) {
-                         throw new Error(data.error || 'Error desconocido en la prueba SMTP.');
-                      }
-
-                      alert('Correo de prueba enviado correctamente.');
-                    } catch (error: any) {
-                      alert('Error: ' + error.message);
-                    } finally {
-                      setTestingSMTP(false);
-                    }
-                  }}
-                  disabled={testingSMTP}
-                  className="btn-secondary px-8 flex items-center space-x-2"
-                >
-                  {testingSMTP ? (
-                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <Check size={18} />
-                  )}
-                  <span>Probar Conexión</span>
-                </button>
-                <button 
-                  onClick={async () => {
-                    const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
-                    if (!error) alert('Configuración guardada.');
-                    else alert('Error: ' + error.message);
-                  }}
-                  className="btn-primary px-8"
-                >
-                  Guardar Cambios
-                </button>
-              </div>
+              <button 
+                onClick={async () => {
+                  const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
+                  if (!error) alert('Configuración guardada correctamente.');
+                  else alert('Error: ' + error.message);
+                }}
+                className="btn-primary px-8"
+              >
+                Guardar Cambios
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="card-rubi bg-slate-50/50 border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Servidor de Correo</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="smtp.gmail.com"
-                      value={settings.smtp_host}
-                      onChange={(e) => setSettings({...settings, smtp_host: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="587"
-                      value={settings.smtp_port}
-                      onChange={(e) => setSettings({...settings, smtp_port: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Modo de Seguridad</label>
-                    <select 
-                      className="input-rubi py-3"
-                      value={settings.smtp_security}
-                      onChange={(e) => setSettings({...settings, smtp_security: e.target.value})}
-                    >
-                      <option value="none">Sin Seguridad (Puerto 25/587)</option>
-                      <option value="tls">STARTTLS (Puerto 587)</option>
-                      <option value="ssl">SSL/TLS (Puerto 465)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario / Email</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="noreply@tuempresa.com"
-                      value={settings.smtp_user}
-                      onChange={(e) => setSettings({...settings, smtp_user: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
-                    <input 
-                      type="password"
-                      className="input-rubi" 
-                      placeholder="••••••••••••"
-                      value={settings.smtp_pass}
-                      onChange={(e) => setSettings({...settings, smtp_pass: e.target.value})}
-                    />
-                  </div>
-                </div>
-              </div>
-
+              {/* Branding Section */}
               <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
                 <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                  <span>Identidad y Envío</span>
+                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                  <span>Branding y WhatsApp</span>
                 </h3>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre del Remitente</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre Comercial</label>
                     <input 
                       className="input-rubi" 
-                      placeholder="Refaccionaria Rubi"
-                      value={settings.smtp_sender_name}
-                      onChange={(e) => setSettings({...settings, smtp_sender_name: e.target.value})}
+                      placeholder="Ej: Refaccionaria Rubi"
+                      value={settings.platform_name || ''}
+                      onChange={(e) => setSettings({...settings, platform_name: e.target.value})}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email Remitente (De:)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Abreviatura (Logo/Header)</label>
                     <input 
                       className="input-rubi" 
-                      placeholder="ventas@rubi.com"
-                      value={settings.smtp_from}
-                      onChange={(e) => setSettings({...settings, smtp_from: e.target.value})}
+                      placeholder="Ej: RUBI"
+                      value={settings.abreviatura || ''}
+                      onChange={(e) => setSettings({...settings, abreviatura: e.target.value})}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para enlaces en correos)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (10 dígitos)</label>
                     <input 
                       className="input-rubi" 
-                      placeholder="http://localhost:5173"
-                      value={settings.site_url}
-                      onChange={(e) => setSettings({...settings, site_url: e.target.value})}
+                      placeholder="Ej: 5212345678"
+                      value={settings.whatsapp_number || ''}
+                      onChange={(e) => setSettings({...settings, whatsapp_number: e.target.value})}
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Mensaje WhatsApp</label>
+                    <input 
+                      className="input-rubi" 
+                      placeholder="Hola, me gustaría..."
+                      value={settings.whatsapp_message || ''}
+                      onChange={(e) => setSettings({...settings, whatsapp_message: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Logo Principal</label>
+                      <div className="flex items-center space-x-6">
+                        <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
+                          {settings.logo_url ? (
+                            <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                          ) : (
+                            <ImageIcon size={24} className="text-slate-300" />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <input
+                            type="file"
+                            id="logo-upload-config"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `logo-${Math.random()}.${fileExt}`;
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                if (uploadError) throw uploadError;
+                                const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, logo_url: publicUrlData.publicUrl });
+                              } catch (error: any) { alert('Error: ' + error.message); }
+                            }}
+                          />
+                          <label 
+                            htmlFor="logo-upload-config"
+                            className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
+                          >
+                            <Upload size={14} />
+                            <span>Subir Logo</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Favicon (Pestaña)</label>
+                      <div className="flex items-center space-x-6">
+                        <div className="w-12 h-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center overflow-hidden">
+                          {settings.favicon_url ? (
+                            <img src={settings.favicon_url} alt="Favicon" className="w-full h-full object-contain" />
+                          ) : (
+                            <div className="w-2 h-2 bg-slate-300 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <input
+                            type="file"
+                            id="favicon-upload-config"
+                            className="hidden"
+                            accept=".ico,.png,.svg,.jpg"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `favicon-${Math.random()}.${fileExt}`;
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                if (uploadError) throw uploadError;
+                                const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, favicon_url: publicUrlData.publicUrl });
+                              } catch (error: any) { alert('Error: ' + error.message); }
+                            }}
+                          />
+                          <label 
+                            htmlFor="favicon-upload-config"
+                            className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
+                          >
+                            <Upload size={14} />
+                            <span>Subir Favicon</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-50">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Logo de la Empresa</label>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-24 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
-                        {settings.logo_url ? (
-                          <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                        ) : (
-                          <ImageIcon size={32} className="text-slate-300" />
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="file"
-                          id="logo-upload"
-                          className="hidden"
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Logotipos (Footer/Branding)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {settings.branding_images?.map((img: string, idx: number) => (
+                        <div key={idx} className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
+                          <img src={img} alt="Brand" className="w-full h-full object-contain p-1" />
+                          <button 
+                            onClick={() => setSettings({...settings, branding_images: settings.branding_images.filter((_: any, i: number) => i !== idx)})}
+                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="w-14 h-14 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-100 text-slate-400 hover:text-primary">
+                        <input 
+                          type="file" 
+                          className="hidden" 
                           accept="image/*"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-
                             try {
                               const fileExt = file.name.split('.').pop();
-                              const fileName = `logo-${Math.random()}.${fileExt}`;
-                              
-                              const { error: uploadError } = await supabase.storage
-                                .from('branding')
-                                .upload(fileName, file);
-
+                              const fileName = `brand-${Math.random()}.${fileExt}`;
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
                               if (uploadError) throw uploadError;
-
-                              const { data: { publicUrl } } = supabase.storage
-                                .from('branding')
-                                .getPublicUrl(fileName);
-
-                              setSettings({ ...settings, logo_url: publicUrl });
-                            } catch (error: any) {
-                              alert('Error al subir logo: ' + error.message);
-                            }
+                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                              setSettings({ ...settings, branding_images: [...(settings.branding_images || []), publicUrl] });
+                            } catch (error: any) { alert('Error: ' + error.message); }
                           }}
                         />
-                        <label 
-                          htmlFor="logo-upload"
-                          className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
-                        >
-                          <Upload size={14} />
-                          <span>Cambiar Logo</span>
-                        </label>
-                        <p className="text-[10px] text-slate-400">Dimensión recomendada: 500x500px. PNG o SVG preferido.</p>
-                      </div>
+                        <Plus size={18} />
+                      </label>
                     </div>
                   </div>
+                </div>
+
+              {/* SMTP Mailer Card */}
+              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                  <span>Servidor de Correo (SMTP)</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
+                    <input className="input-rubi" value={settings.smtp_host || ''} onChange={(e) => setSettings({...settings, smtp_host: e.target.value})} placeholder="smtp.gmail.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
+                    <input className="input-rubi" value={settings.smtp_port || ''} onChange={(e) => setSettings({...settings, smtp_port: e.target.value})} placeholder="587" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario SMTP</label>
+                    <input className="input-rubi" value={settings.smtp_user || ''} onChange={(e) => setSettings({...settings, smtp_user: e.target.value})} placeholder="email@gmail.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
+                    <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({...settings, smtp_pass: e.target.value})} placeholder="••••••••" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Seguridad</label>
+                    <select 
+                      className="input-rubi py-2 text-sm" 
+                      value={settings.smtp_security || 'tls'}
+                      onChange={(e) => setSettings({...settings, smtp_security: e.target.value})}
+                    >
+                      <option value="none">Ninguno (Puerto 25/587)</option>
+                      <option value="tls">STARTTLS (Puerto 587)</option>
+                      <option value="ssl">SSL/TLS (Port 465)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-50 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Prueba de Envío</p>
+                    <div className="flex space-x-2">
+                      <input 
+                        type="email" 
+                        placeholder="Email destino..." 
+                        className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none w-40"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                      />
+                      <button 
+                        onClick={async () => {
+                          if (!testEmail) return alert('Ingresa un email de destino');
+                          setTestingSMTP(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke('admin-create-user', {
+                              body: { test: true, settings, recipient: testEmail }
+                            });
+                            if (error) throw error;
+                            if (data && !data.success) throw new Error(data.error || 'Fallo');
+                            alert('Correo de prueba enviado!');
+                          } catch (e: any) { alert('Error: ' + e.message); }
+                          finally { setTestingSMTP(false); }
+                        }}
+                        disabled={testingSMTP}
+                        className="bg-secondary text-white p-1.5 rounded-lg hover:opacity-90 disabled:opacity-50"
+                      >
+                        {testingSMTP ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+                <div className="space-y-4">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                    <span>Aviso de Privacidad</span>
+                  </h3>
+                  <textarea 
+                    className="input-rubi min-h-[300px] py-4 text-sm" 
+                    placeholder="Escribe el aviso de privacidad aquí..."
+                    value={settings.privacy_policy || ''}
+                    onChange={(e) => setSettings({...settings, privacy_policy: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                    <span>Términos y Condiciones</span>
+                  </h3>
+                  <textarea 
+                    className="input-rubi min-h-[300px] py-4 text-sm" 
+                    placeholder="Escribe los términos y condiciones aquí..."
+                    value={settings.terms_conditions || ''}
+                    onChange={(e) => setSettings({...settings, terms_conditions: e.target.value})}
+                  />
                 </div>
               </div>
             </div>
@@ -726,37 +949,41 @@ const ProductManagement = () => {
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target?.result as string;
+      let text = event.target?.result as string;
+      // Remove UTF-8 BOM if present
+      if (text.startsWith('\uFEFF')) {
+        text = text.substring(1);
+      }
       const lines = text.split('\n');
       const productsToUpsert = lines.slice(1).map(line => {
         const parts = line.split(',');
-        if (parts.length < 3) return null;
-        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, imagenes] = parts;
+        if (parts.length < 1) return null;
+        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, imagenes] = parts.map(p => p?.trim());
         if (!sku) return null;
         
-        // Parse images if present (expecting a semicolon separated list or JSON string)
-        let imageList: string[] = [];
+        const updateData: any = { sku };
+        
+        // Dynamic mapping: only include fields present in the CSV
+        if (nombre !== undefined) updateData.nombre = nombre;
+        if (precio !== undefined && precio !== '') updateData.precio = parseFloat(precio);
+        if (stock !== undefined && stock !== '') updateData.stock = parseInt(stock);
+        if (marca !== undefined) updateData.marca = marca;
+        if (modelo !== undefined) updateData.modelo = modelo;
+        if (año_inicio !== undefined && año_inicio !== '') updateData.año_inicio = parseInt(año_inicio);
+        if (año_fin !== undefined && año_fin !== '') updateData.año_fin = parseInt(año_fin);
+        
         if (imagenes) {
-          const trimmed = imagenes.trim();
-          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-            try { imageList = JSON.parse(trimmed); } catch (e) { console.error(e); }
+          if (imagenes.startsWith('[') && imagenes.endsWith(']')) {
+            try { updateData.imagenes = JSON.parse(imagenes); } catch (e) { console.error(e); }
           } else {
-            imageList = trimmed.split(';').map(i => i.trim()).filter(i => i);
+            updateData.imagenes = imagenes.split(';').map(i => i.trim()).filter(i => i);
           }
         }
 
-        return { 
-          sku: sku.trim(), 
-          nombre: nombre?.trim(), 
-          precio: parseFloat(precio || '0'), 
-          stock: stock ? parseInt(stock) : 0, 
-          marca: marca?.trim() || '',
-          modelo: modelo?.trim() || '',
-          año_inicio: año_inicio ? parseInt(año_inicio) : null,
-          año_fin: año_fin ? parseInt(año_fin) : null,
-          imagenes: imageList
-        };
+        return Object.keys(updateData).length > 1 ? updateData : null;
       }).filter(p => p !== null);
+
+      if (productsToUpsert.length === 0) return alert('No se encontraron datos válidos');
 
       const { error } = await supabase.from('productos').upsert(productsToUpsert, { onConflict: 'sku' });
       if (!error) {
@@ -792,6 +1019,51 @@ const ProductManagement = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+            <button 
+              onClick={() => {
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'imagenes'];
+                downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
+              }}
+              className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
+              title="Plantilla Nueva"
+            >
+              <FileText size={18} />
+            </button>
+            <button 
+              onClick={() => {
+                const headers = ['sku', 'precio', 'stock'];
+                downloadCSV(headers.join(",") + "\n", "actualizar_stock_precios.csv");
+              }}
+              className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
+              title="Plantilla Stock/Precio"
+            >
+              <Check size={18} />
+            </button>
+            <button 
+              onClick={() => {
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'imagenes'];
+                const rows = products.map(p => [
+                  p.sku, 
+                  `"${p.nombre}"`, 
+                  p.precio, 
+                  p.stock, 
+                  `"${p.marca || ''}"`, 
+                  `"${p.modelo || ''}"`, 
+                  p.año_inicio || '', 
+                  p.año_fin || '', 
+                  `"${p.imagenes ? p.imagenes.join(';') : ''}"`
+                ].join(","));
+                downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
+              }}
+              className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
+              title="Exportar Todo"
+            >
+              <Download size={18} />
+            </button>
+          </div>
+
           <label className="btn-secondary flex items-center space-x-2 py-2.5 px-5 cursor-pointer text-sm">
             <Upload size={18} />
             <span>Importar CSV</span>
@@ -1194,26 +1466,12 @@ const OrderManagement = () => {
     const exportData = order.items.map((item: any) => ({
       'Numero de Parte': item.sku,
       'Cantidad': item.cantidad,
-      'Pedido ID': order.id,
       'Folio': order.folio || 'N/A'
     }));
     
-    // Add BOM for Excel UTF-8 recognition
-    const BOM = "\uFEFF";
     const header = "Numero de Parte,Cantidad,Folio\n";
     const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
-    const csvContent = BOM + header + rows;
-    
-    // Create Blob to avoid URI constraints
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `pedido_${order.folio || order.id.slice(0,8)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0,8)}.csv`);
   };
 
   const exportSingleOrderPDF = (order: any) => {

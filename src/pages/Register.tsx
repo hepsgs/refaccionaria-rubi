@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Building2, UserPlus, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useStore } from '../store/useStore';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -13,6 +14,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const config = useStore(state => state.config);
 
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -79,7 +81,7 @@ const Register = () => {
         
         <div className="card-rubi p-8 md:p-12">
           <div className="mb-8">
-            <h1 className="text-4xl font-black text-secondary tracking-tighter">ÚNETE A RUBI.</h1>
+            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">Únete a {config?.abreviatura || config?.platform_name || 'Nosotros'}.</h1>
             <p className="text-slate-500 font-medium">Registro exclusivo para Talleres y Mayoristas.</p>
           </div>
 
@@ -106,7 +108,7 @@ const Register = () => {
                 <input
                   type="text"
                   className="input-rubi pl-14"
-                  placeholder="Taller Rubi S.A."
+                  placeholder="Tu Empresa S.A."
                   required
                   value={form.empresa}
                   onChange={(e) => setForm({...form, empresa: e.target.value})}
