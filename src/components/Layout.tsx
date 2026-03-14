@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
@@ -189,9 +189,37 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               )}
             </div>
 
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-secondary">
+            {/* Mobile Actions and Menu */}
+            <div className="md:hidden flex items-center space-x-1">
+              {profile?.es_admin && (
+                <Link to="/admin" className="p-2 text-secondary" onClick={() => setIsMenuOpen(false)}>
+                  <Shield size={22} />
+                </Link>
+              )}
+              {profile ? (
+                <Link to="/perfil" className="p-2 text-secondary" onClick={() => setIsMenuOpen(false)}>
+                  <User size={22} />
+                </Link>
+              ) : (
+                <Link to="/login" className="p-2 text-secondary" onClick={() => setIsMenuOpen(false)}>
+                  <User size={22} />
+                </Link>
+              )}
+              <div 
+                className="relative cursor-pointer p-2" 
+                onClick={() => { setIsCartOpen(true); setIsMenuOpen(false); }}
+              >
+                <ShoppingCart className="text-secondary" size={22} />
+                {cartCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-primary text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                className={`p-2 ml-1 rounded-xl transition-all ${isMenuOpen ? 'bg-secondary text-white' : 'text-secondary'}`}
+              >
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
@@ -200,31 +228,32 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Mobile menu */}
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-100 p-4 space-y-4 shadow-xl">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path + (link.hash || '')}
-                className="block text-secondary font-medium px-4 py-2 hover:bg-slate-50 rounded-lg"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {link.name}
-              </Link>
-            ))}
-            <div className="pt-4 border-t border-slate-100 flex flex-col space-y-3">
-              {!profile && (
-                <Link to="/login" className="btn-primary text-center">Acceder</Link>
+          <div className="md:hidden bg-white border-b border-slate-100 p-6 space-y-8 shadow-2xl animate-in slide-in-from-top duration-300">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Navegación</p>
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path + (link.hash || '')}
+                  className="block text-lg font-black text-secondary py-2 border-b border-slate-50 flex items-center justify-between group"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <span>{link.name}</span>
+                  <ChevronDown size={18} className="-rotate-90 text-slate-300 group-hover:text-primary transition-colors" />
+                </Link>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              {profile && (
+                <button 
+                  onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                  className="w-full py-4 flex items-center justify-center space-x-2 text-rose-500 font-bold text-xs uppercase tracking-widest bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors"
+                >
+                  <LogOut size={18} />
+                  <span>Cerrar Sesión</span>
+                </button>
               )}
-              {profile?.es_admin && (
-                <Link to="/admin" className="btn-secondary text-center">Panel Admin</Link>
-              )}
-              <button 
-                onClick={() => { setIsCartOpen(true); setIsMenuOpen(false); }}
-                className="btn-secondary flex items-center justify-center space-x-2"
-              >
-                <ShoppingCart size={20} />
-                <span>Carrito ({cartCount})</span>
-              </button>
             </div>
           </div>
         )}
@@ -274,7 +303,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <div className="flex-grow space-y-1">
                       <p className="text-[10px] font-bold text-primary tracking-widest uppercase">{item.sku}</p>
                       <h4 className="text-sm font-bold text-secondary leading-tight line-clamp-2">{item.nombre}</h4>
-                      <p className="text-sm font-black text-secondary">${item.precio}</p>
+                      <p className="text-sm font-black text-secondary">
+                        ${item.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                       
                       <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center border border-slate-100 rounded-lg p-1">
@@ -311,7 +342,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Estimado</p>
                     <p className="text-3xl font-black text-secondary leading-none">
-                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0)}
+                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -372,7 +403,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <div className="flex-grow space-y-1">
                       <p className="text-[10px] font-bold text-primary tracking-widest uppercase">{item.sku}</p>
                       <h4 className="text-sm font-bold text-secondary leading-tight line-clamp-2">{item.nombre}</h4>
-                      <p className="text-sm font-black text-secondary">${item.precio}</p>
+                      <p className="text-sm font-black text-secondary">
+                        ${item.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                       
                       <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center border border-slate-100 rounded-lg p-1">
@@ -409,7 +442,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   <div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Estimado</p>
                     <p className="text-3xl font-black text-secondary leading-none">
-                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0)}
+                      ${cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>

@@ -55,11 +55,23 @@
   }
 
   .animate-marquee {
-    animation: marquee 60s linear infinite;
+    animation: marquee 30s linear infinite;
+  }
+
+  @media (max-width: 640px) {
+    .animate-marquee {
+      animation: marquee 15s linear infinite;
+    }
   }
 
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
+  }
+}
+
+@layer base {
+  html, body {
+    @apply overflow-x-hidden w-full;
   }
 }

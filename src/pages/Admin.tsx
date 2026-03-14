@@ -636,17 +636,34 @@ const Admin = () => {
                           if (!testEmail) return alert('Ingresa un email de destino');
                           setTestingSMTP(true);
                           try {
-                            const { data: { session } } = await supabase.auth.getSession();
+                            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                            if (sessionError || !session) {
+                              throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
+                            }
+                            
                             const { data, error } = await supabase.functions.invoke('test-smtp', {
                               body: { settings, recipient: testEmail },
                               headers: {
-                                Authorization: `Bearer ${session?.access_token}`
+                                Authorization: `Bearer ${session.access_token}`
                               }
                             });
-                            if (error) throw error;
-                            if (data && !data.success) throw new Error(data.error);
-                            alert('Correo de prueba enviado!');
-                          } catch (e: any) { alert('Error: ' + e.message); }
+                            
+                            if (error) {
+                              console.error("Invoke error:", error);
+                              // Handle specific function errors
+                              const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+                              throw new Error(`Error al llamar a la función: ${errorMsg}`);
+                            }
+                            
+                            if (data && !data.success) {
+                              throw new Error(data.error || 'Error desconocido en la prueba SMTP');
+                            }
+                            
+                            alert('¡Correo de prueba enviado con éxito!');
+                          } catch (e: any) { 
+                            console.error('SMTP Test catch:', e);
+                            alert('Error: ' + e.message); 
+                          }
                           finally { setTestingSMTP(false); }
                         }}
                         disabled={testingSMTP}
@@ -821,23 +838,35 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
     setSaving(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
+      }
+
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: form,
         headers: {
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Invoke error:", error);
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(`Error al llamar a la función: ${errorMsg}`);
+      }
+      
+      if (data && !data.success) {
+        throw new Error(data.error || 'Error desconocido al crear usuario');
+      }
       
       console.log('User created:', data);
       alert('Usuario creado con éxito. Se ha enviado un correo con sus accesos.');
       onRefresh();
       onClose();
     } catch (error: any) {
-      console.error('Error creating user:', error);
-      alert('Error: ' + (error.message || 'No se pudo crear el usuario. Asegúrate de que la Edge Function esté desplegada.'));
+      console.error('Add User catch:', error);
+      alert('Error: ' + error.message);
     } finally {
       setSaving(false);
     }

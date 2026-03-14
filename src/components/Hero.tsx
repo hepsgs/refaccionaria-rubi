@@ -48,9 +48,9 @@ const Hero = () => {
             </div>
           </div>
           
-          <div className="hidden lg:block relative">
-             <div className="aspect-square bg-gradient-to-tr from-primary to-rose-500 rounded-[80px] rotate-3 opacity-20 absolute inset-0"></div>
-             <div className="aspect-square bg-slate-800 rounded-[80px] -rotate-3 overflow-hidden border-4 border-white/10 relative group">
+          <div className="relative mt-8 lg:mt-0">
+             <div className="aspect-[4/3] sm:aspect-square bg-gradient-to-tr from-primary to-rose-500 rounded-[40px] sm:rounded-[80px] rotate-3 opacity-20 absolute inset-0"></div>
+             <div className="aspect-[4/3] sm:aspect-square bg-slate-800 rounded-[40px] sm:rounded-[80px] -rotate-3 overflow-hidden border-4 border-white/10 relative group shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10"></div>
                 
                 {config?.hero_images && config.hero_images.length > 0 ? (

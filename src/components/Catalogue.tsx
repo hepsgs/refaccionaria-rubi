@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronDown, Package, ShieldCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import jsPDF from 'jspdf';
@@ -37,6 +37,7 @@ const Catalogue = () => {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 12;
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
   const { profile, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
 
@@ -101,7 +102,7 @@ const Catalogue = () => {
       `"${p.modelo || ''}"`,
       `"${p.proveedor || ''}"`,
       `"${p.tipo || ''}"`,
-      p.precio
+      p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     ]);
 
     const csvContent = [
@@ -179,7 +180,7 @@ const Catalogue = () => {
       p.modelo || 'N/A',
       p.año_inicio && p.año_fin ? `${p.año_inicio}-${p.año_fin}` : (p.año_inicio || p.año_fin || 'N/A'),
       p.proveedor || 'N/A',
-      `$${p.precio.toLocaleString()}`
+      `$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
 
     autoTable(doc, {
@@ -206,6 +207,13 @@ const Catalogue = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProducts();
   }, [fetchProducts]);
+
+  const handleGridAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    addToCart(product);
+    setAddingToCartId(product.id);
+    setTimeout(() => setAddingToCartId(null), 2000);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,13 +371,23 @@ const Catalogue = () => {
                     <>
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Precio</p>
-                        <p className="text-xl font-black text-secondary">${product.precio}</p>
+                        <p className="text-xl font-black text-secondary">
+                          ${product.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
                       </div>
                       <button 
-                        onClick={() => addToCart(product)}
-                        className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center hover:scale-110 transition-transform active:scale-95 shadow-lg shadow-primary/20"
+                        onClick={(e) => handleGridAddToCart(e, product)}
+                        disabled={addingToCartId === product.id}
+                        className={`h-12 ${addingToCartId === product.id ? 'w-auto px-4 bg-emerald-500' : 'w-12 bg-primary'} text-white rounded-2xl flex items-center justify-center space-x-2 transition-all ${addingToCartId === product.id ? 'shadow-lg shadow-emerald-500/20' : 'hover:scale-110 active:scale-95 shadow-lg shadow-primary/20'}`}
                       >
-                        <ChevronDown size={24} className="-rotate-90" />
+                        {addingToCartId === product.id ? (
+                          <>
+                            <CheckCircle2 size={18} />
+                            <span className="text-[10px] font-black uppercase tracking-wider">Agregado</span>
+                          </>
+                        ) : (
+                          <ChevronDown size={24} className="-rotate-90" />
+                        )}
                       </button>
                     </>
                   ) : (
@@ -447,129 +465,157 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
   addToCart: (p: any) => void,
   isApproved: boolean
 }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeImage, setActiveImage] = useState(0);
+  const [added, setAdded] = useState(false);
   const images = product.imagenes && product.imagenes.length > 0 ? product.imagenes : [];
 
+  useEffect(() => {
+    if (images.length > 1) {
+      const timer = setInterval(() => {
+        setActiveImage(prev => (prev + 1) % images.length);
+      }, 4000);
+      return () => clearInterval(timer);
+    }
+  }, [images.length]);
+
+  const handleAddToCart = () => {
+    addToCart(product);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={onClose} />
-      <div className="bg-white rounded-[40px] p-0 max-w-4xl w-full shadow-2xl relative animate-in zoom-in duration-300 overflow-hidden flex flex-col md:flex-row">
+      <div 
+        className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close button */}
         <button 
           onClick={onClose}
-          className="absolute right-6 top-6 z-10 p-2 text-slate-400 hover:text-secondary bg-white/80 backdrop-blur-sm rounded-xl transition-all shadow-sm"
+          className="absolute top-6 right-6 z-[110] p-2 bg-white/80 backdrop-blur-md rounded-full text-secondary hover:text-rose-500 transition-all shadow-lg border border-slate-100"
         >
-          <X size={20} />
+          <X size={24} />
         </button>
 
-        {/* Image Gallery */}
-        <div className="w-full md:w-1/2 bg-slate-50 relative group">
-          <div className="aspect-square flex items-center justify-center overflow-hidden">
-            {images.length > 0 ? (
-              <img 
-                src={images[currentImageIndex]} 
-                alt={product.nombre} 
-                className="w-full h-full object-cover transition-all duration-500"
-              />
-            ) : (
-              <Package size={120} className="text-slate-200" />
-            )}
-          </div>
+        <div className="overflow-y-auto custom-scrollbar p-6 sm:p-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* Image Gallery */}
+            <div className="space-y-4">
+              <div className="aspect-square bg-slate-50 rounded-[32px] overflow-hidden border border-slate-100 relative group">
+                {images.length > 0 ? (
+                  <img 
+                    src={images[activeImage]} 
+                    alt={product.nombre} 
+                    className="w-full h-full object-cover animate-in fade-in duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-200">
+                    <Package size={80} />
+                  </div>
+                )}
+                
+                {images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 z-20">
+                    {images.map((_: any, i: number) => (
+                      <button 
+                        key={i} 
+                        onClick={() => setActiveImage(i)}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeImage ? 'bg-primary w-4' : 'bg-primary/20'}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          {images.length > 1 && (
-            <div className="absolute inset-x-0 bottom-6 px-6 z-20">
-              <div className="flex items-center justify-center space-x-2 bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/20 overflow-x-auto scrollbar-hide max-w-full">
-                {images.map((img: string, idx: number) => (
-                  <button 
-                    key={idx}
-                    onClick={() => setCurrentImageIndex(idx)}
-                    className={`w-12 h-12 rounded-xl border-2 transition-all flex-shrink-0 overflow-hidden ${idx === currentImageIndex ? 'border-primary ring-2 ring-primary/20' : 'border-white/50 hover:border-white'}`}
-                  >
-                    <img src={img} className="w-full h-full object-cover" alt="" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {images.length > 1 && (
-            <>
-              <button 
-                onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm text-secondary rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button 
-                onClick={() => setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur-sm text-secondary rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
-              >
-                <ChevronRight size={24} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Product Info */}
-        <div className="w-full md:w-1/2 p-10 flex flex-col justify-between bg-white">
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">{product.sku}</span>
-                <span className="bg-secondary/5 text-secondary text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">{product.marca}</span>
-              </div>
-              <h2 className="text-3xl font-black text-secondary uppercase tracking-tight leading-none mb-4">{product.nombre}</h2>
-              <p className="text-slate-500 text-sm leading-relaxed">{product.descripcion}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Modelo</p>
-                <p className="font-bold text-secondary">{product.modelo || 'Universal'}</p>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aplicación</p>
-                <p className="font-bold text-secondary">
-                  {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
-                </p>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proveedor</p>
-                <p className="font-bold text-secondary">{product.proveedor || 'N/A'}</p>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo</p>
-                <p className="font-bold text-secondary">{product.tipo || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-10 pt-10 border-t border-slate-100">
-            {isApproved ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio Unitario</p>
-                  <p className="text-4xl font-black text-secondary tracking-tighter">${product.precio.toLocaleString()}</p>
+              {images.length > 1 && (
+                <div className="flex space-x-3 overflow-x-auto pb-2 custom-scrollbar">
+                  {images.map((img: string, i: number) => (
+                    <button 
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImage ? 'border-primary' : 'border-transparent'}`}
+                    >
+                      <img src={img} className="w-full h-full object-cover" alt="" />
+                    </button>
+                  ))}
                 </div>
-                <button 
-                  onClick={() => {
-                    addToCart(product);
-                    onClose();
-                  }}
-                  className="btn-primary h-16 px-8 rounded-2xl shadow-xl shadow-primary/20 flex items-center space-x-3 group"
-                >
-                  <span className="font-black uppercase tracking-wider">Agregar</span>
-                  <ChevronDown size={20} className="-rotate-90 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-full bg-slate-50 rounded-2xl p-6 flex items-center space-x-4 border border-slate-100">
-                <ShieldCheck className="text-primary" size={32} />
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div className="flex flex-col justify-between">
+              <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-black text-secondary uppercase tracking-widest">Precios de Venta</p>
-                  <p className="text-sm text-slate-500 font-medium">Inicia sesión como mayorista aprobado para ver precios y comprar.</p>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">{product.sku}</span>
+                    <span className="bg-secondary/5 text-secondary text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">{product.marca}</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-secondary uppercase tracking-tight leading-none mb-4">{product.nombre}</h2>
+                  <p className="text-slate-500 text-sm leading-relaxed">{product.descripcion}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Modelo</p>
+                    <p className="font-bold text-secondary">{product.modelo || 'Universal'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aplicación</p>
+                    <p className="font-bold text-secondary">
+                      {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proveedor</p>
+                    <p className="font-bold text-secondary">{product.proveedor || 'N/A'}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo</p>
+                    <p className="font-bold text-secondary">{product.tipo || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
-            )}
+
+              <div className="mt-10 pt-10 border-t border-slate-100">
+                {isApproved ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio Unitario</p>
+                      <p className="text-4xl font-black text-secondary tracking-tighter">
+                        ${product.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={handleAddToCart}
+                      disabled={added}
+                      className={`${added ? 'bg-emerald-500 shadow-emerald-200' : 'btn-primary'} h-16 px-8 rounded-2xl shadow-xl flex items-center justify-center space-x-3 group transition-all min-w-[160px]`}
+                    >
+                      {added ? (
+                        <>
+                          <CheckCircle2 size={24} className="text-white" />
+                          <span className="font-black uppercase tracking-wider text-white">¡Agregado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-black uppercase tracking-wider">Agregar</span>
+                          <ChevronDown size={20} className="-rotate-90 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full bg-slate-50 rounded-2xl p-6 flex items-center space-x-4 border border-slate-100">
+                    <ShieldCheck className="text-primary" size={32} />
+                    <div>
+                      <p className="text-xs font-black text-secondary uppercase tracking-widest">Precios de Venta</p>
+                      <p className="text-sm text-slate-500 font-medium">Inicia sesión como mayorista aprobado para ver precios y comprar.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
