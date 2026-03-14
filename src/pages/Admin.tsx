@@ -21,7 +21,8 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Settings2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -736,6 +737,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -840,6 +842,13 @@ const UserManagement = () => {
                     </button>
                   )}
                   <button 
+                    onClick={() => setEditingUser(u)}
+                    className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" 
+                    title="Editar Permisos"
+                  >
+                    <Settings2 size={16} />
+                  </button>
+                  <button 
                     onClick={async () => {
                       if (confirm('¿Estás seguro de eliminar este usuario?')) {
                         await supabase.from('perfiles').delete().eq('id', u.id);
@@ -859,6 +868,7 @@ const UserManagement = () => {
       </div>
 
       {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
+      {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
     </div>
   );
 };
@@ -1060,6 +1070,148 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
                 <>
                   <Check size={18} />
                   <span>Crear y Enviar Accesos</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () => void, onRefresh: () => void }) => {
+  const [form, setForm] = useState({
+    nombre_completo: user.nombre_completo,
+    empresa: user.empresa,
+    telefono: user.telefono || '',
+    rol: user.rol,
+    permisos: user.permisos || {
+      productos: false,
+      pedidos: false,
+      configuracion: false,
+      usuarios: false
+    }
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    
+    try {
+      const { error } = await supabase
+        .from('perfiles')
+        .update({
+          nombre_completo: form.nombre_completo,
+          empresa: form.empresa,
+          telefono: form.telefono,
+          rol: form.rol,
+          permisos: form.permisos
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      alert('Usuario actualizado con éxito.');
+      onRefresh();
+      onClose();
+    } catch (error: any) {
+      alert('Error: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="bg-slate-800 p-8 text-white relative">
+          <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all text-white/50 hover:text-white">
+            <X size={24} />
+          </button>
+          <div className="flex items-center space-x-3 mb-2">
+            <Settings2 />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Configuración de Usuario</span>
+          </div>
+          <h3 className="text-3xl font-black tracking-tighter uppercase">Editar Permisos</h3>
+          <p className="text-slate-400 text-xs font-medium mt-1">{user.email || 'Usuario ID: ' + user.id.slice(0,8)}</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Completo</label>
+            <input 
+              required 
+              className="input-rubi py-2.5" 
+              value={form.nombre_completo}
+              onChange={(e) => setForm({...form, nombre_completo: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Teléfono (10 dígitos)</label>
+            <input 
+              required 
+              type="tel"
+              maxLength={10}
+              className="input-rubi py-2.5" 
+              value={form.telefono}
+              onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Empresa / Taller</label>
+            <input 
+              required
+              className="input-rubi py-2.5" 
+              value={form.empresa}
+              onChange={(e) => setForm({...form, empresa: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Rol del Usuario</label>
+            <div className="grid grid-cols-3 gap-3">
+              {(['cliente', 'empleado', 'admin'] as const).map((r) => (
+                <label key={r} className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === r ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                  <input type="radio" name="rol" value={r} className="sr-only" checked={form.rol === r} onChange={() => setForm({...form, rol: r})} />
+                  {r === 'cliente' && <Users size={20} />}
+                  {r === 'empleado' && <Shield size={20} />}
+                  {r === 'admin' && <ShieldAlert size={20} />}
+                  <span className="text-xs font-bold uppercase tracking-tight">{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {form.rol === 'empleado' && (
+            <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Permisos Específicos</label>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.keys(form.permisos).map((p) => (
+                  <label key={p} className="flex items-center space-x-2 text-sm font-bold text-secondary capitalize">
+                    <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                      checked={(form.permisos as any)[p]}
+                      onChange={(e) => setForm({...form, permisos: {...form.permisos, [p]: e.target.checked}})}
+                    />
+                    <span>{p}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="pt-5 flex space-x-3">
+            <button type="button" onClick={onClose} className="flex-1 py-4 font-bold text-slate-400 hover:text-secondary transition-colors">Cancelar</button>
+            <button disabled={saving} type="submit" className="flex-[2] btn-primary py-4 shadow-xl shadow-primary/20 flex items-center justify-center space-x-2">
+              {saving ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <Check size={18} />
+                  <span>Guardar Cambios</span>
                 </>
               )}
             </button>

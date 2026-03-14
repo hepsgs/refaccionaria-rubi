@@ -110,37 +110,32 @@ Deno.serve(async (req) => {
     }
 
     const newUser = authData.user;
+    console.log("Auth user created with ID:", newUser.id);
 
+    // Create or update profile using upsert directly
+    console.log("Creating/updating profile for user:", newUser.id);
     const { error: profileError } = await supabaseAdminClient
       .from("perfiles")
-      .update({
+      .upsert({
+        id: newUser.id,
         nombre_completo,
         empresa,
         telefono,
         rol: rol || 'cliente',
+        es_admin: rol === 'admin',
         permisos: permisos || {},
         estatus: "aprobado"
-      })
-      .eq("id", newUser.id);
+      });
 
     if (profileError) {
-      console.log("Updating profile failed, trying upsert...");
-      const { error: insertError } = await supabaseAdminClient
-        .from("perfiles")
-        .upsert({
-          id: newUser.id,
-          nombre_completo,
-          empresa,
-          telefono,
-          rol: rol || 'cliente',
-          permisos: permisos || {},
-          estatus: "aprobado"
-        });
-      if (insertError) {
-        console.error("Profile upsert error:", insertError);
-        throw insertError;
-      }
+      console.error("Critical error: Profile creation/update failed:", profileError);
+      // We don't throw here to at least try to send the email if the auth was created,
+      // but the user will likely have issues logging in.
+      // Actually, better to throw so the admin knows it failed.
+      throw new Error("Error creating profile: " + profileError.message);
     }
+
+    console.log("Profile created/updated successfully");
 
     console.log("User created, sending welcome email...");
 
