@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -893,18 +894,17 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.telefono.length !== 10) {
-      alert('El teléfono debe tener exactamente 10 dígitos.');
-      setSaving(false);
+      toast.error('El teléfono debe tener exactamente 10 dígitos.');
       return;
     }
+    setSaving(true);
 
-    try {
+    const promise = (async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
         throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
       }
 
-      // Preparation for staff names
       const finalForm = { ...form };
       if ((form.rol === 'empleado' || form.rol === 'admin') && !form.empresa) {
         finalForm.empresa = settings?.platform_name || 'Refaccionaria';
@@ -917,23 +917,23 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
         }
       });
 
-      if (error) {
-        console.error("Invoke error:", error);
-        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(`Error al llamar a la función: ${errorMsg}`);
-      }
-      
-      if (data && !data.success) {
-        throw new Error(data.error || 'Error desconocido al crear usuario');
-      }
-      
-      console.log('User created:', data);
-      alert('Usuario creado con éxito. Se ha enviado un correo con sus accesos.');
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'Error desconocido');
+      return data;
+    })();
+
+    toast.promise(promise, {
+      loading: 'Creando usuario y enviando accesos...',
+      success: '¡Usuario creado y correo enviado con éxito!',
+      error: (err) => `Error: ${err.message}`
+    });
+
+    try {
+      await promise;
       onRefresh();
       onClose();
-    } catch (error: any) {
-      console.error('Add User catch:', error);
-      alert('Error: ' + error.message);
+    } catch (error) {
+      console.error(error);
     } finally {
       setSaving(false);
     }
@@ -1113,11 +1113,11 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
 
       if (error) throw error;
       
-      alert('Usuario actualizado con éxito.');
+      toast.success('Usuario actualizado con éxito.');
       onRefresh();
       onClose();
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast.error('Error: ' + error.message);
     } finally {
       setSaving(false);
     }

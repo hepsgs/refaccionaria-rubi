@@ -2,18 +2,17 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -21,9 +20,10 @@ const Login = () => {
     });
 
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
       setLoading(false);
     } else {
+      toast.success('¡Bienvenido de nuevo!');
       navigate('/');
     }
   };
@@ -65,16 +65,16 @@ const Login = () => {
                   type="button"
                   onClick={async () => {
                     if (!email) {
-                      setError('Por favor ingresa tu correo para enviarte el código.');
+                      toast.error('Por favor ingresa tu correo para enviarte el código.');
                       return;
                     }
                     setLoading(true);
                     const { error } = await supabase.auth.resetPasswordForEmail(email);
                     setLoading(false);
                     if (error) {
-                      setError(error.message);
+                      toast.error(error.message);
                     } else {
-                      alert('Se ha enviado un código a tu correo para restablecer tu contraseña. Serás dirigido a la página de validación.');
+                      toast.success('Código de recuperación enviado.');
                       navigate('/restablecer-password', { state: { email } });
                     }
                   }}
@@ -95,12 +95,6 @@ const Login = () => {
                 />
               </div>
             </div>
-
-            {error && (
-              <div className="bg-rose-50 border border-rose-100 text-rose-500 text-xs font-bold p-4 rounded-2xl">
-                {error}
-              </div>
-            )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center space-x-2">
               {loading ? (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Key, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -12,22 +13,20 @@ const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.');
+      toast.error('Las contraseñas no coinciden.');
       return;
     }
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+      toast.error('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
       // Step 1: Verify OTP
@@ -46,10 +45,11 @@ const ResetPassword = () => {
 
       if (updateError) throw updateError;
 
+      toast.success('Contraseña restablecida correctamente.');
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -150,12 +150,6 @@ const ResetPassword = () => {
                 </div>
               </div>
             </div>
-
-            {error && (
-              <div className="bg-rose-50 border border-rose-100 text-rose-500 text-xs font-bold p-4 rounded-2xl">
-                {error}
-              </div>
-            )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center space-x-2">
               {loading ? (

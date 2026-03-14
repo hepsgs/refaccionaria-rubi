@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Building2, UserPlus, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import toast from 'react-hot-toast';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -13,7 +14,6 @@ const Register = () => {
     password: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const config = useStore(state => state.config);
 
@@ -21,11 +21,10 @@ const Register = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.telefono.length !== 10) {
-      setError('El teléfono debe tener exactamente 10 dígitos.');
+      toast.error('El teléfono debe tener exactamente 10 dígitos.');
       return;
     }
     setLoading(true);
-    setError(null);
 
     const { data, error: authError } = await supabase.auth.signUp({
       email: form.email,
@@ -33,7 +32,7 @@ const Register = () => {
     });
 
     if (authError) {
-      setError(authError.message);
+      toast.error(authError.message);
       setLoading(false);
       return;
     }
@@ -52,9 +51,10 @@ const Register = () => {
         });
 
       if (profileError) {
-        setError(profileError.message);
+        toast.error(profileError.message);
         setLoading(false);
       } else {
+        toast.success('¡Registro enviado! Revisaremos tu cuenta pronto.');
         setSuccess(true);
         setLoading(false);
       }
@@ -168,12 +168,6 @@ const Register = () => {
                 />
               </div>
             </div>
-
-            {error && (
-              <div className="md:col-span-2 bg-rose-50 border border-rose-100 text-rose-500 text-xs font-bold p-4 rounded-2xl">
-                {error}
-              </div>
-            )}
 
             <button type="submit" disabled={loading} className="btn-primary md:col-span-2 flex items-center justify-center space-x-2 mt-4 py-4">
               {loading ? (

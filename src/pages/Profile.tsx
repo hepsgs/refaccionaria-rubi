@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Building, Mail, Save, Clock, Package, CheckCircle2, X } from 'lucide-react';
+import { User, Building, Mail, Save, Clock, Package, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { profile, setProfile } = useStore();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -19,7 +19,6 @@ const Profile = () => {
     confirmPassword: ''
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     const initProfile = async () => {
@@ -56,7 +55,6 @@ const Profile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setSuccess(false);
 
     try {
       const { error } = await supabase
@@ -79,27 +77,26 @@ const Profile = () => {
         email_alternativo: form.email_alternativo
       } as any);
       
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      toast.success('Perfil actualizado correctamente.');
     } catch (error: any) {
-      alert('Error al actualizar el perfil: ' + error.message);
+      toast.error('Error al actualizar el perfil: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
+
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres.');
+      toast.error('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
     if (form.password !== form.confirmPassword) {
-      alert('Las contraseñas no coinciden.');
+      toast.error('Las contraseñas no coinciden.');
       return;
     }
 
     setPasswordLoading(true);
-    setPasswordSuccess(false);
 
     try {
       const { error } = await supabase.auth.updateUser({
@@ -108,11 +105,10 @@ const Profile = () => {
 
       if (error) throw error;
 
-      setPasswordSuccess(true);
+      toast.success('Contraseña actualizada correctamente.');
       setForm({ ...form, password: '', confirmPassword: '' });
-      setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (error: any) {
-      alert('Error al actualizar la contraseña: ' + error.message);
+      toast.error('Error al actualizar la contraseña: ' + error.message);
     } finally {
       setPasswordLoading(false);
     }
@@ -224,15 +220,10 @@ const Profile = () => {
                 </p>
                 <button 
                   disabled={loading}
-                  className={`btn-primary px-8 py-3 flex items-center space-x-2 transition-all ${success ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                  className="btn-primary px-8 py-3 flex items-center space-x-2 transition-all"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : success ? (
-                    <>
-                      <CheckCircle2 size={18} />
-                      <span>¡Guardado!</span>
-                    </>
                   ) : (
                     <>
                       <Save size={18} />
@@ -282,15 +273,10 @@ const Profile = () => {
               <div className="flex justify-end">
                 <button 
                   disabled={passwordLoading}
-                  className={`btn-primary px-8 py-3 flex items-center space-x-2 transition-all ${passwordSuccess ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                  className="btn-primary px-8 py-3 flex items-center space-x-2 transition-all"
                 >
                   {passwordLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : passwordSuccess ? (
-                    <>
-                      <CheckCircle2 size={18} />
-                      <span>¡Contraseña Actualizada!</span>
-                    </>
                   ) : (
                     <span>Actualizar Contraseña</span>
                   )}
