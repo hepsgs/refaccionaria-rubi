@@ -821,8 +821,12 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
     setSaving(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: form
+        body: form,
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
 
       if (error) throw error;
@@ -1523,8 +1527,8 @@ const OrderManagement = () => {
       `, { count: 'exact' });
 
     if (clientSearch) {
-      // Filter by profile name or company
-      query = query.or(`perfiles.nombre_completo.ilike.%${clientSearch}%,perfiles.empresa.ilike.%${clientSearch}%`);
+      // Filter by profile name or company using the foreignTable option
+      query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
     }
 
     const from = (page - 1) * pageSize;

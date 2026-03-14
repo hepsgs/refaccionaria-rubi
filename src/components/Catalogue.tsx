@@ -288,7 +288,7 @@ const Catalogue = () => {
         </form>
       </div>
 
-      {isApproved && (
+      {profile && (
         <div className="flex justify-end space-x-3">
           <button 
             onClick={() => exportToCSV(products)}
