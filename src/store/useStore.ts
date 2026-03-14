@@ -12,9 +12,17 @@ interface UserProfile {
   id: string;
   nombre_completo: string;
   empresa: string;
+  telefono?: string;
   email_alternativo?: string;
   estatus: 'pendiente' | 'aprobado';
   es_admin: boolean;
+  rol: 'admin' | 'empleado' | 'cliente';
+  permisos?: {
+    productos: boolean;
+    pedidos: boolean;
+    configuracion: boolean;
+    usuarios: boolean;
+  };
 }
 
 interface AppState {

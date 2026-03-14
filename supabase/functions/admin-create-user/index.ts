@@ -25,10 +25,13 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     
-    // Official client verification
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser(token);
+    // Official client verification uses global auth header for this request
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser();
 
     if (authError || !caller) {
       console.error("Auth verification failed:", authError);
@@ -73,17 +76,32 @@ Deno.serve(async (req) => {
     const body = await req.json();
     if (!body) throw new Error("Request body is empty");
     
-    const { nombre_completo, email, empresa, es_admin } = body;
+    const { nombre_completo, email, empresa, rol, permisos, telefono } = body;
 
-    // ... (rest of the creation logic)
+    const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check if user already exists
+    const { data: { users }, error: listError } = await supabaseAdminClient.auth.admin.listUsers();
+    if (listError) throw listError;
+    
+    if (users?.some((u: any) => u.email === email)) {
+      return new Response(JSON.stringify({ 
+        error: "El correo electrónico ya está en uso. Por favor use otro.", 
+        success: false 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
     console.log("Creating new user:", email);
     const password = Math.random().toString(36).slice(-10);
 
-    const { data: authData, error: createAuthError } = await supabaseClient.auth.admin.createUser({
+    const { data: authData, error: createAuthError } = await supabaseAdminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { nombre_completo, empresa }
+      user_metadata: { nombre_completo, empresa, telefono }
     });
 
     if (createAuthError) {
@@ -93,25 +111,29 @@ Deno.serve(async (req) => {
 
     const newUser = authData.user;
 
-    const { error: profileError } = await supabaseClient
+    const { error: profileError } = await supabaseAdminClient
       .from("perfiles")
       .update({
         nombre_completo,
         empresa,
-        es_admin: !!es_admin,
+        telefono,
+        rol: rol || 'cliente',
+        permisos: permisos || {},
         estatus: "aprobado"
       })
       .eq("id", newUser.id);
 
     if (profileError) {
       console.log("Updating profile failed, trying upsert...");
-      const { error: insertError } = await supabaseClient
+      const { error: insertError } = await supabaseAdminClient
         .from("perfiles")
         .upsert({
           id: newUser.id,
           nombre_completo,
           empresa,
-          es_admin: !!es_admin,
+          telefono,
+          rol: rol || 'cliente',
+          permisos: permisos || {},
           estatus: "aprobado"
         });
       if (insertError) {
@@ -122,7 +144,7 @@ Deno.serve(async (req) => {
 
     console.log("User created, sending welcome email...");
 
-    const { data: dbConfig } = await supabaseClient.from('configuracion').select('*').single();
+    const { data: dbConfig } = await supabaseAdminClient.from('configuracion').select('*').single();
     
     const smtpHost = dbConfig?.smtp_host || Deno.env.get("SMTP_HOST");
     const smtpPort = parseInt(dbConfig?.smtp_port?.toString() || Deno.env.get("SMTP_PORT") || "587");

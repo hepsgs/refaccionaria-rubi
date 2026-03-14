@@ -8,6 +8,7 @@ const Register = () => {
   const [form, setForm] = useState({
     nombre_completo: '',
     empresa: '',
+    telefono: '',
     email: '',
     password: '',
   });
@@ -19,6 +20,10 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.telefono.length !== 10) {
+      setError('El teléfono debe tener exactamente 10 dígitos.');
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -41,7 +46,9 @@ const Register = () => {
           id: data.user.id,
           nombre_completo: form.nombre_completo,
           empresa: form.empresa,
+          telefono: form.telefono,
           estatus: 'pendiente',
+          rol: 'cliente'
         });
 
       if (profileError) {
@@ -97,6 +104,21 @@ const Register = () => {
                   required
                   value={form.nombre_completo}
                   onChange={(e) => setForm({...form, nombre_completo: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Teléfono (10 dígitos)</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  maxLength={10}
+                  className="input-rubi py-3.5 px-6"
+                  placeholder="5512345678"
+                  required
+                  value={form.telefono}
+                  onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
                 />
               </div>
             </div>

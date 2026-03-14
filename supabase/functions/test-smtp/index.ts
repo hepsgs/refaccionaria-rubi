@@ -20,6 +20,24 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     if (!body) throw new Error("El cuerpo de la solicitud está vacío");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    
+    // Official client verification uses global auth header for this request
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser();
+
+    if (authError) {
+      throw new Error("Error de autenticación: " + authError.message);
+    }
+    if (!caller) {
+      throw new Error("Usuario no autenticado.");
+    }
     
     const { settings, recipient } = body;
     if (!settings) throw new Error("La configuración de SMTP es requerida");
@@ -61,6 +79,11 @@ Deno.serve(async (req) => {
           </div>
         `
       };
+
+      const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { data: dbConfig } = await supabaseAdminClient.from('configuracion').select('*').single();
+      console.log("DB Config:", dbConfig); // Log the fetched config for debugging
 
       const info = await transporter.sendMail(mailOptions);
       console.log("Message sent: %s", info.messageId);

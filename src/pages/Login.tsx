@@ -65,14 +65,18 @@ const Login = () => {
                   type="button"
                   onClick={async () => {
                     if (!email) {
-                      setError('Por favor ingresa tu correo para restablecer la contraseña.');
+                      setError('Por favor ingresa tu correo para enviarte el código.');
                       return;
                     }
-                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                      redirectTo: `${window.location.origin}/login`,
-                    });
-                    if (error) setError(error.message);
-                    else alert('Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.');
+                    setLoading(true);
+                    const { error } = await supabase.auth.resetPasswordForEmail(email);
+                    setLoading(false);
+                    if (error) {
+                      setError(error.message);
+                    } else {
+                      alert('Se ha enviado un código a tu correo para restablecer tu contraseña. Serás dirigido a la página de validación.');
+                      navigate('/restablecer-password', { state: { email } });
+                    }
                   }}
                   className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest"
                 >

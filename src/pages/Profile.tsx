@@ -13,8 +13,13 @@ const Profile = () => {
   const [form, setForm] = useState({
     nombre_completo: '',
     empresa: '',
-    email_alternativo: ''
+    telefono: '',
+    email_alternativo: '',
+    password: '',
+    confirmPassword: ''
   });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     const initProfile = async () => {
@@ -25,7 +30,10 @@ const Profile = () => {
         setForm({
           nombre_completo: profile.nombre_completo || '',
           empresa: profile.empresa || '',
-          email_alternativo: profile.email_alternativo || ''
+          telefono: profile.telefono || '',
+          email_alternativo: profile.email_alternativo || '',
+          password: '',
+          confirmPassword: ''
         });
         fetchOrders();
       }
@@ -56,6 +64,7 @@ const Profile = () => {
         .update({
           nombre_completo: form.nombre_completo,
           empresa: form.empresa,
+          telefono: form.telefono,
           email_alternativo: form.email_alternativo
         })
         .eq('id', profile?.id);
@@ -66,6 +75,7 @@ const Profile = () => {
         ...profile!,
         nombre_completo: form.nombre_completo,
         empresa: form.empresa,
+        telefono: form.telefono,
         email_alternativo: form.email_alternativo
       } as any);
       
@@ -75,6 +85,36 @@ const Profile = () => {
       alert('Error al actualizar el perfil: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (form.password.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      alert('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordSuccess(false);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: form.password
+      });
+
+      if (error) throw error;
+
+      setPasswordSuccess(true);
+      setForm({ ...form, password: '', confirmPassword: '' });
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (error: any) {
+      alert('Error al actualizar la contraseña: ' + error.message);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -128,6 +168,19 @@ const Profile = () => {
                       placeholder="Nombre de tu taller"
                       value={form.empresa}
                       onChange={(e) => setForm({...form, empresa: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Teléfono (10 dígitos)</label>
+                  <div className="relative group">
+                    <input 
+                      required 
+                      className="input-rubi py-3 px-6" 
+                      placeholder="Ej: 5512345678"
+                      maxLength={10}
+                      value={form.telefono}
+                      onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
                     />
                   </div>
                 </div>
@@ -185,6 +238,61 @@ const Profile = () => {
                       <Save size={18} />
                       <span>Guardar Cambios</span>
                     </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Password Change Section */}
+          <div className="bg-white rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
+            <div className="bg-slate-50 p-6 border-b border-slate-100">
+              <h2 className="text-xl font-black text-secondary uppercase tracking-tight">Seguridad</h2>
+              <p className="text-xs text-slate-400 font-medium">Actualiza tu contraseña de acceso.</p>
+            </div>
+            
+            <form onSubmit={handlePasswordUpdate} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nueva Contraseña</label>
+                  <input 
+                    type="password"
+                    required 
+                    minLength={6}
+                    className="input-rubi py-3 px-6" 
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(e) => setForm({...form, password: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Confirmar Contraseña</label>
+                  <input 
+                    type="password"
+                    required 
+                    className="input-rubi py-3 px-6" 
+                    placeholder="••••••••"
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm({...form, confirmPassword: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button 
+                  disabled={passwordLoading}
+                  className={`btn-primary px-8 py-3 flex items-center space-x-2 transition-all ${passwordSuccess ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                >
+                  {passwordLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : passwordSuccess ? (
+                    <>
+                      <CheckCircle2 size={18} />
+                      <span>¡Contraseña Actualizada!</span>
+                    </>
+                  ) : (
+                    <span>Actualizar Contraseña</span>
                   )}
                 </button>
               </div>

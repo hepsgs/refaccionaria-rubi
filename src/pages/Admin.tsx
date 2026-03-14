@@ -9,19 +9,19 @@ import {
   FileDown,
   Upload,
   Shield,
-  ShieldCheck,
   Edit,
   Trash2,
   Search,
   ImageIcon,
   ImagePlus,
   AlertTriangle,
-  Settings,
+  Settings as SettingsIcon,
   Send,
   Download,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -87,8 +87,28 @@ const Admin = () => {
     }
   }, [config]);
 
-  if (!profile?.es_admin) {
+  if (!profile || (profile.rol !== 'admin' && profile.rol !== 'empleado')) {
     return <div className="p-20 text-center font-bold">Acceso Denegado</div>;
+  }
+
+  // Determine available tabs based on role and permissions
+  const availableTabs = [
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.usuarios) ? [{ id: 'users', label: 'Usuarios', icon: Users }] : []),
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.productos) ? [{ id: 'products', label: 'Productos', icon: Package }] : []),
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.pedidos) ? [{ id: 'orders', label: 'Pedidos', icon: ClipboardList }] : []),
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.configuracion) ? [
+      { id: 'cms', label: 'Página Web', icon: ImagePlus },
+      { id: 'config', label: 'Configuración', icon: SettingsIcon }
+    ] : [])
+  ];
+
+  // If the active tab is not available, set it to the first available tab
+  if (availableTabs.length > 0 && !availableTabs.find(t => t.id === activeTab)) {
+    setActiveTab(availableTabs[0].id as any);
+  }
+
+  if (availableTabs.length === 0) {
+    return <div className="p-20 text-center font-bold">No tienes permisos asignados. Acude con un administrador.</div>;
   }
 
   return (
@@ -100,13 +120,7 @@ const Admin = () => {
           </div>
         
         <div className="flex bg-white p-1.5 rounded-2xl shadow-soft border border-slate-100 overflow-x-auto max-w-full">
-          {[
-            { id: 'users', label: 'Usuarios', icon: Users },
-            { id: 'products', label: 'Productos', icon: Package },
-            { id: 'orders', label: 'Pedidos', icon: ClipboardList },
-            { id: 'cms', label: 'Página Web', icon: ImagePlus },
-            { id: 'config', label: 'Configuración', icon: Settings },
-          ].map((tab) => (
+          {availableTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
@@ -398,7 +412,7 @@ const Admin = () => {
             <div className="flex items-center justify-between pb-6 border-b border-slate-100">
               <div className="flex items-center space-x-4">
                 <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <Settings size={32} />
+                  <SettingsIcon size={32} />
                 </div>
                 <div>
                   <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
@@ -607,7 +621,6 @@ const Admin = () => {
                     <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({...settings, smtp_pass: e.target.value})} placeholder="••••••••" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Seguridad</label>
                     <select 
                       className="input-rubi py-2 text-sm" 
                       value={settings.smtp_security || 'tls'}
@@ -617,6 +630,15 @@ const Admin = () => {
                       <option value="tls">STARTTLS (Puerto 587)</option>
                       <option value="ssl">SSL/TLS (Port 465)</option>
                     </select>
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.site_url || ''} 
+                      onChange={(e) => setSettings({...settings, site_url: e.target.value})} 
+                      placeholder="https://tu-dominio.com" 
+                    />
                   </div>
                 </div>
 
@@ -770,16 +792,33 @@ const UserManagement = () => {
                   </div>
                 </td>
                 <td className="py-5 px-6 text-slate-500 font-medium">{u.empresa}</td>
-                <td className="py-5 px-6">
-                  {u.es_admin ? (
-                    <div className="flex items-center space-x-1.5 text-primary font-black uppercase text-[10px]">
-                      <ShieldCheck size={14} />
-                      <span>Admin</span>
+                <td className="py-4 px-6">
+                  {u.rol === 'admin' && (
+                    <div className="flex items-center space-x-1 justify-center w-max px-3 py-1 bg-rose-50 text-rose-600 rounded-full">
+                      <ShieldAlert size={12} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Admin</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center space-x-1.5 text-slate-400 font-bold uppercase text-[10px]">
-                      <Users size={14} />
-                      <span>Taller / Cliente</span>
+                  )}
+                  {u.rol === 'empleado' && (
+                    <div className="flex flex-col space-y-1 w-max">
+                      <div className="flex items-center space-x-1 justify-center px-3 py-1 bg-amber-50 text-amber-600 rounded-full">
+                        <Shield size={12} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Empleado</span>
+                      </div>
+                      {u.permisos && (
+                        <div className="flex space-x-1 mt-1">
+                          {u.permisos.productos && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Productos">PROD</span>}
+                          {u.permisos.pedidos && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Pedidos">PED</span>}
+                          {u.permisos.usuarios && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Usuarios">USR</span>}
+                          {u.permisos.configuracion && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Ajustes">CONF</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {u.rol === 'cliente' && (
+                    <div className="flex items-center space-x-1 justify-center w-max px-3 py-1 bg-slate-50 text-slate-500 rounded-full">
+                      <Users size={12} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Cliente</span>
                     </div>
                   )}
                 </td>
@@ -829,22 +868,40 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
     nombre_completo: '',
     email: '',
     empresa: '',
-    es_admin: false
+    telefono: '',
+    rol: 'cliente',
+    permisos: {
+      productos: false,
+      pedidos: false,
+      configuracion: false,
+      usuarios: false
+    }
   });
   const [saving, setSaving] = useState(false);
+  const settings = useStore(state => state.config);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    
+    if (form.telefono.length !== 10) {
+      alert('El teléfono debe tener exactamente 10 dígitos.');
+      setSaving(false);
+      return;
+    }
+
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
         throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
       }
 
+      // Preparation for staff names
+      const finalForm = { ...form };
+      if ((form.rol === 'empleado' || form.rol === 'admin') && !form.empresa) {
+        finalForm.empresa = settings?.platform_name || 'Refaccionaria';
+      }
+
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: form,
+        body: finalForm,
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
@@ -911,29 +968,85 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Empresa / Taller</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Teléfono (10 dígitos)</label>
             <input 
               required 
+              type="tel"
+              maxLength={10}
               className="input-rubi py-2.5" 
-              placeholder="Nombre del Taller"
+              placeholder="Ej: 5512345678"
+              value={form.telefono}
+              onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Empresa / Taller {(form.rol === 'empleado' || form.rol === 'admin') && '(Opcional)'}</label>
+            <input 
+              required={form.rol === 'cliente'}
+              className="input-rubi py-2.5" 
+              placeholder={form.rol === 'cliente' ? "Nombre del Taller" : `Por defecto: ${settings?.platform_name || 'Refaccionaria'}`}
               value={form.empresa}
               onChange={(e) => setForm({...form, empresa: e.target.value})}
             />
           </div>
 
-          <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <input 
-              type="checkbox"
-              id="es_admin"
-              className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary"
-              checked={form.es_admin}
-              onChange={(e) => setForm({...form, es_admin: e.target.checked})}
-            />
-            <label htmlFor="es_admin" className="text-sm font-bold text-secondary flex items-center space-x-2">
-              <Shield size={16} className="text-primary" />
-              <span>Convertir en Administrador</span>
-            </label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Rol del Usuario</label>
+            <div className="grid grid-cols-3 gap-3">
+              <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'cliente' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                <input type="radio" name="rol" value="cliente" className="sr-only" checked={form.rol === 'cliente'} onChange={() => setForm({...form, rol: 'cliente'})} />
+                <Users size={20} />
+                <span className="text-xs font-bold">Cliente</span>
+              </label>
+              <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'empleado' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                <input type="radio" name="rol" value="empleado" className="sr-only" checked={form.rol === 'empleado'} onChange={() => setForm({...form, rol: 'empleado'})} />
+                <Shield size={20} />
+                <span className="text-xs font-bold">Empleado</span>
+              </label>
+              <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'admin' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                <input type="radio" name="rol" value="admin" className="sr-only" checked={form.rol === 'admin'} onChange={() => setForm({...form, rol: 'admin'})} />
+                <ShieldAlert size={20} />
+                <span className="text-xs font-bold">Admin</span>
+              </label>
+            </div>
           </div>
+
+          {form.rol === 'empleado' && (
+            <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Permisos de Empleado</label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.productos}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, productos: e.target.checked}})}
+                  />
+                  <span>Productos</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.pedidos}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, pedidos: e.target.checked}})}
+                  />
+                  <span>Pedidos</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.usuarios}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, usuarios: e.target.checked}})}
+                  />
+                  <span>Usuarios</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.configuracion}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, configuracion: e.target.checked}})}
+                  />
+                  <span>Configuración</span>
+                </label>
+              </div>
+            </div>
+          )}
 
           <div className="pt-5 flex space-x-3">
             <button type="button" onClick={onClose} className="flex-1 py-4 font-bold text-slate-400 hover:text-secondary transition-colors">Cancelar</button>
@@ -997,7 +1110,7 @@ const ProductManagement = () => {
       const productsToUpsert = lines.slice(1).map(line => {
         const parts = line.split(',');
         if (parts.length < 1) return null;
-        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, proveedor, tipo, imagenes] = parts.map(p => p?.trim());
+        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, proveedor, tipo, descripcion, imagenes] = parts.map(p => p?.trim());
         if (!sku) return null;
         
         const updateData: any = { sku };
@@ -1011,6 +1124,7 @@ const ProductManagement = () => {
         if (año_fin !== undefined && año_fin !== '') updateData.año_fin = parseInt(año_fin);
         if (proveedor !== undefined) updateData.proveedor = proveedor.replace(/^"(.*)"$/, '$1');
         if (tipo !== undefined) updateData.tipo = tipo.replace(/^"(.*)"$/, '$1');
+        if (descripcion !== undefined) updateData.descripcion = descripcion.replace(/^"(.*)"$/, '$1');
         
         if (imagenes) {
           const cleanImg = imagenes.replace(/^"(.*)"$/, '$1');
@@ -1064,7 +1178,7 @@ const ProductManagement = () => {
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
             <button 
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'imagenes'];
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'descripcion', 'imagenes'];
                 downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
               }}
               className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
@@ -1434,6 +1548,17 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             />
           </div>
 
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Descripción Detallada (Ficha Técnica)</label>
+            <textarea 
+              rows={4}
+              className="input-rubi py-2.5 min-h-[100px] resize-y" 
+              placeholder="Ej: Balatas de cerámica de alta resistencia para Tsuru III. Incluye herrajes..."
+              value={form.descripcion}
+              onChange={(e) => setForm({...form, descripcion: e.target.value})}
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Imágenes</label>
             <div className="flex flex-col gap-3">
@@ -1544,19 +1669,17 @@ const OrderManagement = () => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     // Select the order and also the joined client profile using the foreign key cliente_id -> id
+    // Re-writing the select to use the !inner join specifically when searching
+    // To filter the PARENT rows based on CHILD rows, we use the !inner hint in select
+    const selectStr = clientSearch 
+      ? `*, perfiles!pedidos_cliente_id_fkey!inner (nombre_completo, empresa, email_alternativo)`
+      : `*, perfiles!pedidos_cliente_id_fkey (nombre_completo, empresa, email_alternativo)`;
+
     let query = supabase
       .from('pedidos')
-      .select(`
-        *,
-        perfiles!pedidos_cliente_id_fkey (
-          nombre_completo,
-          empresa,
-          email_alternativo
-        )
-      `, { count: 'exact' });
+      .select(selectStr, { count: 'exact' });
 
     if (clientSearch) {
-      // Filter by profile name or company using the foreignTable option
       query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
     }
 
@@ -1579,9 +1702,32 @@ const OrderManagement = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const exportAllOrdersCSV = () => {
+  const exportAllOrdersCSV = async () => {
+    setLoading(true);
+    // Use !inner join when searching to filter results correctly for export too
+    const selectStr = clientSearch 
+      ? `*, perfiles!pedidos_cliente_id_fkey!inner (nombre_completo, empresa)`
+      : `*, perfiles!pedidos_cliente_id_fkey (nombre_completo, empresa)`;
+
+    let query = supabase
+      .from('pedidos')
+      .select(selectStr)
+      .order('creado_at', { ascending: false });
+
+    if (clientSearch) {
+      query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
+    }
+
+    const { data: allOrders, error } = await query.limit(1000); 
+    setLoading(false);
+
+    if (error) {
+      alert("Error exportando pedidos: " + error.message);
+      return;
+    }
+
     const headers = "Folio,ID Cliente,Cliente,Empresa,Estatus,Total,Fecha\n";
-    const rows = orders.map(o => {
+    const rows = (allOrders || []).map((o: any) => {
       const client = o.perfiles?.nombre_completo || 'N/A';
       const company = o.perfiles?.empresa || 'N/A';
       return `"${o.folio || o.id}","${o.cliente_id}","${client}","${company}","${o.estatus}","${o.total}","${new Date(o.creado_at).toLocaleDateString()}"`;
@@ -1829,7 +1975,11 @@ const OrderManagement = () => {
                     </div>
                     <div>
                       <p className="text-sm font-black text-secondary">{item.sku}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Cant: {item.cantidad} <span className="mx-2 text-slate-200">|</span> Unit: ${item.precio_unitario}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">
+                        Cant: {item.cantidad} 
+                        <span className="mx-2 text-slate-200">|</span> 
+                        Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                     </div>
                   </div>
                   <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

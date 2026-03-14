@@ -18,10 +18,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    
+    // Official client verification
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError) throw authError;
+    if (!caller) throw new Error("Unauthorized: No user found for the provided token.");
 
     const body = await req.json();
     if (!body) throw new Error("Request body is empty");
@@ -46,10 +54,8 @@ Deno.serve(async (req) => {
     if (orderError || !order) throw new Error("Order not found: " + orderError?.message);
 
     // Fetch site configuration
-    const { data: dbConfig } = await supabaseClient
-      .from('configuracion')
-      .select('*')
-      .single();
+    const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: dbConfig } = await supabaseAdminClient.from('configuracion').select('*').single();
 
     const platformName = dbConfig?.platform_name || 'TecnosisMX';
     const smtpSettings = {
