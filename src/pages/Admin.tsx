@@ -1179,7 +1179,7 @@ const ProductManagement = () => {
                   </div>
                 </td>
                 <td className="py-5 px-6">
-                  <span className="font-black text-secondary">${p.precio.toLocaleString()}</span>
+                  <span className="font-black text-secondary">${p.precio.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
                   <button 
@@ -1641,8 +1641,8 @@ const OrderManagement = () => {
     const tableRows = order.items.map((item: any) => [
       item.sku,
       item.cantidad.toString(),
-      `$${item.precio_unitario.toLocaleString()}`,
-      `$${(item.precio_unitario * item.cantidad).toLocaleString()}`
+      `$${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
 
     autoTable(doc, {
@@ -1664,7 +1664,7 @@ const OrderManagement = () => {
     // Total
     doc.setFontSize(14);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Total del Pedido: $${order.total.toLocaleString()}`, 14, finalY + 15);
+    doc.text(`Total del Pedido: $${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, finalY + 15);
 
     doc.save(`Pedido_${order.folio || order.id.slice(0,8)}.pdf`);
   };
@@ -1742,7 +1742,7 @@ const OrderManagement = () => {
                     {o.estatus}
                   </span>
                 </td>
-                <td className="py-5 px-6 text-primary font-black tracking-tight">${o.total.toLocaleString()}</td>
+                <td className="py-5 px-6 text-primary font-black tracking-tight">${o.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}
@@ -1832,7 +1832,7 @@ const OrderManagement = () => {
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Cant: {item.cantidad} <span className="mx-2 text-slate-200">|</span> Unit: ${item.precio_unitario}</p>
                     </div>
                   </div>
-                  <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString()}</p>
+                  <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               ))}
             </div>
@@ -1840,7 +1840,7 @@ const OrderManagement = () => {
             <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total</p>
-                <p className="text-4xl font-black text-secondary tracking-tighter">${selectedOrder.total.toLocaleString()}</p>
+                <p className="text-4xl font-black text-secondary tracking-tighter">${selectedOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div className="flex space-x-3">
                 <button 

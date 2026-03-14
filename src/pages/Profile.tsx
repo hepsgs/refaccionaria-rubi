@@ -229,7 +229,7 @@ const Profile = () => {
                     </div>
                     <div className="flex justify-between items-end">
                       <p className="text-xs text-slate-400">{new Date(order.creado_at).toLocaleDateString()}</p>
-                      <p className="text-sm font-black text-secondary">${order.total}</p>
+                      <p className="text-sm font-black text-secondary">${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                   </div>
                 ))
@@ -280,7 +280,7 @@ const Profile = () => {
                       <p className="text-[10px] text-slate-400">Cantidad: {item.cantidad}</p>
                     </div>
                   </div>
-                  <p className="text-sm font-black text-secondary">${(item.precio_unitario * item.cantidad).toLocaleString()}</p>
+                  <p className="text-sm font-black text-secondary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               ))}
             </div>
@@ -288,7 +288,7 @@ const Profile = () => {
             <div className="mt-8 pt-6 border-t border-slate-100">
               <div className="flex justify-between items-center mb-6 px-2">
                 <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">Total del Pedido</span>
-                <span className="text-3xl font-black text-primary tracking-tighter">${selectedOrder.total.toLocaleString()}</span>
+                <span className="text-3xl font-black text-primary tracking-tighter">${selectedOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <button 
                 onClick={() => setSelectedOrder(null)}
