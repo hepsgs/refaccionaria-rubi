@@ -1350,7 +1350,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 onChange={(e) => setForm({...form, marca: e.target.value})}
               />
               <datalist id="list-marcas">
-                {catalogues.marcas.map(m => <option key={m} value={m} />)}
+                {catalogues.marcas.map((m: string) => <option key={m} value={m} />)}
               </datalist>
             </div>
           </div>
@@ -1366,7 +1366,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 onChange={(e) => setForm({...form, proveedor: e.target.value})}
               />
               <datalist id="list-proveedores">
-                {catalogues.proveedores.map(p => <option key={p} value={p} />)}
+                {catalogues.proveedores.map((p: string) => <option key={p} value={p} />)}
               </datalist>
             </div>
             <div className="space-y-1">
@@ -1379,7 +1379,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 onChange={(e) => setForm({...form, tipo: e.target.value})}
               />
               <datalist id="list-tipos">
-                {catalogues.tipos.map(t => <option key={t} value={t} />)}
+                {catalogues.tipos.map((t: string) => <option key={t} value={t} />)}
               </datalist>
             </div>
           </div>
@@ -1395,7 +1395,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 onChange={(e) => setForm({...form, modelo: e.target.value})}
               />
               <datalist id="list-modelos">
-                {catalogues.modelos.map(m => <option key={m} value={m} />)}
+                {catalogues.modelos.map((m: string) => <option key={m} value={m} />)}
               </datalist>
             </div>
             <div className="col-span-1 space-y-1">
@@ -1418,7 +1418,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 onChange={(e) => setForm({...form, año_fin: e.target.value ? parseInt(e.target.value) : ''})}
               />
               <datalist id="list-años">
-                {catalogues.años.map(a => <option key={a} value={a} />)}
+                {catalogues.años.map((a: number) => <option key={a} value={a} />)}
               </datalist>
             </div>
           </div>
@@ -1713,7 +1713,9 @@ const OrderManagement = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {orders.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">Cargando pedidos...</td></tr>
+            ) : orders.length === 0 ? (
               <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">No hay pedidos registrados aún.</td></tr>
             ) : orders.map((o) => (
               <tr key={o.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group" onClick={() => setSelectedOrder(o)}>
