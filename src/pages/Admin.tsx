@@ -19,7 +19,9 @@ import {
   Settings,
   Send,
   Download,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -45,7 +47,7 @@ const Admin = () => {
     smtp_host: '',
     smtp_port: '587',
     smtp_security: 'tls',
-    smtp_sender_name: 'Refaccionaria Rubi',
+    smtp_sender_name: 'TecnosisMX',
     smtp_user: '',
     smtp_pass: '',
     smtp_from: '',
@@ -56,9 +58,9 @@ const Admin = () => {
     hero_subtitle: 'Gestión profesional de refacciones para talleres y empresas. Búsqueda técnica instantánea y stock real garantizado.',
     about_title_1: 'Respaldando tu industria con',
     about_title_2: 'Precisión y Confianza',
-    about_text: 'En Refaccionaria Rubi, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.',
-    platform_name: 'Refaccionaria Rubi',
-    abreviatura: 'RUBI',
+    about_text: 'En TecnosisMX, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.',
+    platform_name: 'TecnosisMX',
+    abreviatura: 'TMX',
     footer_description: 'Líderes en refacciones industriales y automotrices. Más de 15,000 productos a tu disposición con la mejor calidad y servicio técnico.',
     footer_contact_email: 'ventas@refaccionariarubi.com',
     footer_contact_phone: '+52 (000) 000 0000',
@@ -634,11 +636,15 @@ const Admin = () => {
                           if (!testEmail) return alert('Ingresa un email de destino');
                           setTestingSMTP(true);
                           try {
-                            const { data, error } = await supabase.functions.invoke('admin-create-user', {
-                              body: { test: true, settings, recipient: testEmail }
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const { data, error } = await supabase.functions.invoke('test-smtp', {
+                              body: { settings, recipient: testEmail },
+                              headers: {
+                                Authorization: `Bearer ${session?.access_token}`
+                              }
                             });
                             if (error) throw error;
-                            if (data && !data.success) throw new Error(data.error || 'Fallo');
+                            if (data && !data.success) throw new Error(data.error);
                             alert('Correo de prueba enviado!');
                           } catch (e: any) { alert('Error: ' + e.message); }
                           finally { setTestingSMTP(false); }
@@ -958,25 +964,27 @@ const ProductManagement = () => {
       const productsToUpsert = lines.slice(1).map(line => {
         const parts = line.split(',');
         if (parts.length < 1) return null;
-        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, imagenes] = parts.map(p => p?.trim());
+        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, proveedor, tipo, imagenes] = parts.map(p => p?.trim());
         if (!sku) return null;
         
         const updateData: any = { sku };
         
-        // Dynamic mapping: only include fields present in the CSV
-        if (nombre !== undefined) updateData.nombre = nombre;
+        if (nombre !== undefined) updateData.nombre = nombre.replace(/^"(.*)"$/, '$1');
         if (precio !== undefined && precio !== '') updateData.precio = parseFloat(precio);
         if (stock !== undefined && stock !== '') updateData.stock = parseInt(stock);
-        if (marca !== undefined) updateData.marca = marca;
-        if (modelo !== undefined) updateData.modelo = modelo;
+        if (marca !== undefined) updateData.marca = marca.replace(/^"(.*)"$/, '$1');
+        if (modelo !== undefined) updateData.modelo = modelo.replace(/^"(.*)"$/, '$1');
         if (año_inicio !== undefined && año_inicio !== '') updateData.año_inicio = parseInt(año_inicio);
         if (año_fin !== undefined && año_fin !== '') updateData.año_fin = parseInt(año_fin);
+        if (proveedor !== undefined) updateData.proveedor = proveedor.replace(/^"(.*)"$/, '$1');
+        if (tipo !== undefined) updateData.tipo = tipo.replace(/^"(.*)"$/, '$1');
         
         if (imagenes) {
-          if (imagenes.startsWith('[') && imagenes.endsWith(']')) {
-            try { updateData.imagenes = JSON.parse(imagenes); } catch (e) { console.error(e); }
+          const cleanImg = imagenes.replace(/^"(.*)"$/, '$1');
+          if (cleanImg.startsWith('[') && cleanImg.endsWith(']')) {
+            try { updateData.imagenes = JSON.parse(cleanImg); } catch (e) { console.error(e); }
           } else {
-            updateData.imagenes = imagenes.split(';').map(i => i.trim()).filter(i => i);
+            updateData.imagenes = cleanImg.split(';').map(i => i.trim()).filter(i => i);
           }
         }
 
@@ -1023,7 +1031,7 @@ const ProductManagement = () => {
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
             <button 
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'imagenes'];
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'imagenes'];
                 downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
               }}
               className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
@@ -1043,7 +1051,7 @@ const ProductManagement = () => {
             </button>
             <button 
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'imagenes'];
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'imagenes'];
                 const rows = products.map(p => [
                   p.sku, 
                   `"${p.nombre}"`, 
@@ -1053,6 +1061,8 @@ const ProductManagement = () => {
                   `"${p.modelo || ''}"`, 
                   p.año_inicio || '', 
                   p.año_fin || '', 
+                  `"${p.proveedor || ''}"`,
+                  `"${p.tipo || ''}"`,
                   `"${p.imagenes ? p.imagenes.join(';') : ''}"`
                 ].join(","));
                 downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
@@ -1080,8 +1090,9 @@ const ProductManagement = () => {
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">SKU / Marca</th>
-              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Descripción del Producto</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">SKU / Marca</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Descripción</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Proveedor / Tipo</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Stock</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Precio</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</th>
@@ -1089,9 +1100,9 @@ const ProductManagement = () => {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {loading ? (
-              <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium font-sans">Sincronizando inventario...</td></tr>
+              <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium font-sans">Sincronizando inventario...</td></tr>
             ) : filteredProducts.length === 0 ? (
-              <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">No se encontraron productos</td></tr>
+              <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium">No se encontraron productos</td></tr>
             ) : filteredProducts.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="py-5 px-6">
@@ -1120,6 +1131,12 @@ const ProductManagement = () => {
                         {p.año_inicio || '...'} - {p.año_fin || '...'}
                       </span>
                     )}
+                  </div>
+                </td>
+                <td className="py-5 px-6">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-secondary">{p.proveedor || 'S/P'}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{p.tipo || 'General'}</span>
                   </div>
                 </td>
                 <td className="py-5 px-6">
@@ -1156,6 +1173,13 @@ const ProductManagement = () => {
       {(showAdd || editingProduct) && (
         <ProductModal 
           product={editingProduct} 
+          catalogues={{
+            marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
+            proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
+            tipos: Array.from(new Set(products.map(p => p.tipo).filter(Boolean))),
+            modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
+            años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
+          }}
           onClose={() => { setShowAdd(false); setEditingProduct(null); }} 
           onRefresh={fetchProducts} 
         />
@@ -1164,7 +1188,7 @@ const ProductManagement = () => {
   );
 };
 
-const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose: () => void, onRefresh: () => void }) => {
+const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: any, catalogues: any, onClose: () => void, onRefresh: () => void }) => {
   const [form, setForm] = useState({
     sku: product?.sku || '',
     nombre: product?.nombre || '',
@@ -1175,7 +1199,9 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
     precio: product?.precio || 0,
     stock: product?.stock || 0,
     descripcion: product?.descripcion || '',
-    imagenes: product?.imagenes || []
+    imagenes: product?.imagenes || [],
+    proveedor: product?.proveedor || '',
+    tipo: product?.tipo || ''
   });
   const [newImage, setNewImage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1286,9 +1312,42 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
               <input 
                 className="input-rubi py-2.5" 
                 placeholder="PRO-PARTS"
+                list="list-marcas"
                 value={form.marca}
                 onChange={(e) => setForm({...form, marca: e.target.value})}
               />
+              <datalist id="list-marcas">
+                {catalogues.marcas.map(m => <option key={m} value={m} />)}
+              </datalist>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Proveedor</label>
+              <input 
+                className="input-rubi py-2.5" 
+                placeholder="Ej: Distribuidora GML"
+                list="list-proveedores"
+                value={form.proveedor}
+                onChange={(e) => setForm({...form, proveedor: e.target.value})}
+              />
+              <datalist id="list-proveedores">
+                {catalogues.proveedores.map(p => <option key={p} value={p} />)}
+              </datalist>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Tipo / Categoría Técnica</label>
+              <input 
+                className="input-rubi py-2.5" 
+                placeholder="Ej: Suspensión"
+                list="list-tipos"
+                value={form.tipo}
+                onChange={(e) => setForm({...form, tipo: e.target.value})}
+              />
+              <datalist id="list-tipos">
+                {catalogues.tipos.map(t => <option key={t} value={t} />)}
+              </datalist>
             </div>
           </div>
 
@@ -1298,16 +1357,20 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
               <input 
                 className="input-rubi py-2.5" 
                 placeholder="Tsuru"
+                list="list-modelos"
                 value={form.modelo}
                 onChange={(e) => setForm({...form, modelo: e.target.value})}
               />
+              <datalist id="list-modelos">
+                {catalogues.modelos.map(m => <option key={m} value={m} />)}
+              </datalist>
             </div>
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Año Inicio (Opc)</label>
               <input 
-                type="number"
                 className="input-rubi py-2.5" 
                 placeholder="1992"
+                list="list-años"
                 value={form.año_inicio}
                 onChange={(e) => setForm({...form, año_inicio: e.target.value ? parseInt(e.target.value) : ''})}
               />
@@ -1315,12 +1378,15 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Año Fin (Opc)</label>
               <input 
-                type="number"
                 className="input-rubi py-2.5" 
                 placeholder="2017"
+                list="list-años"
                 value={form.año_fin}
                 onChange={(e) => setForm({...form, año_fin: e.target.value ? parseInt(e.target.value) : ''})}
               />
+              <datalist id="list-años">
+                {catalogues.años.map(a => <option key={a} value={a} />)}
+              </datalist>
             </div>
           </div>
           
@@ -1434,10 +1500,18 @@ const ProductModal = ({ product, onClose, onRefresh }: { product?: any, onClose:
 const OrderManagement = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Filters & Pagination
+  const [clientSearch, setClientSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10;
 
   const fetchOrders = useCallback(async () => {
+    setLoading(true);
     // Select the order and also the joined client profile using the foreign key cliente_id -> id
-    const { data, error } = await supabase
+    let query = supabase
       .from('pedidos')
       .select(`
         *,
@@ -1446,20 +1520,41 @@ const OrderManagement = () => {
           empresa,
           email_alternativo
         )
-      `)
-      .order('creado_at', { ascending: false });
+      `, { count: 'exact' });
+
+    if (clientSearch) {
+      // Filter by profile name or company
+      query = query.or(`perfiles.nombre_completo.ilike.%${clientSearch}%,perfiles.empresa.ilike.%${clientSearch}%`);
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, count, error } = await query
+      .order('creado_at', { ascending: false })
+      .range(from, to);
       
     if (error) {
       console.error("Error fetching orders:", error);
     }
     if (data) setOrders(data);
-      
-    if (data) setOrders(data);
-  }, []);
+    if (count !== null) setTotalCount(count);
+    setLoading(false);
+  }, [clientSearch, page]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  const exportAllOrdersCSV = () => {
+    const headers = "Folio,ID Cliente,Cliente,Empresa,Estatus,Total,Fecha\n";
+    const rows = orders.map(o => {
+      const client = o.perfiles?.nombre_completo || 'N/A';
+      const company = o.perfiles?.empresa || 'N/A';
+      return `"${o.folio || o.id}","${o.cliente_id}","${client}","${company}","${o.estatus}","${o.total}","${new Date(o.creado_at).toLocaleDateString()}"`;
+    }).join("\n");
+    downloadCSV(headers + rows, `pedidos_reporte_${new Date().getTime()}.csv`);
+  };
 
   const exportSingleOrderCSV = (order: any) => {
     if (!order) return;
@@ -1543,11 +1638,33 @@ const OrderManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h2 className="text-2xl font-black text-secondary flex items-center space-x-3">
           <div className="p-2 bg-secondary text-white rounded-lg"><ClipboardList size={20} /></div>
           <span>Historial de Pedidos</span>
         </h2>
+        <div className="flex items-center space-x-3 w-full md:w-auto">
+          <div className="relative flex-grow md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Buscar por cliente..." 
+              className="input-rubi pl-10 py-2 text-sm"
+              value={clientSearch}
+              onChange={(e) => {
+                setClientSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <button 
+            onClick={exportAllOrdersCSV}
+            className="btn-secondary py-2 px-4 flex items-center space-x-2 text-xs font-bold leading-none"
+          >
+            <Download size={14} />
+            <span>Exportar CSV</span>
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-100">
@@ -1605,6 +1722,27 @@ const OrderManagement = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Orders */}
+      {Math.ceil(totalCount / pageSize) > 1 && (
+        <div className="flex justify-center items-center space-x-2 pt-4">
+          <button 
+            disabled={page === 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            className="p-1.5 rounded-lg bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-slate-400">Página {page} de {Math.ceil(totalCount / pageSize)}</span>
+          <button 
+            disabled={page >= Math.ceil(totalCount / pageSize)}
+            onClick={() => setPage(p => p + 1)}
+            className="p-1.5 rounded-lg bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Order Details Modal Admin */}
       {selectedOrder && (

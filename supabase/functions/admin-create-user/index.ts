@@ -17,18 +17,22 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error("Missing Authorization header");
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Extract token
     const token = authHeader.replace('Bearer ', '');
-    // Get the user from the JWT
+    // Get the user from the JWT to verify they are logged in
     const { data: { user: caller }, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError || !caller) throw new Error("Invalid or expired token");
+    if (userError || !caller) {
+      console.error("Auth error:", userError);
+      throw new Error("Invalid or expired token");
+    }
+
+    console.log("Caller identified:", caller.email);
 
     // Check if the caller is an admin
     const { data: profile, error: profileCheckError } = await supabaseClient
@@ -37,8 +41,15 @@ serve(async (req) => {
       .eq('id', caller.id)
       .single();
 
-    if (profileCheckError) throw new Error("Error checking admin status: " + profileCheckError.message);
-    if (!profile?.es_admin) throw new Error("Forbidden: Admin access required");
+    if (profileCheckError) {
+      console.error("Profile check error:", profileCheckError);
+      throw new Error("Error checking admin status: " + profileCheckError.message);
+    }
+    
+    if (!profile?.es_admin) {
+      console.warn("User is not admin:", caller.email);
+      throw new Error("Forbidden: Admin access required");
+    }
 
     const body = await req.json();
     if (!body) throw new Error("Request body is empty");
@@ -47,43 +58,55 @@ serve(async (req) => {
 
     // Handle Test Mode
     if (test && testSettings) {
+      console.log("Starting SMTP test for:", testSettings.smtp_user);
       const client = new SmtpClient();
-      const config = {
-        hostname: testSettings.smtp_host,
-        port: parseInt(testSettings.smtp_port || "587"),
-        username: testSettings.smtp_user,
-        password: testSettings.smtp_pass,
-      };
+      try {
+        const config = {
+          hostname: testSettings.smtp_host,
+          port: parseInt(testSettings.smtp_port || "587"),
+          username: testSettings.smtp_user,
+          password: testSettings.smtp_pass,
+        };
 
-      if (testSettings.smtp_security === 'ssl') {
-        await client.connectTLS(config);
-      } else {
-        await client.connect(config);
+        console.log("Connecting to:", config.hostname, "port:", config.port, "security:", testSettings.smtp_security);
+
+        if (testSettings.smtp_security === 'ssl') {
+          await client.connectTLS(config);
+        } else {
+          await client.connect(config);
+        }
+
+        console.log("Connected. Sending test email...");
+
+        await client.send({
+          from: testSettings.smtp_from || testSettings.smtp_user,
+          to: body.recipient || testSettings.smtp_user,
+          subject: `Prueba de Conexión SMTP - ${testSettings.platform_name || 'TecnosisMX'}`,
+          content: `La configuración SMTP es correcta.\n\nServidor: ${testSettings.smtp_host}\nUsuario: ${testSettings.smtp_user}\nSeguridad: ${testSettings.smtp_security}`,
+        });
+
+        await client.close();
+        console.log("SMTP test successful");
+        return new Response(JSON.stringify({ success: true, message: "Prueba exitosa" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } catch (smtpError: any) {
+        console.error("SMTP test error details:", smtpError);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Error de SMTP: ${smtpError.message || 'Error desconocido'}. Revisa el host, puerto y credenciales.` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, // Return 200 so the frontend can show the specific error message
+        });
       }
-      
-      // If none but port 587, STARTTLS is often expected. The library might need manual startTLS()
-      // but v0.7.0 usually handles it if configured or we just use connect.
-      // If the user specifies 'tls', we've already done .connect() which is typical for STARTTLS initiation in many clients.
-
-      await client.send({
-        from: testSettings.smtp_from || testSettings.smtp_user,
-        to: body.recipient || testSettings.smtp_user, // Use provided recipient or fallback to user
-        subject: `Prueba de Conexión SMTP - ${testSettings.platform_name || 'GML'}`,
-        content: `La configuración SMTP es correcta. 
-        Enviado desde: ${testSettings.site_url || 'Refaccionaria Rubi'}`,
-      });
-
-      await client.close();
-      return new Response(JSON.stringify({ success: true, message: "Prueba exitosa" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
     }
 
-    // 1. Generate a random password
+    // ... (rest of the creation logic)
+    console.log("Creating new user:", email);
     const password = Math.random().toString(36).slice(-10);
 
-    // 2. Create user in Supabase Auth
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
       password,
@@ -91,11 +114,13 @@ serve(async (req) => {
       user_metadata: { nombre_completo, empresa }
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      console.error("Auth creation error:", authError);
+      throw authError;
+    }
 
     const user = authData.user;
 
-    // 3. Update public.perfiles
     const { error: profileError } = await supabaseClient
       .from("perfiles")
       .update({
@@ -107,6 +132,7 @@ serve(async (req) => {
       .eq("id", user.id);
 
     if (profileError) {
+      console.log("Updating profile failed, trying upsert...");
       const { error: insertError } = await supabaseClient
         .from("perfiles")
         .upsert({
@@ -116,10 +142,14 @@ serve(async (req) => {
           es_admin: !!es_admin,
           estatus: "aprobado"
         });
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Profile upsert error:", insertError);
+        throw insertError;
+      }
     }
 
-    // 4. Send Email via SMTP using DB configuration (fallback to ENV)
+    console.log("User created, sending welcome email...");
+
     const { data: dbConfig } = await supabaseClient.from('configuracion').select('*').single();
     
     const smtpHost = dbConfig?.smtp_host || Deno.env.get("SMTP_HOST");
@@ -131,46 +161,49 @@ serve(async (req) => {
 
     if (smtpHost && smtpUser && smtpPass) {
       const client = new SmtpClient();
-      const config = {
-        hostname: smtpHost,
-        port: smtpPort,
-        username: smtpUser,
-        password: smtpPass,
-      };
+      try {
+        const config = {
+          hostname: smtpHost,
+          port: smtpPort,
+          username: smtpUser,
+          password: smtpPass,
+        };
 
-      if (smtpSecurity === 'ssl') {
-        await client.connectTLS(config);
-      } else {
-        await client.connect(config);
+        if (smtpSecurity === 'ssl') {
+          await client.connectTLS(config);
+        } else {
+          await client.connect(config);
+        }
+
+        const fromFormatted = dbConfig?.smtp_sender_name 
+          ? `${dbConfig.smtp_sender_name} <${smtpFrom}>`
+          : smtpFrom;
+
+        await client.send({
+          from: fromFormatted,
+          to: email,
+          subject: `Bienvenido a ${dbConfig?.platform_name || 'TecnosisMX'} - Tus Accesos`,
+          content: `
+            Hola ${nombre_completo},
+            
+            Se ha creado tu cuenta en ${dbConfig?.platform_name || 'TecnosisMX'}.
+            
+            Tus accesos son:
+            Correo: ${email}
+            Contraseña: ${password}
+            
+            Puedes iniciar sesión en: ${dbConfig?.site_url || Deno.env.get("SITE_URL") || 'https://tecno-sis-mx.vercel.app'}
+            
+            ¡Saludos!
+            Equipo de ${dbConfig?.platform_name || 'TecnosisMX'}
+          `,
+        });
+
+        await client.close();
+        console.log("Welcome email sent");
+      } catch (emailErr: any) {
+        console.error("Failed to send welcome email:", emailErr);
       }
-
-      const fromFormatted = dbConfig?.smtp_sender_name 
-        ? `${dbConfig.smtp_sender_name} <${smtpFrom}>`
-        : smtpFrom;
-
-      await client.send({
-        from: fromFormatted,
-        to: email,
-        subject: `Bienvenido a ${dbConfig?.platform_name || 'GML'} - Tus Accesos`,
-        content: `
-          Hola ${nombre_completo},
-          
-          Se ha creado tu cuenta en ${dbConfig?.platform_name || 'GML'}.
-          
-          Tus accesos son:
-          Correo: ${email}
-          Contraseña: ${password}
-          
-          Puedes iniciar sesión en: ${dbConfig?.site_url || Deno.env.get("SITE_URL") || 'http://localhost:5173'}
-          
-          ¡Saludos!
-          Equipo de ${dbConfig?.platform_name || 'GML'}
-        `,
-      });
-
-      await client.close();
-    } else {
-      console.warn("SMTP keys not configured correctly. Skipping email.");
     }
 
     return new Response(JSON.stringify({ success: true, userId: user.id }), {
@@ -178,8 +211,9 @@ serve(async (req) => {
       status: 200,
     });
 
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: any) {
+    console.error("Critical error in function:", error);
+    return new Response(JSON.stringify({ error: error.message, success: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });

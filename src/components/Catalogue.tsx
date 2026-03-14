@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronDown, Package, ShieldCheck, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Product {
   id: string;
@@ -15,29 +17,48 @@ interface Product {
   precio: number;
   stock: number;
   imagenes: string[];
+  proveedor?: string;
+  tipo?: string;
 }
 
 const Catalogue = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ categoria: '', marca: '', año: '' });
+  const [filters, setFilters] = useState({ categoria: '', marca: '', proveedor: '', tipo: '', modelo: '', año: '' });
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 12;
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { profile, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
 
   // Fetch unique brands
   useEffect(() => {
-    const fetchBrands = async () => {
-      const { data } = await supabase.from('productos').select('marca');
+    const fetchFilterData = async () => {
+      const { data } = await supabase.from('productos').select('marca, proveedor, tipo, modelo, año_inicio, año_fin');
       if (data) {
-        const brands = Array.from(new Set(data.map(i => i.marca).filter(Boolean)));
-        setAvailableBrands(brands as string[]);
+        setAvailableBrands(Array.from(new Set(data.map((i: any) => i.marca).filter(Boolean))) as string[]);
+        setAvailableProviders(Array.from(new Set(data.map((i: any) => i.proveedor).filter(Boolean))) as string[]);
+        setAvailableTypes(Array.from(new Set(data.map((i: any) => i.tipo).filter(Boolean))) as string[]);
+        setAvailableModels(Array.from(new Set(data.map((i: any) => i.modelo).filter(Boolean))) as string[]);
+        
+        const years = new Set<number>();
+        data.forEach((p: any) => {
+          if (p.año_inicio) years.add(p.año_inicio);
+          if (p.año_fin) years.add(p.año_fin);
+        });
+        setAvailableYears(Array.from(years).sort((a, b) => b - a));
       }
     };
-    fetchBrands();
+    fetchFilterData();
   }, []);
 
   const fetchProducts = useCallback(async () => {
@@ -50,15 +71,136 @@ const Catalogue = () => {
       query = query.or(`sku.ilike.%${search}%,nombre.ilike.%${search}%`);
     }
 
-    if (filters.marca) {
-      query = query.eq('marca', filters.marca);
+    if (filters.marca) query = query.eq('marca', filters.marca);
+    if (filters.proveedor) query = query.eq('proveedor', filters.proveedor);
+    if (filters.tipo) query = query.eq('tipo', filters.tipo);
+    if (filters.modelo) query = query.eq('modelo', filters.modelo);
+    if (filters.año) {
+      const year = parseInt(filters.año);
+      query = query.or(`and(año_inicio.lte.${year},año_fin.gte.${year}),and(año_inicio.lte.${year},año_fin.is.null),and(año_inicio.is.null,año_fin.gte.${year})`);
     }
 
-    const { data } = await query.limit(20);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, count } = await query
+      .range(from, to)
+      .order('creado_at', { ascending: false });
     
     if (data) setProducts(data);
+    if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, [search, filters.marca]);
+  }, [search, filters, page]);
+
+  const exportToCSV = (data: Product[]) => {
+    const headers = ['SKU', 'Nombre', 'Marca', 'Modelo', 'Proveedor', 'Tipo', 'Precio'];
+    const rows = data.map(p => [
+      `"${p.sku}"`,
+      `"${p.nombre}"`,
+      `"${p.marca}"`,
+      `"${p.modelo || ''}"`,
+      `"${p.proveedor || ''}"`,
+      `"${p.tipo || ''}"`,
+      p.precio
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Catalogo_${new Date().getTime()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getBase64ImageFromURL = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.setAttribute("crossOrigin", "anonymous");
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/png");
+        resolve(dataURL);
+      };
+      img.onerror = (error) => reject(error);
+      img.src = url;
+    });
+  };
+
+  const exportToPDF = async (data: Product[]) => {
+    const doc = new jsPDF();
+    const config = useStore.getState().config;
+
+    // Add Logo if available
+    if (config?.logo_url) {
+      try {
+        const logoData = await getBase64ImageFromURL(config.logo_url);
+        doc.addImage(logoData, 'PNG', 14, 10, 30, 30);
+      } catch (e) {
+        console.error("Could not add logo to PDF", e);
+      }
+    }
+
+    doc.setFontSize(22);
+    doc.setTextColor(30, 41, 59); // slate-800
+    doc.setFont('helvetica', 'bold');
+    doc.text(config?.platform_name || 'TecnosisMX', config?.logo_url ? 50 : 14, 20);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const headerX = config?.logo_url ? 50 : 14;
+    doc.text(`${config?.footer_contact_address || ''}`, headerX, 26, { maxWidth: 140 });
+    doc.text(`Tel: ${config?.footer_contact_phone || ''} | Email: ${config?.footer_contact_email || ''}`, headerX, 34);
+    
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.line(14, 42, 196, 42);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Catálogo de Productos - ${new Date().toLocaleDateString()}`, 14, 50);
+    doc.text(`Total: ${data.length} ítems`, 180, 50, { align: 'right' });
+    
+    const tableColumn = ["SKU", "Producto", "Marca", "Modelo", "Año", "Proveedor", "Precio"];
+    const tableRows = data.map(p => [
+      p.sku,
+      p.nombre,
+      p.marca,
+      p.modelo || 'N/A',
+      p.año_inicio && p.año_fin ? `${p.año_inicio}-${p.año_fin}` : (p.año_inicio || p.año_fin || 'N/A'),
+      p.proveedor || 'N/A',
+      `$${p.precio.toLocaleString()}`
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 55,
+      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica' },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { top: 55 },
+      didDrawPage: (dataArg: any) => {
+        // Simple footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 196, 285, { align: 'right' });
+      }
+    });
+    
+    const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
+    doc.save(fileName);
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -67,8 +209,11 @@ const Catalogue = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setPage(1); // Reset to first page on new search
     fetchProducts();
   };
+
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-8">
@@ -85,9 +230,9 @@ const Catalogue = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <select 
-              className="input-rubi py-2 px-4 bg-white text-sm"
+              className="input-rubi py-2 px-4 bg-white text-xs"
               value={filters.marca}
               onChange={(e) => setFilters({...filters, marca: e.target.value})}
             >
@@ -96,18 +241,69 @@ const Catalogue = () => {
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
-            <select className="input-rubi py-2 px-4 bg-white text-sm">
-              <option value="">Año</option>
-              {Array.from({length: 30}, (_, i) => 2024 - i).map(year => (
-                <option key={year} value={year}>{year}</option>
+            <select 
+              className="input-rubi py-2 px-4 bg-white text-xs"
+              value={filters.proveedor}
+              onChange={(e) => setFilters({...filters, proveedor: e.target.value})}
+            >
+              <option value="">Proveedor</option>
+              {availableProviders.map(p => (
+                <option key={p} value={p}>{p}</option>
               ))}
             </select>
-            <button type="submit" className="btn-primary py-2 px-6 lg:w-auto col-span-2 sm:col-span-1">
+            <select 
+              className="input-rubi py-2 px-4 bg-white text-xs"
+              value={filters.tipo}
+              onChange={(e) => setFilters({...filters, tipo: e.target.value})}
+            >
+              <option value="">Tipo / Cat.</option>
+              {availableTypes.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <select 
+              className="input-rubi py-2 px-4 bg-white text-xs"
+              value={filters.modelo}
+              onChange={(e) => setFilters({...filters, modelo: e.target.value})}
+            >
+              <option value="">Modelo</option>
+              {availableModels.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <select 
+              className="input-rubi py-2 px-4 bg-white text-xs"
+              value={filters.año}
+              onChange={(e) => setFilters({...filters, año: e.target.value})}
+            >
+              <option value="">Año</option>
+              {availableYears.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <button type="submit" className="btn-primary py-2 px-6 text-sm">
               Buscar
             </button>
           </div>
         </form>
       </div>
+
+      {isApproved && (
+        <div className="flex justify-end space-x-3">
+          <button 
+            onClick={() => exportToCSV(products)}
+            className="flex items-center space-x-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl border border-emerald-100 font-bold text-xs hover:bg-emerald-100 transition-colors"
+          >
+            <span>Exportar CSV</span>
+          </button>
+          <button 
+            onClick={() => exportToPDF(products)}
+            className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-colors"
+          >
+            <span>Exportar PDF</span>
+          </button>
+        </div>
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -189,6 +385,47 @@ const Catalogue = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 pt-8">
+          <button 
+            disabled={page === 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .map((p, i, arr) => (
+                <React.Fragment key={p}>
+                  {i > 0 && arr[i-1] !== p-1 && <span className="text-slate-300">...</span>}
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`w-10 h-10 rounded-xl font-bold text-xs transition-all ${
+                      page === p 
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                        : 'bg-white border border-slate-100 text-slate-500 hover:border-primary/50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </React.Fragment>
+              ))}
+          </div>
+
+          <button 
+            disabled={page === totalPages}
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
       )}
       {/* Product Detail Modal */}
@@ -294,6 +531,14 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
                 <p className="font-bold text-secondary">
                   {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
                 </p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proveedor</p>
+                <p className="font-bold text-secondary">{product.proveedor || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo</p>
+                <p className="font-bold text-secondary">{product.tipo || 'N/A'}</p>
               </div>
             </div>
           </div>

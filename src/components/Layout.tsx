@@ -531,16 +531,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Nuestras Marcas Aliadas</p>
           </div>
-          <div className="flex animate-marquee whitespace-nowrap">
-            <div className="flex space-x-12 items-center min-w-full justify-around">
+          <div className="flex animate-marquee">
+            <div className="flex items-center gap-12 px-6 flex-none min-w-max">
               {config.branding_images.map((img: string, i: number) => (
-                <img key={i} src={img} alt={`Marca ${i}`} className="h-20 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain px-4" />
+                <img key={i} src={img} alt={`Marca ${i}`} className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
               ))}
             </div>
-            {/* Duplicate for infinite effect */}
-            <div className="flex space-x-12 items-center min-w-full justify-around">
+            <div className="flex items-center gap-12 px-6 flex-none min-w-max">
               {config.branding_images.map((img: string, i: number) => (
-                <img key={`dup-${i}`} src={img} alt={`Marca Dup ${i}`} className="h-20 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain px-4" />
+                <img key={`dup-${i}`} src={img} alt={`Marca Dup ${i}`} className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
               ))}
             </div>
           </div>
