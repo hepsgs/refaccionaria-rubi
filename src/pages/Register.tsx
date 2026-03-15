@@ -55,15 +55,14 @@ const Register = () => {
         toast.error(profileError.message);
         setLoading(false);
       } else {
-        // Trigger notification email (don't wait for it to finish for the user)
-        supabase.functions.invoke('notify-registration', {
+        // Trigger notification (Registration)
+        supabase.functions.invoke('notify-user-status', {
           body: {
-            user_data: {
-              nombre_completo: form.nombre_completo,
-              empresa: form.empresa,
-              telefono: form.telefono,
-              email: form.email
-            }
+            type: 'registration',
+            user_id: data.user.id
+          },
+          headers: {
+            Authorization: `Bearer ${data.session?.access_token}`
           }
         }).catch(err => console.error('Error enviando notificación:', err));
 

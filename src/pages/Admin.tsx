@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Users, 
-  Package, 
-  ClipboardList, 
-  Plus, 
+import {
+  Users,
+  Package,
+  ClipboardList,
+  Plus,
   Check,
   X,
   FileDown,
@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
-  Settings2
+  Settings2,
+  Smartphone
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -64,12 +65,12 @@ const addWatermark = async (file: File, config: any): Promise<Blob> => {
           const wImg = new Image();
           wImg.crossOrigin = "anonymous";
           wImg.onload = () => {
-            const wWidth = canvas.width * 0.25; 
+            const wWidth = canvas.width * 0.25;
             const wHeight = (wImg.height * wWidth) / wImg.width;
-            
+
             // Apply opacity from config or default to 0.7
             ctx.globalAlpha = parseFloat(config.watermark_opacity) || 0.7;
-            
+
             const padding = Math.max(20, canvas.width * 0.04);
             let x = canvas.width - wWidth - padding;
             let y = canvas.height - wHeight - padding;
@@ -88,18 +89,18 @@ const addWatermark = async (file: File, config: any): Promise<Blob> => {
         } else if (config.watermark_text) {
           const fontSize = Math.max(20, canvas.width * 0.04);
           ctx.font = `bold ${fontSize}px sans-serif`;
-          
+
           ctx.shadowColor = 'rgba(0,0,0,0.5)';
           ctx.shadowBlur = 4;
           ctx.shadowOffsetX = 2;
           ctx.shadowOffsetY = 2;
-          
+
           const opacity = parseFloat(config.watermark_opacity) || 0.7;
           ctx.fillStyle = `rgba(255,255,255,${opacity})`;
-          
+
           const text = config.watermark_text;
           const padding = Math.max(20, canvas.width * 0.04);
-          
+
           const pos = config.watermark_position || 'bottom-right';
           let x = canvas.width - padding;
           let y = canvas.height - padding;
@@ -159,8 +160,24 @@ const Admin = () => {
     terms_conditions: '',
     hero_images: [],
     notificacion_registro_emails: '',
+    notificacion_pedidos_emails: '',
     watermark_position: 'bottom-right',
-    watermark_opacity: 0.7
+    watermark_opacity: 0.7,
+    whatsapp_koonetxa_api_key: '',
+    whatsapp_koonetxa_session: '',
+    whatsapp_koonetxa_enabled: false,
+    whatsapp_notificacion_pedidos_numeros: '',
+    whatsapp_notificacion_registro_numeros: '',
+    whatsapp_template_pedido_cliente: '📦 *¡Gracias por tu pedido, {nombre}!* \n\nTu pedido *#{folio}* ha sido recibido con éxito. En breve nos pondremos en contacto contigo para coordinar el pago y la entrega.\n\n_Refaccionaria Rubi_',
+    whatsapp_template_pedido_admin: '🚨 *NUEVO PEDIDO RECIBIDO* 🚨\n\n*Cliente:* {nombre}\n*Folio:* #{folio}\n*Total:* {total}\n\nRevisa los detalles en el panel de administración.',
+    whatsapp_template_registro_admin: '🆕 *NUEVO REGISTRO DE CLIENTE* 🆕\n\nUn nuevo cliente se ha registrado en la plataforma:\n\n*Cliente:* {nombre}\n*Empresa:* {empresa}\n\nPor favor, revisa y aprueba su cuenta en el panel.',
+    whatsapp_template_aprobacion_cliente: '✅ *¡CUENTA ACTIVADA!* ✅\n\n¡Buenas noticias, {nombre}! Tu cuenta en *{plataforma}* ya ha sido verificada y activada.\n\nYa puedes acceder a nuestro catálogo completo y realizar tus pedidos. ¡Te esperamos!',
+    notify_order_email: true,
+    notify_order_whatsapp: false,
+    notify_register_email: true,
+    notify_register_whatsapp: false,
+    notify_activation_email: true,
+    notify_activation_whatsapp: false
   });
   const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
@@ -169,7 +186,14 @@ const Admin = () => {
   // Update local settings state when global config changes
   useEffect(() => {
     if (config) {
-      setSettings(config);
+      // Merge config with default templates if they are empty
+      setSettings({
+        ...config,
+        whatsapp_template_pedido_cliente: config.whatsapp_template_pedido_cliente || '📦 *¡Gracias por tu pedido, {nombre}!* \n\nTu pedido *#{folio}* ha sido recibido con éxito. En breve nos pondremos en contacto contigo para coordinar el pago y la entrega.\n\n_Refaccionaria Rubi_',
+        whatsapp_template_pedido_admin: config.whatsapp_template_pedido_admin || '🚨 *NUEVO PEDIDO RECIBIDO* 🚨\n\n*Cliente:* {nombre}\n*Folio:* #{folio}\n*Total:* {total}\n\nRevisa los detalles en el panel de administración.',
+        whatsapp_template_registro_admin: config.whatsapp_template_registro_admin || '🆕 *NUEVO REGISTRO DE CLIENTE* 🆕\n\nUn nuevo cliente se ha registrado en la plataforma:\n\n*Cliente:* {nombre}\n*Empresa:* {empresa}\n\nPor favor, revisa y aprueba su cuenta en el panel.',
+        whatsapp_template_aprobacion_cliente: config.whatsapp_template_aprobacion_cliente || '✅ *¡CUENTA ACTIVADA!* ✅\n\n¡Buenas noticias, {nombre}! Tu cuenta en *{plataforma}* ya ha sido verificada y activada.\n\nYa puedes acceder a nuestro catálogo completo y realizar tus pedidos. ¡Te esperamos!'
+      });
     }
   }, [config]);
 
@@ -201,20 +225,19 @@ const Admin = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
         <div>
-            <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
-            <p className="text-slate-500 font-medium">Gestión de {settings.platform_name || 'TecnosisMX'}</p>
-          </div>
-        
+          <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
+          <p className="text-slate-500 font-medium">Gestión de {settings.platform_name || 'TecnosisMX'}</p>
+        </div>
+
         <div className="flex bg-white p-1.5 rounded-2xl shadow-soft border border-slate-100 overflow-x-auto max-w-full">
           {availableTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${
-                activeTab === tab.id 
-                ? 'bg-secondary text-white shadow-lg shadow-secondary/20' 
-                : 'text-slate-400 hover:text-secondary'
-              }`}
+              className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                  ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
+                  : 'text-slate-400 hover:text-secondary'
+                }`}
             >
               <tab.icon size={18} />
               <span>{tab.label}</span>
@@ -239,7 +262,7 @@ const Admin = () => {
                   <p className="text-slate-500 font-medium text-sm">Modifica los textos principales de la página de inicio.</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={async () => {
                   const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
                   if (!error) {
@@ -261,68 +284,68 @@ const Admin = () => {
                   <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                   <span>Sección Principal (Hero)</span>
                 </h3>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Principal (Hero Slider)</label>
-                      <div className="flex flex-wrap gap-2">
-                        {settings.hero_images?.map((img: string, idx: number) => (
-                          <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                            <img src={img} alt="Hero" className="w-full h-full object-cover" />
-                            <button 
-                              onClick={() => setSettings({...settings, hero_images: settings.hero_images.filter((_: any, i: number) => i !== idx)})}
-                              className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
-                        <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              try {
-                                const fileExt = file.name.split('.').pop();
-                                const fileName = `hero-${Math.random()}.${fileExt}`;
-                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
-                                if (uploadError) throw uploadError;
-                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
-                              } catch (error: any) { toast.error('Error: ' + error.message); }
-                            }}
-                          />
-                          <Plus size={24} />
-                        </label>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
-                      <input 
-                        className="input-rubi" 
-                        value={settings.hero_title_1}
-                        onChange={(e) => setSettings({...settings, hero_title_1: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
-                      <input 
-                        className="input-rubi" 
-                        value={settings.hero_title_2}
-                        onChange={(e) => setSettings({...settings, hero_title_2: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
-                      <textarea 
-                        className="input-rubi min-h-[100px] resize-none py-3" 
-                        value={settings.hero_subtitle}
-                        onChange={(e) => setSettings({...settings, hero_subtitle: e.target.value})}
-                      />
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Principal (Hero Slider)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {settings.hero_images?.map((img: string, idx: number) => (
+                        <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <img src={img} alt="Hero" className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setSettings({ ...settings, hero_images: settings.hero_images.filter((_: any, i: number) => i !== idx) })}
+                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `hero-${Math.random()}.${fileExt}`;
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                              if (uploadError) throw uploadError;
+                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                              setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
+                            } catch (error: any) { toast.error('Error: ' + error.message); }
+                          }}
+                        />
+                        <Plus size={24} />
+                      </label>
                     </div>
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
+                    <input
+                      className="input-rubi"
+                      value={settings.hero_title_1}
+                      onChange={(e) => setSettings({ ...settings, hero_title_1: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                    <input
+                      className="input-rubi"
+                      value={settings.hero_title_2}
+                      onChange={(e) => setSettings({ ...settings, hero_title_2: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
+                    <textarea
+                      className="input-rubi min-h-[100px] resize-none py-3"
+                      value={settings.hero_subtitle}
+                      onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
@@ -333,29 +356,29 @@ const Admin = () => {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Negra)</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.about_title_1}
-                      onChange={(e) => setSettings({...settings, about_title_1: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, about_title_1: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.about_title_2}
-                      onChange={(e) => setSettings({...settings, about_title_2: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, about_title_2: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Descriptivo</label>
-                    <textarea 
-                      className="input-rubi min-h-[100px] resize-none py-3" 
+                    <textarea
+                      className="input-rubi min-h-[100px] resize-none py-3"
                       value={settings.about_text}
-                      onChange={(e) => setSettings({...settings, about_text: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, about_text: e.target.value })}
                     />
                   </div>
-                  
+
                   {/* Multiple About Images */}
                   <div className="space-y-2 pt-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería (Sección Nosotros)</label>
@@ -363,8 +386,8 @@ const Admin = () => {
                       {settings.about_images?.map((img: string, idx: number) => (
                         <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                           <img src={img} alt="About" className="w-full h-full object-cover" />
-                          <button 
-                            onClick={() => setSettings({...settings, about_images: settings.about_images.filter((_: any, i: number) => i !== idx)})}
+                          <button
+                            onClick={() => setSettings({ ...settings, about_images: settings.about_images.filter((_: any, i: number) => i !== idx) })}
                             className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <X size={16} />
@@ -372,9 +395,9 @@ const Admin = () => {
                         </div>
                       ))}
                       <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                        <input 
-                          type="file" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          className="hidden"
                           accept="image/*"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
@@ -404,34 +427,34 @@ const Admin = () => {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 1</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.distributors_title_1}
-                      onChange={(e) => setSettings({...settings, distributors_title_1: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, distributors_title_1: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 2 (Color)</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.distributors_title_2}
-                      onChange={(e) => setSettings({...settings, distributors_title_2: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, distributors_title_2: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Informativo</label>
-                    <textarea 
-                      className="input-rubi min-h-[100px] resize-none py-3" 
+                    <textarea
+                      className="input-rubi min-h-[100px] resize-none py-3"
                       value={settings.distributors_text}
-                      onChange={(e) => setSettings({...settings, distributors_text: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, distributors_text: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto del Botón (CTA)</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.distributors_cta_text}
-                      onChange={(e) => setSettings({...settings, distributors_cta_text: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, distributors_cta_text: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
@@ -439,15 +462,15 @@ const Admin = () => {
                     <div className="flex items-center space-x-4">
                       {settings.distributors_image_url ? (
                         <div className="relative group w-32 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
-                          <img 
-                            src={settings.distributors_image_url} 
-                            alt="Distribuidores" 
+                          <img
+                            src={settings.distributors_image_url}
+                            alt="Distribuidores"
                             className="w-full h-full object-cover"
                           />
                           <label className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <input 
-                              type="file" 
-                              className="hidden" 
+                            <input
+                              type="file"
+                              className="hidden"
                               accept="image/*"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
@@ -467,9 +490,9 @@ const Admin = () => {
                         </div>
                       ) : (
                         <label className="w-32 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                          <input 
-                            type="file" 
-                            className="hidden" 
+                          <input
+                            type="file"
+                            className="hidden"
                             accept="image/*"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
@@ -506,38 +529,38 @@ const Admin = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Refacciones Stock</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.stats_products || ''}
                       placeholder="Ej: 15K+"
-                      onChange={(e) => setSettings({...settings, stats_products: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, stats_products: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Talleres Afiliados</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.stats_clients || ''}
                       placeholder="Ej: 500+"
-                      onChange={(e) => setSettings({...settings, stats_clients: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, stats_clients: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Años Experiencia</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.stats_years || ''}
                       placeholder="Ej: 20+"
-                      onChange={(e) => setSettings({...settings, stats_years: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, stats_years: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Versión Catálogo</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.cms_version_text || ''}
                       placeholder="Ej: v2.0"
-                      onChange={(e) => setSettings({...settings, cms_version_text: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, cms_version_text: e.target.value })}
                     />
                   </div>
                 </div>
@@ -551,127 +574,128 @@ const Admin = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre de la Plataforma</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.platform_name || ''}
                       placeholder="Ej: Refaccionaria Rubi"
-                      onChange={(e) => setSettings({...settings, platform_name: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Descripción (Footer)</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.footer_description || ''}
                       placeholder="Breve descripción de la empresa"
-                      onChange={(e) => setSettings({...settings, footer_description: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, footer_description: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email de Contacto</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.footer_contact_email || ''}
                       placeholder="ventas@empresa.com"
-                      onChange={(e) => setSettings({...settings, footer_contact_email: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, footer_contact_email: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Teléfono de Contacto</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.footer_contact_phone || ''}
                       placeholder="+52 (000) 000 0000"
-                      onChange={(e) => setSettings({...settings, footer_contact_phone: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, footer_contact_phone: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Dirección Física</label>
-                    <input 
-                      className="input-rubi" 
+                    <input
+                      className="input-rubi"
                       value={settings.footer_contact_address || ''}
                       placeholder="Dirección completa de la sucursal"
-                      onChange={(e) => setSettings({...settings, footer_contact_address: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, footer_contact_address: e.target.value })}
                     />
                   </div>
                 </div>
               </div>
-          </div>
-        </div>
-      )}
-        {activeTab === 'config' && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between pb-6 border-b border-slate-100">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <SettingsIcon size={32} />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
-                  <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
-                </div>
-              </div>
-              <button 
-                onClick={async () => {
-                  const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
-                  if (!error) {
-                    toast.success('Configuración guardada correctamente.');
-                    setConfig(settings);
-                  } else {
-                    toast.error('Error: ' + error.message);
-                  }
-                }}
-                className="btn-primary px-8"
-              >
-                Guardar Cambios
-              </button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Branding Section */}
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Branding y WhatsApp</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre Comercial</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="Ej: Refaccionaria Rubi"
-                      value={settings.platform_name || ''}
-                      onChange={(e) => setSettings({...settings, platform_name: e.target.value})}
-                    />
+          </div>
+        )}
+        {activeTab === 'config' && (
+          <>
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+                <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                    <SettingsIcon size={32} />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Abreviatura (Logo/Header)</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="Ej: RUBI"
-                      value={settings.abreviatura || ''}
-                      onChange={(e) => setSettings({...settings, abreviatura: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (10 dígitos)</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="Ej: 5212345678"
-                      value={settings.whatsapp_number || ''}
-                      onChange={(e) => setSettings({...settings, whatsapp_number: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Mensaje WhatsApp</label>
-                    <input 
-                      className="input-rubi" 
-                      placeholder="Hola, me gustaría..."
-                      value={settings.whatsapp_message || ''}
-                      onChange={(e) => setSettings({...settings, whatsapp_message: e.target.value})}
-                    />
+                  <div>
+                    <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
+                    <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
                   </div>
                 </div>
+                <button
+                  onClick={async () => {
+                    const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
+                    if (!error) {
+                      toast.success('Configuración guardada correctamente.');
+                      setConfig(settings);
+                    } else {
+                      toast.error('Error: ' + error.message);
+                    }
+                  }}
+                  className="btn-primary px-8"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Branding Section */}
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <span>Branding y Logo</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre Comercial</label>
+                      <input
+                        className="input-rubi"
+                        placeholder="Ej: Refaccionaria Rubi"
+                        value={settings.platform_name || ''}
+                        onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Abreviatura (Logo/Header)</label>
+                      <input
+                        className="input-rubi"
+                        placeholder="Ej: RUBI"
+                        value={settings.abreviatura || ''}
+                        onChange={(e) => setSettings({ ...settings, abreviatura: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (10 dígitos)</label>
+                      <input
+                        className="input-rubi"
+                        placeholder="Ej: 5212345678"
+                        value={settings.whatsapp_number || ''}
+                        onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Mensaje WhatsApp</label>
+                      <input
+                        className="input-rubi"
+                        placeholder="Hola, me gustaría..."
+                        value={settings.whatsapp_message || ''}
+                        onChange={(e) => setSettings({ ...settings, whatsapp_message: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-4">
@@ -703,7 +727,7 @@ const Admin = () => {
                               } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
-                          <label 
+                          <label
                             htmlFor="logo-upload-config"
                             className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
                           >
@@ -743,7 +767,7 @@ const Admin = () => {
                               } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
-                          <label 
+                          <label
                             htmlFor="favicon-upload-config"
                             className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
                           >
@@ -761,8 +785,8 @@ const Admin = () => {
                       {settings.branding_images?.map((img: string, idx: number) => (
                         <div key={idx} className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
                           <img src={img} alt="Brand" className="w-full h-full object-contain p-1" />
-                          <button 
-                            onClick={() => setSettings({...settings, branding_images: settings.branding_images.filter((_: any, i: number) => i !== idx)})}
+                          <button
+                            onClick={() => setSettings({ ...settings, branding_images: settings.branding_images.filter((_: any, i: number) => i !== idx) })}
                             className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <X size={12} />
@@ -770,9 +794,9 @@ const Admin = () => {
                         </div>
                       ))}
                       <label className="w-14 h-14 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-100 text-slate-400 hover:text-primary">
-                        <input 
-                          type="file" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          className="hidden"
                           accept="image/*"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
@@ -793,267 +817,459 @@ const Admin = () => {
                   </div>
                 </div>
 
-              {/* SMTP Mailer Card */}
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                  <span>Servidor de Correo (SMTP)</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
-                    <input className="input-rubi" value={settings.smtp_host || ''} onChange={(e) => setSettings({...settings, smtp_host: e.target.value})} placeholder="smtp.gmail.com" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
-                    <input className="input-rubi" value={settings.smtp_port || ''} onChange={(e) => setSettings({...settings, smtp_port: e.target.value})} placeholder="587" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario SMTP</label>
-                    <input className="input-rubi" value={settings.smtp_user || ''} onChange={(e) => setSettings({...settings, smtp_user: e.target.value})} placeholder="email@gmail.com" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
-                    <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({...settings, smtp_pass: e.target.value})} placeholder="••••••••" />
-                  </div>
-                  <div className="space-y-1">
-                    <select 
-                      className="input-rubi py-2 text-sm" 
-                      value={settings.smtp_security || 'tls'}
-                      onChange={(e) => setSettings({...settings, smtp_security: e.target.value})}
-                    >
-                      <option value="none">Ninguno (Puerto 25/587)</option>
-                      <option value="tls">STARTTLS (Puerto 587)</option>
-                      <option value="ssl">SSL/TLS (Port 465)</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Registro (separados por comas)</label>
-                    <input 
-                      className="input-rubi" 
-                      value={settings.notificacion_registro_emails || ''} 
-                      onChange={(e) => setSettings({...settings, notificacion_registro_emails: e.target.value})} 
-                      placeholder="admin@empresa.com, ventas@empresa.com" 
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Pedidos (NUEVO - separados por comas)</label>
-                    <input 
-                      className="input-rubi border-primary/20 bg-primary/[0.02]" 
-                      value={settings.notificacion_pedidos_emails || ''} 
-                      onChange={(e) => setSettings({...settings, notificacion_pedidos_emails: e.target.value})} 
-                      placeholder="pedidos@empresa.com, sucursal@empresa.com" 
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
-                    <input 
-                      className="input-rubi" 
-                      value={settings.site_url || ''} 
-                      onChange={(e) => setSettings({...settings, site_url: e.target.value})} 
-                      placeholder="https://tu-dominio.com" 
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-50 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Prueba de Envío</p>
-                    <div className="flex space-x-2">
-                      <input 
-                        type="email" 
-                        placeholder="Email destino..." 
-                        className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none w-40"
-                        value={testEmail}
-                        onChange={(e) => setTestEmail(e.target.value)}
-                      />
-                      <button 
-                        onClick={async () => {
-                          if (!testEmail) return toast.error('Ingresa un email de destino');
-                          setTestingSMTP(true);
-                          try {
-                            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                            if (sessionError || !session) {
-                              throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
-                            }
-                            
-                            const { data, error } = await supabase.functions.invoke('test-smtp', {
-                              body: { settings, recipient: testEmail },
-                              headers: {
-                                Authorization: `Bearer ${session.access_token}`
-                              }
-                            });
-                            
-                            if (error) {
-                              console.error("Invoke error:", error);
-                              // Handle specific function errors
-                              const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-                              throw new Error(`Error al llamar a la función: ${errorMsg}`);
-                            }
-                            
-                            if (data && !data.success) {
-                              throw new Error(data.error || 'Error desconocido en la prueba SMTP');
-                            }
-                            
-                            toast.success('¡Correo de prueba enviado con éxito!');
-                          } catch (e: any) { 
-                            console.error('SMTP Test catch:', e);
-                            toast.error('Error: ' + e.message); 
-                          }
-                          finally { setTestingSMTP(false); }
-                        }}
-                        disabled={testingSMTP}
-                        className="bg-secondary text-white p-1.5 rounded-lg hover:opacity-90 disabled:opacity-50"
-                      >
-                        {testingSMTP ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-slate-50 space-y-6">
+                {/* SMTP Mailer Card */}
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
                   <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                    <span>Marca de Agua para Productos</span>
+                    <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                    <span>Servidor de Correo (SMTP)</span>
                   </h3>
-                  
-                  <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => setSettings({...settings, watermark_enabled: !settings.watermark_enabled})}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.watermark_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
+                      <input className="input-rubi" value={settings.smtp_host || ''} onChange={(e) => setSettings({ ...settings, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
                     </div>
-                    <span className="text-sm font-bold text-secondary">{settings.watermark_enabled ? 'Activada' : 'Desactivada'}</span>
-                    <p className="text-[10px] text-slate-400 font-medium ml-auto">Se aplica automáticamente al subir imágenes manuales.</p>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
+                      <input className="input-rubi" value={settings.smtp_port || ''} onChange={(e) => setSettings({ ...settings, smtp_port: e.target.value })} placeholder="587" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario SMTP</label>
+                      <input className="input-rubi" value={settings.smtp_user || ''} onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })} placeholder="email@gmail.com" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
+                      <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({ ...settings, smtp_pass: e.target.value })} placeholder="••••••••" />
+                    </div>
+                    <div className="space-y-1">
+                      <select
+                        className="input-rubi py-2 text-sm"
+                        value={settings.smtp_security || 'tls'}
+                        onChange={(e) => setSettings({ ...settings, smtp_security: e.target.value })}
+                      >
+                        <option value="none">Ninguno (Puerto 25/587)</option>
+                        <option value="tls">STARTTLS (Puerto 587)</option>
+                        <option value="ssl">SSL/TLS (Port 465)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Registro (separados por comas)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.notificacion_registro_emails || ''}
+                        onChange={(e) => setSettings({ ...settings, notificacion_registro_emails: e.target.value })}
+                        placeholder="admin@empresa.com, ventas@empresa.com"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Pedidos (NUEVO - separados por comas)</label>
+                      <input
+                        className="input-rubi border-primary/20 bg-primary/[0.02]"
+                        value={settings.notificacion_pedidos_emails || ''}
+                        onChange={(e) => setSettings({ ...settings, notificacion_pedidos_emails: e.target.value })}
+                        placeholder="pedidos@empresa.com, sucursal@empresa.com"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.site_url || ''}
+                        onChange={(e) => setSettings({ ...settings, site_url: e.target.value })}
+                        placeholder="https://tu-dominio.com"
+                      />
+                    </div>
                   </div>
 
-                  {settings.watermark_enabled && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Tipo de Marca</label>
-                        <select 
-                          className="input-rubi py-2 text-sm" 
-                          value={settings.watermark_type || 'text'}
-                          onChange={(e) => setSettings({...settings, watermark_type: e.target.value})}
+                  <div className="pt-4 border-t border-slate-50 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Prueba de Envío</p>
+                      <div className="flex space-x-2">
+                        <input
+                          type="email"
+                          placeholder="Email destino..."
+                          className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none w-40"
+                          value={testEmail}
+                          onChange={(e) => setTestEmail(e.target.value)}
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!testEmail) return toast.error('Ingresa un email de destino');
+                            setTestingSMTP(true);
+                            try {
+                              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                              if (sessionError || !session) {
+                                throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
+                              }
+
+                              const { data, error } = await supabase.functions.invoke('test-smtp', {
+                                body: { settings, recipient: testEmail },
+                                headers: {
+                                  Authorization: `Bearer ${session.access_token}`
+                                }
+                              });
+
+                              if (error) {
+                                console.error("Invoke error:", error);
+                                // Handle specific function errors
+                                const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+                                throw new Error(`Error al llamar a la función: ${errorMsg}`);
+                              }
+
+                              if (data && !data.success) {
+                                throw new Error(data.error || 'Error desconocido en la prueba SMTP');
+                              }
+
+                              toast.success('¡Correo de prueba enviado con éxito!');
+                            } catch (e: any) {
+                              console.error('SMTP Test catch:', e);
+                              toast.error('Error: ' + e.message);
+                            }
+                            finally { setTestingSMTP(false); }
+                          }}
+                          disabled={testingSMTP}
+                          className="bg-secondary text-white p-1.5 rounded-lg hover:opacity-90 disabled:opacity-50"
                         >
-                          <option value="text">Texto Personalizado</option>
-                          <option value="image">Logotipo / Imagen</option>
-                        </select>
-                      </div>
-
-                      {settings.watermark_type === 'image' ? (
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de Marca</label>
-                          <div className="flex items-center space-x-4">
-                            {settings.watermark_image_url ? (
-                              <div className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
-                                <img src={settings.watermark_image_url} alt="Watermark" className="w-full h-full object-contain p-1" />
-                                <button 
-                                  onClick={() => setSettings({...settings, watermark_image_url: ''})}
-                                  className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <X size={12} />
-                                </button>
-                              </div>
-                            ) : (
-                              <label className="w-12 h-12 bg-white border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400">
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    try {
-                                      const fileExt = file.name.split('.').pop();
-                                      const fileName = `watermark-${Math.random()}.${fileExt}`;
-                                      const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
-                                      if (uploadError) throw uploadError;
-                                      const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                      setSettings({ ...settings, watermark_image_url: publicUrl });
-                                    } catch (error: any) { toast.error('Error: ' + error.message); }
-                                  }}
-                                />
-                                <Plus size={18} />
-                              </label>
-                            )}
-                            <p className="text-[10px] text-slate-400 leading-tight italic">Usa un PNG con transparencia para mejores resultados.</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto de la Marca</label>
-                          <input 
-                            className="input-rubi" 
-                            value={settings.watermark_text || ''} 
-                            onChange={(e) => setSettings({...settings, watermark_text: e.target.value})} 
-                            placeholder="Ej: CONFIDENCIAL / COPIA" 
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Posición</label>
-                        <select 
-                          className="input-rubi py-2 text-sm" 
-                          value={settings.watermark_position || 'bottom-right'}
-                          onChange={(e) => setSettings({...settings, watermark_position: e.target.value})}
-                        >
-                          <option value="top-left">Arriba Izquierda</option>
-                          <option value="top-right">Arriba Derecha</option>
-                          <option value="bottom-left">Abajo Izquierda</option>
-                          <option value="bottom-right">Abajo Derecha</option>
-                          <option value="center">Centro</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-                          Opacidad ({Math.round((settings.watermark_opacity || 0.7) * 100)}%)
-                        </label>
-                        <div className="flex items-center space-x-3 px-2">
-                          <input 
-                            type="range"
-                            min="0.1"
-                            max="1.0"
-                            step="0.05"
-                            className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
-                            value={settings.watermark_opacity || 0.7}
-                            onChange={(e) => setSettings({...settings, watermark_opacity: parseFloat(e.target.value)})}
-                          />
-                        </div>
+                          {testingSMTP ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                        </button>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              <div className="md:col-span-2 card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
-                <div className="space-y-4">
-                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                    <span>Aviso de Privacidad</span>
-                  </h3>
-                  <textarea 
-                    className="input-rubi min-h-[300px] py-4 text-sm" 
-                    placeholder="Escribe el aviso de privacidad aquí..."
-                    value={settings.privacy_policy || ''}
-                    onChange={(e) => setSettings({...settings, privacy_policy: e.target.value})}
-                  />
+              {/* Marca de Agua - Now strictly independent and full width */}
+              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                  <span>Marca de Agua para Productos</span>
+                </h3>
+
+                <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => setSettings({ ...settings, watermark_enabled: !settings.watermark_enabled })}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.watermark_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </div>
+                  <span className="text-sm font-bold text-secondary">{settings.watermark_enabled ? 'Activada' : 'Desactivada'}</span>
+                  <p className="text-[10px] text-slate-400 font-medium ml-auto">Se aplica automáticamente al subir imágenes manuales.</p>
                 </div>
-                <div className="space-y-4">
-                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                    <span>Términos y Condiciones</span>
-                  </h3>
-                  <textarea 
-                    className="input-rubi min-h-[300px] py-4 text-sm" 
-                    placeholder="Escribe los términos y condiciones aquí..."
-                    value={settings.terms_conditions || ''}
-                    onChange={(e) => setSettings({...settings, terms_conditions: e.target.value})}
-                  />
+
+                {settings.watermark_enabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Tipo de Marca</label>
+                      <select
+                        className="input-rubi py-2 text-sm"
+                        value={settings.watermark_type || 'text'}
+                        onChange={(e) => setSettings({ ...settings, watermark_type: e.target.value })}
+                      >
+                        <option value="text">Texto Personalizado</option>
+                        <option value="image">Logotipo / Imagen</option>
+                      </select>
+                    </div>
+
+                    {settings.watermark_type === 'image' ? (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de Marca</label>
+                        <div className="flex items-center space-x-4">
+                          {settings.watermark_image_url ? (
+                            <div className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+                              <img src={settings.watermark_image_url} alt="Watermark" className="w-full h-full object-contain p-1" />
+                              <button
+                                onClick={() => setSettings({ ...settings, watermark_image_url: '' })}
+                                className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="w-12 h-12 bg-white border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400">
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  try {
+                                    const fileExt = file.name.split('.').pop();
+                                    const fileName = `watermark-${Math.random()}.${fileExt}`;
+                                    const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                    if (uploadError) throw uploadError;
+                                    const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                    setSettings({ ...settings, watermark_image_url: publicUrl });
+                                  } catch (error: any) { toast.error('Error: ' + error.message); }
+                                }}
+                              />
+                              <Plus size={18} />
+                            </label>
+                          )}
+                          <p className="text-[10px] text-slate-400 leading-tight italic">Usa un PNG con transparencia para mejores resultados.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto de la Marca</label>
+                        <input
+                          className="input-rubi"
+                          value={settings.watermark_text || ''}
+                          onChange={(e) => setSettings({ ...settings, watermark_text: e.target.value })}
+                          placeholder="Ej: CONFIDENCIAL / COPIA"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Posición</label>
+                      <select
+                        className="input-rubi py-2 text-sm"
+                        value={settings.watermark_position || 'bottom-right'}
+                        onChange={(e) => setSettings({ ...settings, watermark_position: e.target.value })}
+                      >
+                        <option value="top-left">Arriba Izquierda</option>
+                        <option value="top-right">Arriba Derecha</option>
+                        <option value="bottom-left">Abajo Izquierda</option>
+                        <option value="bottom-right">Abajo Derecha</option>
+                        <option value="center">Centro</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                        Opacidad ({Math.round((settings.watermark_opacity || 0.7) * 100)}%)
+                      </label>
+                      <div className="flex items-center space-x-3 px-2">
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                          value={settings.watermark_opacity || 0.7}
+                          onChange={(e) => setSettings({ ...settings, watermark_opacity: parseFloat(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="md:col-span-2 card-rubi bg-white border-slate-100 p-0 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
+                      <Smartphone size={22} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-secondary text-lg leading-tight">Comunicaciones y WhatsApp</h3>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Servicio vía Koonetxa</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full cursor-pointer transition-colors shadow-inner ${settings.whatsapp_koonetxa_enabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                    onClick={() => setSettings({ ...settings, whatsapp_koonetxa_enabled: !settings.whatsapp_koonetxa_enabled })}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${settings.whatsapp_koonetxa_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-8">
+                  {/* Instancia Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 text-slate-400">
+                      <SettingsIcon size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Configuración de Instancia</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">API Key Koonetxa</label>
+                        <input
+                          type="password"
+                          className="input-rubi font-mono text-xs bg-slate-50/50"
+                          value={settings.whatsapp_koonetxa_api_key || ''}
+                          onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_api_key: e.target.value })}
+                          placeholder="XAiOiJKV1QiLCJhb..."
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sesión (Session Name)</label>
+                        <input
+                          className="input-rubi bg-slate-50/50"
+                          value={settings.whatsapp_koonetxa_session || ''}
+                          onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_session: e.target.value })}
+                          placeholder="testKN"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-slate-100" />
+
+                  {/* Notification Blocks */}
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Pedidos Block */}
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Package size={16} className="text-primary" />
+                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Gestión de Pedidos</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_email ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
+                            <label className="flex items-center space-x-2 cursor-pointer group">
+                              <input type="checkbox" checked={settings.notify_order_email} onChange={(e) => setSettings({ ...settings, notify_order_email: e.target.checked })} className="rounded text-primary focus:ring-primary h-4 w-4" />
+                              <span className="text-xs font-semibold text-slate-600 group-hover:text-primary transition-colors">Notificar vía Email</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer group">
+                              <input type="checkbox" checked={settings.notify_order_whatsapp} onChange={(e) => setSettings({ ...settings, notify_order_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                              <span className="text-xs font-semibold text-slate-600 group-hover:text-green-600 transition-colors">Notificar vía WhatsApp</span>
+                            </label>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Pedidos</label>
+                            <input
+                              className="input-rubi py-1.5 text-xs"
+                              value={settings.whatsapp_notificacion_pedidos_numeros || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_pedidos_numeros: e.target.value })}
+                              placeholder="52155..."
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje para el Cliente</label>
+                            <textarea
+                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                              value={settings.whatsapp_template_pedido_cliente || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_cliente: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso para Administración</label>
+                            <textarea
+                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                              value={settings.whatsapp_template_pedido_admin || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_admin: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Registro Block */}
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Users size={16} className="text-amber-500" />
+                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Nuevos Registros</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_email ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
+                            <label className="flex items-center space-x-2 cursor-pointer group">
+                              <input type="checkbox" checked={settings.notify_register_email} onChange={(e) => setSettings({ ...settings, notify_register_email: e.target.checked })} className="rounded text-amber-500 focus:ring-amber-500 h-4 w-4" />
+                              <span className="text-xs font-semibold text-slate-600">Email</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer group">
+                              <input type="checkbox" checked={settings.notify_register_whatsapp} onChange={(e) => setSettings({ ...settings, notify_register_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                              <span className="text-xs font-semibold text-slate-600">WhatsApp</span>
+                            </label>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Registros</label>
+                            <input
+                              className="input-rubi py-1.5 text-xs"
+                              value={settings.whatsapp_notificacion_registro_numeros || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_registro_numeros: e.target.value })}
+                              placeholder="52155..."
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso de Nuevo Cliente para Admin</label>
+                          <textarea
+                            className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                            value={settings.whatsapp_template_registro_admin || ''}
+                            onChange={(e) => setSettings({ ...settings, whatsapp_template_registro_admin: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Activación Block */}
+                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Check size={16} className="text-green-500" />
+                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Activación de Cuenta</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_email ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50 max-w-max">
+                          <label className="flex items-center space-x-2 cursor-pointer group">
+                            <input type="checkbox" checked={settings.notify_activation_email} onChange={(e) => setSettings({ ...settings, notify_activation_email: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                            <span className="text-xs font-semibold text-slate-600">Email</span>
+                          </label>
+                          <label className="flex items-center space-x-2 cursor-pointer group">
+                            <input type="checkbox" checked={settings.notify_activation_whatsapp} onChange={(e) => setSettings({ ...settings, notify_activation_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                            <span className="text-xs font-semibold text-slate-600">WhatsApp</span>
+                          </label>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje de Activación para el Cliente</label>
+                          <textarea
+                            className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                            value={settings.whatsapp_template_aprobacion_cliente || ''}
+                            onChange={(e) => setSettings({ ...settings, whatsapp_template_aprobacion_cliente: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div className="card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+              <div className="space-y-4">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                  <span>Aviso de Privacidad</span>
+                </h3>
+                <textarea
+                  className="input-rubi min-h-[300px] py-4 text-sm"
+                  placeholder="Escribe el aviso de privacidad aquí..."
+                  value={settings.privacy_policy || ''}
+                  onChange={(e) => setSettings({ ...settings, privacy_policy: e.target.value })}
+                />
+              </div>
+              <div className="space-y-4">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                  <span>Términos y Condiciones</span>
+                </h3>
+                <textarea
+                  className="input-rubi min-h-[300px] py-4 text-sm"
+                  placeholder="Escribe los términos y condiciones aquí..."
+                  value={settings.terms_conditions || ''}
+                  onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -1079,7 +1295,13 @@ const UserManagement = () => {
   }, [fetchUsers]);
 
   const updateStatus = async (uid: string, status: string) => {
-    await supabase.from('perfiles').update({ estatus: status }).eq('id', uid);
+    const { error } = await supabase.from('perfiles').update({ estatus: status }).eq('id', uid);
+    if (!error && status === 'activo') {
+      // Trigger activation notification
+      supabase.functions.invoke('notify-user-status', {
+        body: { type: 'activation', user_id: uid }
+      }).catch(err => console.error('Error enviando notificación de activación:', err));
+    }
     fetchUsers();
   };
 
@@ -1091,7 +1313,7 @@ const UserManagement = () => {
           <span>Usuarios del Sistema</span>
         </h2>
         {profile && (profile.rol === 'admin' || profile.permisos?.usuarios) && (
-          <button 
+          <button
             onClick={() => setShowAddUser(true)}
             className="btn-primary py-2 px-5 flex items-center space-x-2"
           >
@@ -1120,7 +1342,7 @@ const UserManagement = () => {
                 <td className="py-5 px-6">
                   <div className="flex flex-col">
                     <span className="font-bold text-secondary text-base leading-tight">{u.nombre_completo}</span>
-                    <span className="text-xs text-slate-400 font-medium">{u.email || `ID: ${u.id.slice(0,8)}`}</span>
+                    <span className="text-xs text-slate-400 font-medium">{u.email || `ID: ${u.id.slice(0, 8)}`}</span>
                   </div>
                 </td>
                 <td className="py-5 px-6 text-slate-500 font-medium">{u.empresa}</td>
@@ -1156,15 +1378,14 @@ const UserManagement = () => {
                   )}
                 </td>
                 <td className="py-5 px-6">
-                  <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                    u.estatus === 'aprobado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
-                  }`}>
+                  <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${u.estatus === 'aprobado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                    }`}>
                     {u.estatus}
                   </span>
                 </td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-3">
                   {u.estatus === 'pendiente' && profile && (profile.rol === 'admin' || profile.permisos?.usuarios || profile.permisos?.aprobar_usuarios) && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(u.id, 'aprobado')}
                       className="p-2.5 bg-secondary text-white rounded-xl hover:bg-primary transition-all shadow-md shadow-secondary/10"
                       title="Aprobar Usuario"
@@ -1174,14 +1395,14 @@ const UserManagement = () => {
                   )}
                   {profile && (profile.rol === 'admin' || profile.permisos?.usuarios) && (
                     <>
-                      <button 
+                      <button
                         onClick={() => setEditingUser(u)}
-                        className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" 
+                        className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
                         title="Editar Permisos"
                       >
                         <Settings2 size={16} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           toast((t) => (
                             <div className="flex flex-col space-y-4 p-1">
@@ -1232,7 +1453,7 @@ const UserManagement = () => {
                             </div>
                           ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
                         }}
-                        className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
+                        className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                         title="Eliminar"
                       >
                         <Trash2 size={16} />
@@ -1331,52 +1552,52 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
           </div>
           <h3 className="text-3xl font-black tracking-tighter uppercase">Nuevo Usuario</h3>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Completo</label>
-            <input 
-              required 
-              className="input-rubi py-2.5" 
+            <input
+              required
+              className="input-rubi py-2.5"
               placeholder="Ej: Juan Pérez"
               value={form.nombre_completo}
-              onChange={(e) => setForm({...form, nombre_completo: e.target.value})}
+              onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Correo Electrónico</label>
-            <input 
+            <input
               type="email"
-              required 
-              className="input-rubi py-2.5" 
+              required
+              className="input-rubi py-2.5"
               placeholder="usuario@empresa.com"
               value={form.email}
-              onChange={(e) => setForm({...form, email: e.target.value})}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Teléfono (10 dígitos)</label>
-            <input 
-              required 
+            <input
+              required
               type="tel"
               maxLength={10}
-              className="input-rubi py-2.5" 
+              className="input-rubi py-2.5"
               placeholder="Ej: 5512345678"
               value={form.telefono}
-              onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
+              onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/\D/g, '') })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Empresa / Taller {(form.rol === 'empleado' || form.rol === 'admin') && '(Opcional)'}</label>
-            <input 
+            <input
               required={form.rol === 'cliente'}
-              className="input-rubi py-2.5" 
+              className="input-rubi py-2.5"
               placeholder={form.rol === 'cliente' ? "Nombre del Taller" : `Por defecto: ${settings?.platform_name || 'Refaccionaria'}`}
               value={form.empresa}
-              onChange={(e) => setForm({...form, empresa: e.target.value})}
+              onChange={(e) => setForm({ ...form, empresa: e.target.value })}
             />
           </div>
 
@@ -1384,17 +1605,17 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Rol del Usuario</label>
             <div className="grid grid-cols-3 gap-3">
               <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'cliente' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
-                <input type="radio" name="rol" value="cliente" className="sr-only" checked={form.rol === 'cliente'} onChange={() => setForm({...form, rol: 'cliente'})} />
+                <input type="radio" name="rol" value="cliente" className="sr-only" checked={form.rol === 'cliente'} onChange={() => setForm({ ...form, rol: 'cliente' })} />
                 <Users size={20} />
                 <span className="text-xs font-bold">Cliente</span>
               </label>
               <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'empleado' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
-                <input type="radio" name="rol" value="empleado" className="sr-only" checked={form.rol === 'empleado'} onChange={() => setForm({...form, rol: 'empleado'})} />
+                <input type="radio" name="rol" value="empleado" className="sr-only" checked={form.rol === 'empleado'} onChange={() => setForm({ ...form, rol: 'empleado' })} />
                 <Shield size={20} />
                 <span className="text-xs font-bold">Empleado</span>
               </label>
               <label className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === 'admin' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
-                <input type="radio" name="rol" value="admin" className="sr-only" checked={form.rol === 'admin'} onChange={() => setForm({...form, rol: 'admin'})} />
+                <input type="radio" name="rol" value="admin" className="sr-only" checked={form.rol === 'admin'} onChange={() => setForm({ ...form, rol: 'admin' })} />
                 <ShieldAlert size={20} />
                 <span className="text-xs font-bold">Admin</span>
               </label>
@@ -1408,35 +1629,35 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.productos}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, productos: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, productos: e.target.checked } })}
                   />
                   <span>Productos</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.pedidos}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, pedidos: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, pedidos: e.target.checked } })}
                   />
                   <span>Pedidos</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.usuarios}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, usuarios: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, usuarios: e.target.checked } })}
                   />
                   <span>Usuarios</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.configuracion}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, configuracion: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, configuracion: e.target.checked } })}
                   />
                   <span>Configuración</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.aprobar_usuarios}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, aprobar_usuarios: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, aprobar_usuarios: e.target.checked } })}
                   />
                   <span>Solo Aprobar Usuarios</span>
                 </label>
@@ -1488,7 +1709,7 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       const { error } = await supabase
         .from('perfiles')
@@ -1502,7 +1723,7 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
         .eq('id', user.id);
 
       if (error) throw error;
-      
+
       toast.success('Usuario actualizado con éxito.');
       onRefresh();
       onClose();
@@ -1525,39 +1746,39 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Configuración de Usuario</span>
           </div>
           <h3 className="text-3xl font-black tracking-tighter uppercase">Editar Permisos</h3>
-          <p className="text-slate-400 text-xs font-medium mt-1">{user.email || 'Usuario ID: ' + user.id.slice(0,8)}</p>
+          <p className="text-slate-400 text-xs font-medium mt-1">{user.email || 'Usuario ID: ' + user.id.slice(0, 8)}</p>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Completo</label>
-            <input 
-              required 
-              className="input-rubi py-2.5" 
+            <input
+              required
+              className="input-rubi py-2.5"
               value={form.nombre_completo}
-              onChange={(e) => setForm({...form, nombre_completo: e.target.value})}
+              onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Teléfono (10 dígitos)</label>
-            <input 
-              required 
+            <input
+              required
               type="tel"
               maxLength={10}
-              className="input-rubi py-2.5" 
+              className="input-rubi py-2.5"
               value={form.telefono}
-              onChange={(e) => setForm({...form, telefono: e.target.value.replace(/\D/g, '')})}
+              onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/\D/g, '') })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Empresa / Taller</label>
-            <input 
+            <input
               required
-              className="input-rubi py-2.5" 
+              className="input-rubi py-2.5"
               value={form.empresa}
-              onChange={(e) => setForm({...form, empresa: e.target.value})}
+              onChange={(e) => setForm({ ...form, empresa: e.target.value })}
             />
           </div>
 
@@ -1566,7 +1787,7 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
             <div className="grid grid-cols-3 gap-3">
               {(['cliente', 'empleado', 'admin'] as const).map((r) => (
                 <label key={r} className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center space-y-2 ${form.rol === r ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}>
-                  <input type="radio" name="rol" value={r} className="sr-only" checked={form.rol === r} onChange={() => setForm({...form, rol: r})} />
+                  <input type="radio" name="rol" value={r} className="sr-only" checked={form.rol === r} onChange={() => setForm({ ...form, rol: r })} />
                   {r === 'cliente' && <Users size={20} />}
                   {r === 'empleado' && <Shield size={20} />}
                   {r === 'admin' && <ShieldAlert size={20} />}
@@ -1583,35 +1804,35 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.productos}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, productos: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, productos: e.target.checked } })}
                   />
                   <span>Productos</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.pedidos}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, pedidos: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, pedidos: e.target.checked } })}
                   />
                   <span>Pedidos</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.usuarios}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, usuarios: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, usuarios: e.target.checked } })}
                   />
                   <span>Usuarios</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.configuracion}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, configuracion: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, configuracion: e.target.checked } })}
                   />
                   <span>Configuración</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
                   <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
                     checked={form.permisos.aprobar_usuarios}
-                    onChange={(e) => setForm({...form, permisos: {...form.permisos, aprobar_usuarios: e.target.checked}})}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, aprobar_usuarios: e.target.checked } })}
                   />
                   <span>Solo Aprobar Usuarios</span>
                 </label>
@@ -1712,9 +1933,9 @@ const ProductManagement = () => {
         if (parts.length < 1) return null;
         const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, proveedor, tipo, descripcion, imagenes] = parts.map(p => p?.trim());
         if (!sku) return null;
-        
+
         const updateData: any = { sku };
-        
+
         if (nombre !== undefined) updateData.nombre = nombre.replace(/^"(.*)"$/, '$1');
         if (precio !== undefined && precio !== '') updateData.precio = parseFloat(precio);
         if (stock !== undefined && stock !== '') updateData.stock = parseInt(stock);
@@ -1725,7 +1946,7 @@ const ProductManagement = () => {
         if (proveedor !== undefined) updateData.proveedor = proveedor.replace(/^"(.*)"$/, '$1');
         if (tipo !== undefined) updateData.tipo = tipo.replace(/^"(.*)"$/, '$1');
         if (descripcion !== undefined) updateData.descripcion = descripcion.replace(/^"(.*)"$/, '$1');
-        
+
         if (imagenes) {
           const cleanImg = imagenes.replace(/^"(.*)"$/, '$1');
           if (cleanImg.startsWith('[') && cleanImg.endsWith(']')) {
@@ -1751,8 +1972,8 @@ const ProductManagement = () => {
     reader.readAsText(file);
   };
 
-  const filteredProducts = products.filter(p => 
-    p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -1766,17 +1987,17 @@ const ProductManagement = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Buscar por SKU o Nombre..."
               className="input-rubi pl-12 py-2.5 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-            <button 
+            <button
               onClick={() => {
                 const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'descripcion', 'imagenes'];
                 downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
@@ -1786,7 +2007,7 @@ const ProductManagement = () => {
             >
               <FileText size={18} />
             </button>
-            <button 
+            <button
               onClick={() => {
                 const headers = ['sku', 'precio', 'stock'];
                 downloadCSV(headers.join(",") + "\n", "actualizar_stock_precios.csv");
@@ -1796,18 +2017,18 @@ const ProductManagement = () => {
             >
               <Check size={18} />
             </button>
-            <button 
+            <button
               onClick={() => {
                 const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'imagenes'];
                 const rows = products.map(p => [
-                  p.sku, 
-                  `"${p.nombre}"`, 
-                  p.precio, 
-                  p.stock, 
-                  `"${p.marca || ''}"`, 
-                  `"${p.modelo || ''}"`, 
-                  p.año_inicio || '', 
-                  p.año_fin || '', 
+                  p.sku,
+                  `"${p.nombre}"`,
+                  p.precio,
+                  p.stock,
+                  `"${p.marca || ''}"`,
+                  `"${p.modelo || ''}"`,
+                  p.año_inicio || '',
+                  p.año_fin || '',
                   `"${p.proveedor || ''}"`,
                   `"${p.tipo || ''}"`,
                   `"${p.imagenes ? p.imagenes.join(';') : ''}"`
@@ -1832,7 +2053,7 @@ const ProductManagement = () => {
           </button>
         </div>
       </div>
-      
+
       <div className="overflow-x-auto rounded-2xl border border-slate-100">
         <table className="w-full text-left">
           <thead>
@@ -1896,16 +2117,16 @@ const ProductManagement = () => {
                   <span className="font-black text-secondary">${p.precio.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
-                  <button 
+                  <button
                     onClick={() => setEditingProduct(p)}
-                    className="p-2.5 text-slate-300 hover:text-secondary hover:bg-slate-100 rounded-xl transition-all" 
+                    className="p-2.5 text-slate-300 hover:text-secondary hover:bg-slate-100 rounded-xl transition-all"
                     title="Editar"
                   >
                     <Edit size={16} />
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDelete(p.id, p.nombre)}
-                    className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
+                    className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                     title="Eliminar"
                   >
                     <Trash2 size={16} />
@@ -1918,8 +2139,8 @@ const ProductManagement = () => {
       </div>
 
       {(showAdd || editingProduct) && (
-        <ProductModal 
-          product={editingProduct} 
+        <ProductModal
+          product={editingProduct}
           catalogues={{
             marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
             proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
@@ -1927,8 +2148,8 @@ const ProductManagement = () => {
             modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
             años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
           }}
-          onClose={() => { setShowAdd(false); setEditingProduct(null); }} 
-          onRefresh={fetchProducts} 
+          onClose={() => { setShowAdd(false); setEditingProduct(null); }}
+          onRefresh={fetchProducts}
         />
       )}
     </div>
@@ -1991,7 +2212,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
     e.preventDefault();
     setSaving(true);
     setErrorMsg('');
-    
+
     // Prepare data (convert empty years to null)
     const productData = {
       ...form,
@@ -2045,27 +2266,27 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             <p className="text-xs font-bold leading-relaxed">{errorMsg}</p>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">SKU</label>
-              <input 
-                required 
-                className="input-rubi py-2.5" 
+              <input
+                required
+                className="input-rubi py-2.5"
                 placeholder="MOT-001"
                 value={form.sku}
-                onChange={(e) => setForm({...form, sku: e.target.value})}
+                onChange={(e) => setForm({ ...form, sku: e.target.value })}
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Marca</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="PRO-PARTS"
                 list="list-marcas"
                 value={form.marca}
-                onChange={(e) => setForm({...form, marca: e.target.value})}
+                onChange={(e) => setForm({ ...form, marca: e.target.value })}
               />
               <datalist id="list-marcas">
                 {catalogues.marcas.map((m: string) => <option key={m} value={m} />)}
@@ -2076,12 +2297,12 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Proveedor</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="Ej: Distribuidora GML"
                 list="list-proveedores"
                 value={form.proveedor}
-                onChange={(e) => setForm({...form, proveedor: e.target.value})}
+                onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
               />
               <datalist id="list-proveedores">
                 {catalogues.proveedores.map((p: string) => <option key={p} value={p} />)}
@@ -2089,12 +2310,12 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Tipo / Categoría Técnica</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="Ej: Suspensión"
                 list="list-tipos"
                 value={form.tipo}
-                onChange={(e) => setForm({...form, tipo: e.target.value})}
+                onChange={(e) => setForm({ ...form, tipo: e.target.value })}
               />
               <datalist id="list-tipos">
                 {catalogues.tipos.map((t: string) => <option key={t} value={t} />)}
@@ -2105,12 +2326,12 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
           <div className="grid grid-cols-3 gap-5">
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Modelo</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="Tsuru"
                 list="list-modelos"
                 value={form.modelo}
-                onChange={(e) => setForm({...form, modelo: e.target.value})}
+                onChange={(e) => setForm({ ...form, modelo: e.target.value })}
               />
               <datalist id="list-modelos">
                 {catalogues.modelos.map((m: string) => <option key={m} value={m} />)}
@@ -2118,48 +2339,48 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             </div>
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Año Inicio (Opc)</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="1992"
                 list="list-años"
                 value={form.año_inicio}
-                onChange={(e) => setForm({...form, año_inicio: e.target.value ? parseInt(e.target.value) : ''})}
+                onChange={(e) => setForm({ ...form, año_inicio: e.target.value ? parseInt(e.target.value) : '' })}
               />
             </div>
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Año Fin (Opc)</label>
-              <input 
-                className="input-rubi py-2.5" 
+              <input
+                className="input-rubi py-2.5"
                 placeholder="2017"
                 list="list-años"
                 value={form.año_fin}
-                onChange={(e) => setForm({...form, año_fin: e.target.value ? parseInt(e.target.value) : ''})}
+                onChange={(e) => setForm({ ...form, año_fin: e.target.value ? parseInt(e.target.value) : '' })}
               />
               <datalist id="list-años">
                 {catalogues.años.map((a: number) => <option key={a} value={a} />)}
               </datalist>
             </div>
           </div>
-          
+
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Comercial</label>
-            <input 
-              required 
-              className="input-rubi py-2.5" 
+            <input
+              required
+              className="input-rubi py-2.5"
               placeholder="Ej: Balatas Cerámicas Delanteras"
               value={form.nombre}
-              onChange={(e) => setForm({...form, nombre: e.target.value})}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Descripción Detallada (Ficha Técnica)</label>
-            <textarea 
+            <textarea
               rows={4}
-              className="input-rubi py-2.5 min-h-[100px] resize-y" 
+              className="input-rubi py-2.5 min-h-[100px] resize-y"
               placeholder="Ej: Balatas de cerámica de alta resistencia para Tsuru III. Incluye herrajes..."
               value={form.descripcion}
-              onChange={(e) => setForm({...form, descripcion: e.target.value})}
+              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
             />
           </div>
 
@@ -2167,17 +2388,17 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Imágenes</label>
             <div className="flex flex-col gap-3">
               <div className="flex space-x-2">
-                <input 
-                  className="input-rubi py-2.5 flex-1" 
+                <input
+                  className="input-rubi py-2.5 flex-1"
                   placeholder="Pegar URL de imagen..."
                   value={newImage}
                   onChange={(e) => setNewImage(e.target.value)}
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => {
                     if (newImage) {
-                      setForm({...form, imagenes: [...form.imagenes, newImage]});
+                      setForm({ ...form, imagenes: [...form.imagenes, newImage] });
                       setNewImage('');
                     }
                   }}
@@ -2188,9 +2409,9 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
               </div>
 
               <label className="relative flex items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-6 hover:border-primary/50 hover:bg-slate-50 transition-all cursor-pointer group">
-                <input 
-                  type="file" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  className="hidden"
                   accept="image/*"
                   onChange={handleFileUpload}
                   disabled={uploading}
@@ -2212,9 +2433,9 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                 {form.imagenes.map((img: string, idx: number) => (
                   <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
                     <img src={img} alt="Preview" className="w-full h-full object-cover" />
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setForm({...form, imagenes: form.imagenes.filter((_: any, i: number) => i !== idx)})}
+                      onClick={() => setForm({ ...form, imagenes: form.imagenes.filter((_: any, i: number) => i !== idx) })}
                       className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={14} />
@@ -2228,21 +2449,21 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Precio ($)</label>
-              <input 
-                type="number" 
-                required 
-                className="input-rubi py-2.5" 
+              <input
+                type="number"
+                required
+                className="input-rubi py-2.5"
                 value={form.precio}
-                onChange={(e) => setForm({...form, precio: parseFloat(e.target.value)})}
+                onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) })}
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Stock (Opcional)</label>
-              <input 
-                type="number" 
-                className="input-rubi py-2.5" 
+              <input
+                type="number"
+                className="input-rubi py-2.5"
                 value={form.stock}
-                onChange={(e) => setForm({...form, stock: e.target.value ? parseInt(e.target.value) : 0})}
+                onChange={(e) => setForm({ ...form, stock: e.target.value ? parseInt(e.target.value) : 0 })}
               />
             </div>
           </div>
@@ -2263,7 +2484,7 @@ const OrderManagement = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Filters & Pagination
   const [clientSearch, setClientSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -2275,7 +2496,7 @@ const OrderManagement = () => {
     // Select the order and also the joined client profile using the foreign key cliente_id -> id
     // Re-writing the select to use the !inner join specifically when searching
     // To filter the PARENT rows based on CHILD rows, we use the !inner hint in select
-    const selectStr = clientSearch 
+    const selectStr = clientSearch
       ? `*, perfiles!pedidos_cliente_id_fkey!inner (nombre_completo, empresa, email_alternativo)`
       : `*, perfiles!pedidos_cliente_id_fkey (nombre_completo, empresa, email_alternativo)`;
 
@@ -2293,7 +2514,7 @@ const OrderManagement = () => {
     const { data, count, error } = await query
       .order('creado_at', { ascending: false })
       .range(from, to);
-      
+
     if (error) {
       console.error("Error fetching orders:", error);
     }
@@ -2309,7 +2530,7 @@ const OrderManagement = () => {
   const exportAllOrdersCSV = async () => {
     setLoading(true);
     // Use !inner join when searching to filter results correctly for export too
-    const selectStr = clientSearch 
+    const selectStr = clientSearch
       ? `*, perfiles!pedidos_cliente_id_fkey!inner (nombre_completo, empresa)`
       : `*, perfiles!pedidos_cliente_id_fkey (nombre_completo, empresa)`;
 
@@ -2322,7 +2543,7 @@ const OrderManagement = () => {
       query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
     }
 
-    const { data: allOrders, error } = await query.limit(1000); 
+    const { data: allOrders, error } = await query.limit(1000);
     setLoading(false);
 
     if (error) {
@@ -2347,38 +2568,38 @@ const OrderManagement = () => {
       'Cantidad': item.cantidad,
       'Folio': order.folio || 'N/A'
     }));
-    
+
     const header = "Numero de Parte,Producto,Cantidad,Folio\n";
     const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Producto']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
-    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0,8)}.csv`);
+    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0, 8)}.csv`);
   };
 
   const exportSingleOrderPDF = (order: any) => {
     if (!order) return;
-    
+
     // Explicitly define parameters to prevent corrupted generation in some environments
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     });
-    
+
     // Header
     doc.setFontSize(22);
     doc.setTextColor(15, 23, 42); // slate-900
     doc.text('Refaccionaria Rubi', 14, 20);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139); // slate-500
     doc.text('Detalle de Pedido', 14, 28);
-    
+
     // Order Info
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
     doc.text(`Folio: ${order.folio || 'N/A'}`, 14, 40);
     doc.text(`Fecha: ${new Date(order.creado_at).toLocaleString()}`, 14, 46);
     doc.text(`Estado: ${order.estatus.toUpperCase()}`, 14, 52);
-    
+
     // Client Info
     const clientInfo = order.perfiles || {};
     doc.text('Cliente:', 100, 40);
@@ -2413,13 +2634,13 @@ const OrderManagement = () => {
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || 70;
-    
+
     // Total
     doc.setFontSize(14);
     doc.setTextColor(15, 23, 42);
     doc.text(`Total del Pedido: $${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, finalY + 15);
 
-    doc.save(`Pedido_${order.folio || order.id.slice(0,8)}.pdf`);
+    doc.save(`Pedido_${order.folio || order.id.slice(0, 8)}.pdf`);
   };
 
   return (
@@ -2432,9 +2653,9 @@ const OrderManagement = () => {
         <div className="flex items-center space-x-3 w-full md:w-auto">
           <div className="relative flex-grow md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Buscar por cliente..." 
+            <input
+              type="text"
+              placeholder="Buscar por cliente..."
               className="input-rubi pl-10 py-2 text-sm"
               value={clientSearch}
               onChange={(e) => {
@@ -2443,7 +2664,7 @@ const OrderManagement = () => {
               }}
             />
           </div>
-          <button 
+          <button
             onClick={exportAllOrdersCSV}
             className="btn-secondary py-2 px-4 flex items-center space-x-2 text-xs font-bold leading-none"
           >
@@ -2478,7 +2699,7 @@ const OrderManagement = () => {
                       <Package size={18} />
                     </div>
                     <div>
-                      <span className="font-bold text-secondary uppercase tracking-widest block text-xs">{o.folio ? `Folio #${o.folio}` : `ID: #${o.id.slice(0,6)}`}</span>
+                      <span className="font-bold text-secondary uppercase tracking-widest block text-xs">{o.folio ? `Folio #${o.folio}` : `ID: #${o.id.slice(0, 6)}`}</span>
                       <span className="text-[10px] text-slate-400 font-bold">{o.items?.length || 0} items</span>
                     </div>
                   </div>
@@ -2489,15 +2710,14 @@ const OrderManagement = () => {
                   <span className="text-xs text-slate-400 block">{o.perfiles?.empresa || 'Empresa No Espec.'}</span>
                 </td>
                 <td className="py-5 px-6">
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider ${
-                    o.estatus === 'entregado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
-                  }`}>
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider ${o.estatus === 'entregado' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                    }`}>
                     {o.estatus}
                   </span>
                 </td>
                 <td className="py-5 px-6 text-primary font-black tracking-tight">${o.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}
                     className="p-2.5 bg-slate-100 text-slate-500 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
                     title="Ver Detalles"
@@ -2514,7 +2734,7 @@ const OrderManagement = () => {
       {/* Pagination Orders */}
       {Math.ceil(totalCount / pageSize) > 1 && (
         <div className="flex justify-center items-center space-x-2 pt-4">
-          <button 
+          <button
             disabled={page === 1}
             onClick={() => setPage(p => Math.max(1, p - 1))}
             className="p-1.5 rounded-lg bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
@@ -2522,7 +2742,7 @@ const OrderManagement = () => {
             <ChevronLeft size={16} />
           </button>
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-slate-400">Página {page} de {Math.ceil(totalCount / pageSize)}</span>
-          <button 
+          <button
             disabled={page >= Math.ceil(totalCount / pageSize)}
             onClick={() => setPage(p => p + 1)}
             className="p-1.5 rounded-lg bg-white border border-slate-100 text-slate-400 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
@@ -2537,13 +2757,13 @@ const OrderManagement = () => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setSelectedOrder(null)} />
           <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300">
-            <button 
+            <button
               onClick={() => setSelectedOrder(null)}
               className="absolute right-6 top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
             >
               <X size={20} />
             </button>
-            
+
             <div className="flex items-center space-x-4 mb-8">
               <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
                 <ClipboardList size={28} />
@@ -2584,8 +2804,8 @@ const OrderManagement = () => {
                       <p className="text-sm font-black text-secondary">{item.sku}</p>
                       <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
                       <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                        Cant: {item.cantidad} 
-                        <span className="mx-2 text-slate-200">|</span> 
+                        Cant: {item.cantidad}
+                        <span className="mx-2 text-slate-200">|</span>
                         Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
@@ -2601,23 +2821,23 @@ const OrderManagement = () => {
                 <p className="text-4xl font-black text-secondary tracking-tighter">${selectedOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div className="flex space-x-3">
-                <button 
-                  onClick={() => exportSingleOrderCSV(selectedOrder)} 
+                <button
+                  onClick={() => exportSingleOrderCSV(selectedOrder)}
                   className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
                   title="Exportar a CSV"
                 >
                   <FileDown size={20} />
                   <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">CSV</span>
                 </button>
-                <button 
-                  onClick={() => exportSingleOrderPDF(selectedOrder)} 
+                <button
+                  onClick={() => exportSingleOrderPDF(selectedOrder)}
                   className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
                   title="Exportar a PDF"
                 >
                   <FileDown size={20} />
                   <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">PDF</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedOrder(null)}
                   className="btn-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20"
                 >
