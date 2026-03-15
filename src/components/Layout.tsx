@@ -4,6 +4,7 @@ import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import InstallPWA from './InstallPWA';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -638,6 +639,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </div>
       </footer>
+      <InstallPWA />
     </div>
   );
 };
