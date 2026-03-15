@@ -837,6 +837,15 @@ const Admin = () => {
                     />
                   </div>
                   <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Pedidos (NUEVO - separados por comas)</label>
+                    <input 
+                      className="input-rubi border-primary/20 bg-primary/[0.02]" 
+                      value={settings.notificacion_pedidos_emails || ''} 
+                      onChange={(e) => setSettings({...settings, notificacion_pedidos_emails: e.target.value})} 
+                      placeholder="pedidos@empresa.com, sucursal@empresa.com" 
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
                     <input 
                       className="input-rubi" 
