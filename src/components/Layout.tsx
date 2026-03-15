@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -13,6 +14,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showScrollTop, setShowScrollTop] = React.useState(false);
   const { profile, cart, updateQuantity, removeFromCart, config } = useStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
@@ -56,12 +58,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [config]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Sesión cerrada correctamente');
+      navigate('/');
+    }
   };
 
   const handleCheckout = async () => {
     if (!profile) {
-      alert('Por favor inicia sesión para realizar pedidos.');
+      toast.error('Por favor inicia sesión para realizar pedidos.');
       return;
     }
     
@@ -92,7 +100,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setIsCartOpen(false);
     } catch (error: any) {
       console.error('Error:', error);
-      alert('Error al procesar el pedido: ' + error.message);
+      toast.error('Error al procesar el pedido: ' + error.message);
     }
   };
 

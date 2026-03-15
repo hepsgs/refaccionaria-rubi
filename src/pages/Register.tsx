@@ -123,7 +123,7 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Empresa / Taller</label>
               <div className="relative">
                 <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
