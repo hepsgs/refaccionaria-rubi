@@ -43,6 +43,87 @@ const downloadCSV = (content: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
+const addWatermark = async (file: File, config: any): Promise<Blob> => {
+  if (!config.watermark_enabled) return file;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(file);
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+
+        if (config.watermark_type === 'image' && config.watermark_image_url) {
+          const wImg = new Image();
+          wImg.crossOrigin = "anonymous";
+          wImg.onload = () => {
+            const wWidth = canvas.width * 0.25; 
+            const wHeight = (wImg.height * wWidth) / wImg.width;
+            
+            // Apply opacity from config or default to 0.7
+            ctx.globalAlpha = parseFloat(config.watermark_opacity) || 0.7;
+            
+            const padding = Math.max(20, canvas.width * 0.04);
+            let x = canvas.width - wWidth - padding;
+            let y = canvas.height - wHeight - padding;
+
+            const pos = config.watermark_position || 'bottom-right';
+            if (pos === 'top-left') { x = padding; y = padding; }
+            else if (pos === 'top-right') { x = canvas.width - wWidth - padding; y = padding; }
+            else if (pos === 'bottom-left') { x = padding; y = canvas.height - wHeight - padding; }
+            else if (pos === 'center') { x = (canvas.width - wWidth) / 2; y = (canvas.height - wHeight) / 2; }
+
+            ctx.drawImage(wImg, x, y, wWidth, wHeight);
+            canvas.toBlob((blob) => blob ? resolve(blob) : resolve(file), file.type, 0.9);
+          };
+          wImg.onerror = () => resolve(file);
+          wImg.src = config.watermark_image_url;
+        } else if (config.watermark_text) {
+          const fontSize = Math.max(20, canvas.width * 0.04);
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          
+          ctx.shadowColor = 'rgba(0,0,0,0.5)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          
+          const opacity = parseFloat(config.watermark_opacity) || 0.7;
+          ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+          
+          const text = config.watermark_text;
+          const padding = Math.max(20, canvas.width * 0.04);
+          
+          const pos = config.watermark_position || 'bottom-right';
+          let x = canvas.width - padding;
+          let y = canvas.height - padding;
+          ctx.textAlign = 'right';
+
+          if (pos === 'top-left') { x = padding; y = padding + fontSize; ctx.textAlign = 'left'; }
+          else if (pos === 'top-right') { x = canvas.width - padding; y = padding + fontSize; ctx.textAlign = 'right'; }
+          else if (pos === 'bottom-left') { x = padding; y = canvas.height - padding; ctx.textAlign = 'left'; }
+          else if (pos === 'center') { x = canvas.width / 2; y = canvas.height / 2; ctx.textAlign = 'center'; }
+
+          ctx.fillText(text, x, y);
+          canvas.toBlob((blob) => blob ? resolve(blob) : resolve(file), file.type, 0.9);
+        } else {
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+};
+
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config' | 'cms'>('users');
   const [settings, setSettings] = useState<any>({
@@ -77,7 +158,9 @@ const Admin = () => {
     privacy_policy: '',
     terms_conditions: '',
     hero_images: [],
-    notificacion_registro_emails: ''
+    notificacion_registro_emails: '',
+    watermark_position: 'bottom-right',
+    watermark_opacity: 0.7
   });
   const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
@@ -96,7 +179,7 @@ const Admin = () => {
 
   // Determine available tabs based on role and permissions
   const availableTabs = [
-    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.usuarios) ? [{ id: 'users', label: 'Usuarios', icon: Users }] : []),
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && (profile.permisos?.usuarios || profile.permisos?.aprobar_usuarios)) ? [{ id: 'users', label: 'Usuarios', icon: Users }] : []),
     ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.productos) ? [{ id: 'products', label: 'Productos', icon: Package }] : []),
     ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.pedidos) ? [{ id: 'orders', label: 'Pedidos', icon: ClipboardList }] : []),
     ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.configuracion) ? [
@@ -513,9 +596,9 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
         {activeTab === 'config' && (
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between pb-6 border-b border-slate-100">
@@ -818,6 +901,120 @@ const Admin = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="pt-6 border-t border-slate-50 space-y-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <span>Marca de Agua para Productos</span>
+                  </h3>
+                  
+                  <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => setSettings({...settings, watermark_enabled: !settings.watermark_enabled})}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.watermark_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                    <span className="text-sm font-bold text-secondary">{settings.watermark_enabled ? 'Activada' : 'Desactivada'}</span>
+                    <p className="text-[10px] text-slate-400 font-medium ml-auto">Se aplica automáticamente al subir imágenes manuales.</p>
+                  </div>
+
+                  {settings.watermark_enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Tipo de Marca</label>
+                        <select 
+                          className="input-rubi py-2 text-sm" 
+                          value={settings.watermark_type || 'text'}
+                          onChange={(e) => setSettings({...settings, watermark_type: e.target.value})}
+                        >
+                          <option value="text">Texto Personalizado</option>
+                          <option value="image">Logotipo / Imagen</option>
+                        </select>
+                      </div>
+
+                      {settings.watermark_type === 'image' ? (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de Marca</label>
+                          <div className="flex items-center space-x-4">
+                            {settings.watermark_image_url ? (
+                              <div className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+                                <img src={settings.watermark_image_url} alt="Watermark" className="w-full h-full object-contain p-1" />
+                                <button 
+                                  onClick={() => setSettings({...settings, watermark_image_url: ''})}
+                                  className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-12 h-12 bg-white border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400">
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    try {
+                                      const fileExt = file.name.split('.').pop();
+                                      const fileName = `watermark-${Math.random()}.${fileExt}`;
+                                      const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                      if (uploadError) throw uploadError;
+                                      const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                      setSettings({ ...settings, watermark_image_url: publicUrl });
+                                    } catch (error: any) { toast.error('Error: ' + error.message); }
+                                  }}
+                                />
+                                <Plus size={18} />
+                              </label>
+                            )}
+                            <p className="text-[10px] text-slate-400 leading-tight italic">Usa un PNG con transparencia para mejores resultados.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto de la Marca</label>
+                          <input 
+                            className="input-rubi" 
+                            value={settings.watermark_text || ''} 
+                            onChange={(e) => setSettings({...settings, watermark_text: e.target.value})} 
+                            placeholder="Ej: CONFIDENCIAL / COPIA" 
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Posición</label>
+                        <select 
+                          className="input-rubi py-2 text-sm" 
+                          value={settings.watermark_position || 'bottom-right'}
+                          onChange={(e) => setSettings({...settings, watermark_position: e.target.value})}
+                        >
+                          <option value="top-left">Arriba Izquierda</option>
+                          <option value="top-right">Arriba Derecha</option>
+                          <option value="bottom-left">Abajo Izquierda</option>
+                          <option value="bottom-right">Abajo Derecha</option>
+                          <option value="center">Centro</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                          Opacidad ({Math.round((settings.watermark_opacity || 0.7) * 100)}%)
+                        </label>
+                        <div className="flex items-center space-x-3 px-2">
+                          <input 
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.05"
+                            className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                            value={settings.watermark_opacity || 0.7}
+                            onChange={(e) => setSettings({...settings, watermark_opacity: parseFloat(e.target.value)})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="md:col-span-2 card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
@@ -859,6 +1056,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const { profile } = useStore();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -880,16 +1078,18 @@ const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black text-secondary flex items-center space-x-3">
-          <div className="p-2 bg-secondary text-white rounded-lg"><Users size={20} /></div>
+          <span className="p-2 bg-secondary text-white rounded-lg inline-flex"><Users size={20} /></span>
           <span>Usuarios del Sistema</span>
         </h2>
-        <button 
-          onClick={() => setShowAddUser(true)}
-          className="btn-primary py-2 px-5 flex items-center space-x-2"
-        >
-          <Plus size={18} />
-          <span>Nuevo Usuario</span>
-        </button>
+        {profile && (profile.rol === 'admin' || profile.permisos?.usuarios) && (
+          <button 
+            onClick={() => setShowAddUser(true)}
+            className="btn-primary py-2 px-5 flex items-center space-x-2"
+          >
+            <Plus size={18} />
+            <span>Nuevo Usuario</span>
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-100">
@@ -933,6 +1133,7 @@ const UserManagement = () => {
                           {u.permisos.productos && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Productos">PROD</span>}
                           {u.permisos.pedidos && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Pedidos">PED</span>}
                           {u.permisos.usuarios && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Usuarios">USR</span>}
+                          {u.permisos.aprobar_usuarios && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Aprobar Usuarios">APR</span>}
                           {u.permisos.configuracion && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Ajustes">CONF</span>}
                         </div>
                       )}
@@ -953,7 +1154,7 @@ const UserManagement = () => {
                   </span>
                 </td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-3">
-                  {u.estatus === 'pendiente' && (
+                  {u.estatus === 'pendiente' && profile && (profile.rol === 'admin' || profile.permisos?.usuarios || profile.permisos?.aprobar_usuarios) && (
                     <button 
                       onClick={() => updateStatus(u.id, 'aprobado')}
                       className="p-2.5 bg-secondary text-white rounded-xl hover:bg-primary transition-all shadow-md shadow-secondary/10"
@@ -962,69 +1163,73 @@ const UserManagement = () => {
                       <Check size={16} />
                     </button>
                   )}
-                  <button 
-                    onClick={() => setEditingUser(u)}
-                    className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" 
-                    title="Editar Permisos"
-                  >
-                    <Settings2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      toast((t) => (
-                        <div className="flex flex-col space-y-4 p-1">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
-                              <Trash2 size={20} />
-                            </div>
-                            <div className="text-left">
-                              <p className="font-bold text-secondary text-sm">¿Eliminar usuario?</p>
-                              <p className="text-[10px] text-slate-500 font-medium leading-tight">Se borrará permanentemente el perfil de {u.nombre_completo}.</p>
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={async () => {
-                                toast.dismiss(t.id);
-                                try {
-                                  const { data: { session } } = await supabase.auth.getSession();
-                                  if (!session) throw new Error("No hay sesión activa");
+                  {profile && (profile.rol === 'admin' || profile.permisos?.usuarios) && (
+                    <>
+                      <button 
+                        onClick={() => setEditingUser(u)}
+                        className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" 
+                        title="Editar Permisos"
+                      >
+                        <Settings2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          toast((t) => (
+                            <div className="flex flex-col space-y-4 p-1">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
+                                  <Trash2 size={20} />
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-bold text-secondary text-sm">¿Eliminar usuario?</p>
+                                  <p className="text-[10px] text-slate-500 font-medium leading-tight">Se borrará permanentemente el perfil de {u.nombre_completo}.</p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={async () => {
+                                    toast.dismiss(t.id);
+                                    try {
+                                      const { data: { session } } = await supabase.auth.getSession();
+                                      if (!session) throw new Error("No hay sesión activa");
 
-                                  const { data, error } = await supabase.functions.invoke('delete-user', {
-                                    body: { userId: u.id },
-                                    headers: {
-                                      Authorization: `Bearer ${session.access_token}`
+                                      const { data, error } = await supabase.functions.invoke('delete-user', {
+                                        body: { userId: u.id },
+                                        headers: {
+                                          Authorization: `Bearer ${session.access_token}`
+                                        }
+                                      });
+
+                                      if (error) throw error;
+                                      if (data && !data.success) throw new Error(data.error);
+
+                                      toast.success('Usuario eliminado permanentemente.');
+                                      fetchUsers();
+                                    } catch (err: any) {
+                                      toast.error('Error al eliminar: ' + err.message);
                                     }
-                                  });
-
-                                  if (error) throw error;
-                                  if (data && !data.success) throw new Error(data.error);
-
-                                  toast.success('Usuario eliminado permanentemente.');
-                                  fetchUsers();
-                                } catch (err: any) {
-                                  toast.error('Error al eliminar: ' + err.message);
-                                }
-                              }}
-                              className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
-                            >
-                              Sí, eliminar
-                            </button>
-                            <button
-                              onClick={() => toast.dismiss(t.id)}
-                              className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
-                    }}
-                    className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
-                    title="Eliminar"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                                  }}
+                                  className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
+                                >
+                                  Sí, eliminar
+                                </button>
+                                <button
+                                  onClick={() => toast.dismiss(t.id)}
+                                  className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
+                        }}
+                        className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
+                        title="Eliminar"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1049,7 +1254,8 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
       productos: false,
       pedidos: false,
       configuracion: false,
-      usuarios: false
+      usuarios: false,
+      aprobar_usuarios: false
     }
   });
   const [saving, setSaving] = useState(false);
@@ -1218,6 +1424,13 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
                   />
                   <span>Configuración</span>
                 </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.aprobar_usuarios}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, aprobar_usuarios: e.target.checked}})}
+                  />
+                  <span>Solo Aprobar Usuarios</span>
+                </label>
               </div>
             </div>
           )}
@@ -1256,7 +1469,8 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
         productos: !!p.productos,
         pedidos: !!p.pedidos,
         configuracion: !!p.configuracion,
-        usuarios: !!p.usuarios
+        usuarios: !!p.usuarios,
+        aprobar_usuarios: !!p.aprobar_usuarios
       }
     };
   });
@@ -1384,6 +1598,13 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
                     onChange={(e) => setForm({...form, permisos: {...form.permisos, configuracion: e.target.checked}})}
                   />
                   <span>Configuración</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.aprobar_usuarios}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, aprobar_usuarios: e.target.checked}})}
+                  />
+                  <span>Solo Aprobar Usuarios</span>
                 </label>
               </div>
             </div>
@@ -1530,7 +1751,7 @@ const ProductManagement = () => {
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
         <h2 className="text-2xl font-black text-secondary flex items-center space-x-3">
-          <div className="p-2 bg-secondary text-white rounded-lg"><Package size={20} /></div>
+          <span className="p-2 bg-secondary text-white rounded-lg inline-flex"><Package size={20} /></span>
           <span>Gestión de Catálogo</span>
         </h2>
         <div className="flex flex-wrap items-center gap-3">
@@ -1736,9 +1957,11 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
+      const { config } = useStore.getState();
+      const processedFile = await addWatermark(file, config);
       const { error: uploadError } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file);
+        .upload(filePath, processedFile);
 
       if (uploadError) throw uploadError;
 
@@ -2111,12 +2334,13 @@ const OrderManagement = () => {
     if (!order) return;
     const exportData = order.items.map((item: any) => ({
       'Numero de Parte': item.sku,
+      'Producto': item.nombre || 'N/A',
       'Cantidad': item.cantidad,
       'Folio': order.folio || 'N/A'
     }));
     
-    const header = "Numero de Parte,Cantidad,Folio\n";
-    const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
+    const header = "Numero de Parte,Producto,Cantidad,Folio\n";
+    const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Producto']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
     downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0,8)}.csv`);
   };
 
@@ -2155,9 +2379,10 @@ const OrderManagement = () => {
     doc.text(`ID Cliente: ${order.cliente_id}`, 100, 58);
 
     // Table
-    const tableColumn = ["SKU", "Cantidad", "Precio Unitario", "Subtotal"];
+    const tableColumn = ["SKU", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
     const tableRows = order.items.map((item: any) => [
       item.sku,
+      item.nombre || 'N/A',
       item.cantidad.toString(),
       `$${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -2170,10 +2395,11 @@ const OrderManagement = () => {
       theme: 'grid',
       headStyles: { fillColor: [51, 65, 85] }, // slate-700
       columnStyles: {
-        0: { cellWidth: 80 },
-        1: { halign: 'center' },
-        2: { halign: 'right' },
-        3: { halign: 'right' }
+        0: { cellWidth: 40 },
+        1: { cellWidth: 70 },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'right' }
       }
     });
 
@@ -2347,7 +2573,8 @@ const OrderManagement = () => {
                     </div>
                     <div>
                       <p className="text-sm font-black text-secondary">{item.sku}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
                         Cant: {item.cantidad} 
                         <span className="mx-2 text-slate-200">|</span> 
                         Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -80,7 +80,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       
       const { data: orderData, error } = await supabase.from('pedidos').insert({
         cliente_id: profile.id,
-        items: cart.map(i => ({ sku: i.sku, cantidad: i.cantidad, precio_unitario: i.precio })),
+        items: cart.map(i => ({ sku: i.sku, nombre: i.nombre, cantidad: i.cantidad, precio_unitario: i.precio })),
         total: total,
         estatus: 'pendiente'
       }).select().single();

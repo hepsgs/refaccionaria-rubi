@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
       const itemsHtml = order.items.map((item: any) => `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.sku}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; color: #64748b;">${item.nombre || 'N/A'}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.cantidad}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">$${item.precio_unitario.toLocaleString()}</td>
         </tr>
@@ -112,6 +113,7 @@ Deno.serve(async (req) => {
               <thead>
                 <tr style="background: #f1f5f9;">
                   <th style="padding: 8px; text-align: left;">SKU</th>
+                  <th style="padding: 8px; text-align: left;">Producto</th>
                   <th style="padding: 8px; text-align: center;">Cant.</th>
                   <th style="padding: 8px; text-align: right;">Unitario</th>
                 </tr>

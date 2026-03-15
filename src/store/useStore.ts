@@ -22,6 +22,7 @@ interface UserProfile {
     pedidos: boolean;
     configuracion: boolean;
     usuarios: boolean;
+    aprobar_usuarios: boolean;
   };
 }
 
