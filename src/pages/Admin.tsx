@@ -1033,7 +1033,7 @@ const UserManagement = () => {
       </div>
 
       {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
-      {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
+      {editingUser && <EditUserModal key={editingUser.id} user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
     </div>
   );
 };
@@ -1245,17 +1245,20 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
 };
 
 const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () => void, onRefresh: () => void }) => {
-  const [form, setForm] = useState({
-    nombre_completo: user.nombre_completo,
-    empresa: user.empresa,
-    telefono: user.telefono || '',
-    rol: user.rol,
-    permisos: user.permisos || {
-      productos: false,
-      pedidos: false,
-      configuracion: false,
-      usuarios: false
-    }
+  const [form, setForm] = useState(() => {
+    const p = user.permisos || {};
+    return {
+      nombre_completo: user.nombre_completo,
+      empresa: user.empresa,
+      telefono: user.telefono || '',
+      rol: user.rol,
+      permisos: {
+        productos: !!p.productos,
+        pedidos: !!p.pedidos,
+        configuracion: !!p.configuracion,
+        usuarios: !!p.usuarios
+      }
+    };
   });
   const [saving, setSaving] = useState(false);
 
@@ -1354,15 +1357,34 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
             <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Permisos Específicos</label>
               <div className="grid grid-cols-2 gap-3">
-                {Object.keys(form.permisos).map((p) => (
-                  <label key={p} className="flex items-center space-x-2 text-sm font-bold text-secondary capitalize">
-                    <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
-                      checked={(form.permisos as any)[p]}
-                      onChange={(e) => setForm({...form, permisos: {...form.permisos, [p]: e.target.checked}})}
-                    />
-                    <span>{p}</span>
-                  </label>
-                ))}
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.productos}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, productos: e.target.checked}})}
+                  />
+                  <span>Productos</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.pedidos}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, pedidos: e.target.checked}})}
+                  />
+                  <span>Pedidos</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.usuarios}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, usuarios: e.target.checked}})}
+                  />
+                  <span>Usuarios</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.configuracion}
+                    onChange={(e) => setForm({...form, permisos: {...form.permisos, configuracion: e.target.checked}})}
+                  />
+                  <span>Configuración</span>
+                </label>
               </div>
             </div>
           )}

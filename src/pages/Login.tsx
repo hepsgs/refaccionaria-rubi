@@ -59,30 +59,7 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center pr-6">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Contraseña</label>
-                <button 
-                  type="button"
-                  onClick={async () => {
-                    if (!email) {
-                      toast.error('Por favor ingresa tu correo para enviarte el código.');
-                      return;
-                    }
-                    setLoading(true);
-                    const { error } = await supabase.auth.resetPasswordForEmail(email);
-                    setLoading(false);
-                    if (error) {
-                      toast.error(error.message);
-                    } else {
-                      toast.success('Código de recuperación enviado.');
-                      navigate('/restablecer-password', { state: { email } });
-                    }
-                  }}
-                  className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest"
-                >
-                  ¿Olvidaste tu contraseña?
-                </button>
-              </div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-6">Contraseña</label>
               <div className="relative">
                 <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input
@@ -106,6 +83,30 @@ const Login = () => {
                 </>
               )}
             </button>
+
+            <div className="text-center pt-2">
+              <button 
+                type="button"
+                onClick={async () => {
+                  if (!email) {
+                    toast.error('Por favor ingresa tu correo primero para enviarte el código.');
+                    return;
+                  }
+                  setLoading(true);
+                  const { error } = await supabase.auth.resetPasswordForEmail(email);
+                  setLoading(false);
+                  if (error) {
+                    toast.error(error.message);
+                  } else {
+                    toast.success('Código de recuperación enviado.');
+                    navigate('/restablecer-password', { state: { email } });
+                  }
+                }}
+                className="text-xs font-bold text-primary hover:underline uppercase tracking-widest transition-all"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
           </form>
 
           <div className="mt-8 text-center pt-8 border-t border-slate-50">
