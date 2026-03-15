@@ -46,6 +46,7 @@ const Register = () => {
           nombre_completo: form.nombre_completo,
           empresa: form.empresa,
           telefono: form.telefono,
+          email: form.email,
           estatus: 'pendiente',
           rol: 'cliente'
         });
@@ -54,6 +55,18 @@ const Register = () => {
         toast.error(profileError.message);
         setLoading(false);
       } else {
+        // Trigger notification email (don't wait for it to finish for the user)
+        supabase.functions.invoke('notify-registration', {
+          body: {
+            user_data: {
+              nombre_completo: form.nombre_completo,
+              empresa: form.empresa,
+              telefono: form.telefono,
+              email: form.email
+            }
+          }
+        }).catch(err => console.error('Error enviando notificación:', err));
+
         toast.success('¡Registro enviado! Revisaremos tu cuenta pronto.');
         setSuccess(true);
         setLoading(false);

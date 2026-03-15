@@ -157,7 +157,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             {/* Actions */}
             <div className="hidden md:flex items-center space-x-4">
-              {profile?.es_admin && (
+              {(profile?.rol === 'admin' || profile?.rol === 'empleado') && (
                 <Link to="/admin" className="p-2 text-secondary hover:text-primary transition-colors" title="Panel Admin">
                   <Shield size={24} />
                 </Link>
@@ -199,7 +199,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             {/* Mobile Actions and Menu */}
             <div className="md:hidden flex items-center space-x-1">
-              {profile?.es_admin && (
+              {(profile?.rol === 'admin' || profile?.rol === 'empleado') && (
                 <Link to="/admin" className="p-2 text-secondary" onClick={() => setIsMenuOpen(false)}>
                   <Shield size={22} />
                 </Link>

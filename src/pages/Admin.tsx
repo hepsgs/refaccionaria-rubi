@@ -76,11 +76,12 @@ const Admin = () => {
     branding_images: [],
     privacy_policy: '',
     terms_conditions: '',
-    hero_images: []
+    hero_images: [],
+    notificacion_registro_emails: ''
   });
   const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
-  const { profile, config } = useStore();
+  const { profile, config, setConfig } = useStore();
 
   // Update local settings state when global config changes
   useEffect(() => {
@@ -158,8 +159,12 @@ const Admin = () => {
               <button 
                 onClick={async () => {
                   const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
-                  if (!error) alert('Textos guardados correctamente.');
-                  else alert('Error: ' + error.message);
+                  if (!error) {
+                    toast.success('Textos guardados correctamente.');
+                    setConfig(settings);
+                  } else {
+                    toast.error('Error: ' + error.message);
+                  }
                 }}
                 className="btn-primary px-8"
               >
@@ -203,7 +208,7 @@ const Admin = () => {
                                 if (uploadError) throw uploadError;
                                 const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                                 setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
-                              } catch (error: any) { alert('Error: ' + error.message); }
+                              } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
                           <Plus size={24} />
@@ -298,11 +303,113 @@ const Admin = () => {
                               if (uploadError) throw uploadError;
                               const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                               setSettings({ ...settings, about_images: [...(settings.about_images || []), publicUrl] });
-                            } catch (error: any) { alert('Error: ' + error.message); }
+                            } catch (error: any) { toast.error('Error: ' + error.message); }
                           }}
                         />
                         <Plus size={24} />
                       </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                  <span>Sección Distribuidores</span>
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 1</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.distributors_title_1}
+                      onChange={(e) => setSettings({...settings, distributors_title_1: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 2 (Color)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.distributors_title_2}
+                      onChange={(e) => setSettings({...settings, distributors_title_2: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Informativo</label>
+                    <textarea 
+                      className="input-rubi min-h-[100px] resize-none py-3" 
+                      value={settings.distributors_text}
+                      onChange={(e) => setSettings({...settings, distributors_text: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto del Botón (CTA)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.distributors_cta_text}
+                      onChange={(e) => setSettings({...settings, distributors_cta_text: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de la Sección</label>
+                    <div className="flex items-center space-x-4">
+                      {settings.distributors_image_url ? (
+                        <div className="relative group w-32 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                          <img 
+                            src={settings.distributors_image_url} 
+                            alt="Distribuidores" 
+                            className="w-full h-full object-cover"
+                          />
+                          <label className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fileExt = file.name.split('.').pop();
+                                  const fileName = `distributors-${Math.random()}.${fileExt}`;
+                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                  if (uploadError) throw uploadError;
+                                  const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                  setSettings({ ...settings, distributors_image_url: publicUrl });
+                                } catch (error: any) { toast.error('Error: ' + error.message); }
+                              }}
+                            />
+                            <Edit size={16} />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="w-32 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `distributors-${Math.random()}.${fileExt}`;
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                if (uploadError) throw uploadError;
+                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, distributors_image_url: publicUrl });
+                              } catch (error: any) { toast.error('Error: ' + error.message); }
+                            }}
+                          />
+                          <Plus size={24} />
+                        </label>
+                      )}
+                      <div className="flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium leading-tight">
+                          Recomendado: Imagen horizontal (landscape) <br />
+                          JPG o PNG, máx 2MB
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -424,8 +531,12 @@ const Admin = () => {
               <button 
                 onClick={async () => {
                   const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
-                  if (!error) alert('Configuración guardada correctamente.');
-                  else alert('Error: ' + error.message);
+                  if (!error) {
+                    toast.success('Configuración guardada correctamente.');
+                    setConfig(settings);
+                  } else {
+                    toast.error('Error: ' + error.message);
+                  }
                 }}
                 className="btn-primary px-8"
               >
@@ -506,7 +617,7 @@ const Admin = () => {
                                 if (uploadError) throw uploadError;
                                 const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
                                 setSettings({ ...settings, logo_url: publicUrlData.publicUrl });
-                              } catch (error: any) { alert('Error: ' + error.message); }
+                              } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
                           <label 
@@ -546,7 +657,7 @@ const Admin = () => {
                                 if (uploadError) throw uploadError;
                                 const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
                                 setSettings({ ...settings, favicon_url: publicUrlData.publicUrl });
-                              } catch (error: any) { alert('Error: ' + error.message); }
+                              } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
                           <label 
@@ -590,7 +701,7 @@ const Admin = () => {
                               if (uploadError) throw uploadError;
                               const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                               setSettings({ ...settings, branding_images: [...(settings.branding_images || []), publicUrl] });
-                            } catch (error: any) { alert('Error: ' + error.message); }
+                            } catch (error: any) { toast.error('Error: ' + error.message); }
                           }}
                         />
                         <Plus size={18} />
@@ -634,6 +745,15 @@ const Admin = () => {
                     </select>
                   </div>
                   <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Registro (separados por comas)</label>
+                    <input 
+                      className="input-rubi" 
+                      value={settings.notificacion_registro_emails || ''} 
+                      onChange={(e) => setSettings({...settings, notificacion_registro_emails: e.target.value})} 
+                      placeholder="admin@empresa.com, ventas@empresa.com" 
+                    />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
                     <input 
                       className="input-rubi" 
@@ -657,7 +777,7 @@ const Admin = () => {
                       />
                       <button 
                         onClick={async () => {
-                          if (!testEmail) return alert('Ingresa un email de destino');
+                          if (!testEmail) return toast.error('Ingresa un email de destino');
                           setTestingSMTP(true);
                           try {
                             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -683,10 +803,10 @@ const Admin = () => {
                               throw new Error(data.error || 'Error desconocido en la prueba SMTP');
                             }
                             
-                            alert('¡Correo de prueba enviado con éxito!');
+                            toast.success('¡Correo de prueba enviado con éxito!');
                           } catch (e: any) { 
                             console.error('SMTP Test catch:', e);
-                            alert('Error: ' + e.message); 
+                            toast.error('Error: ' + e.message); 
                           }
                           finally { setTestingSMTP(false); }
                         }}
@@ -790,8 +910,8 @@ const UserManagement = () => {
               <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="py-5 px-6">
                   <div className="flex flex-col">
-                    <span className="font-bold text-secondary">{u.nombre_completo}</span>
-                    <span className="text-xs text-slate-400">ID: {u.id.slice(0,8)}</span>
+                    <span className="font-bold text-secondary text-base leading-tight">{u.nombre_completo}</span>
+                    <span className="text-xs text-slate-400 font-medium">{u.email || `ID: ${u.id.slice(0,8)}`}</span>
                   </div>
                 </td>
                 <td className="py-5 px-6 text-slate-500 font-medium">{u.empresa}</td>
@@ -850,11 +970,55 @@ const UserManagement = () => {
                     <Settings2 size={16} />
                   </button>
                   <button 
-                    onClick={async () => {
-                      if (confirm('¿Estás seguro de eliminar este usuario?')) {
-                        await supabase.from('perfiles').delete().eq('id', u.id);
-                        fetchUsers();
-                      }
+                    onClick={() => {
+                      toast((t) => (
+                        <div className="flex flex-col space-y-4 p-1">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
+                              <Trash2 size={20} />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-bold text-secondary text-sm">¿Eliminar usuario?</p>
+                              <p className="text-[10px] text-slate-500 font-medium leading-tight">Se borrará permanentemente el perfil de {u.nombre_completo}.</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={async () => {
+                                toast.dismiss(t.id);
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  if (!session) throw new Error("No hay sesión activa");
+
+                                  const { data, error } = await supabase.functions.invoke('delete-user', {
+                                    body: { userId: u.id },
+                                    headers: {
+                                      Authorization: `Bearer ${session.access_token}`
+                                    }
+                                  });
+
+                                  if (error) throw error;
+                                  if (data && !data.success) throw new Error(data.error);
+
+                                  toast.success('Usuario eliminado permanentemente.');
+                                  fetchUsers();
+                                } catch (err: any) {
+                                  toast.error('Error al eliminar: ' + err.message);
+                                }
+                              }}
+                              className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
+                            >
+                              Sí, eliminar
+                            </button>
+                            <button
+                              onClick={() => toast.dismiss(t.id)}
+                              className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
                     }}
                     className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
                     title="Eliminar"
@@ -1240,11 +1404,43 @@ const ProductManagement = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este producto?')) {
-      await supabase.from('productos').delete().eq('id', id);
-      fetchProducts();
-    }
+  const handleDelete = async (id: string, name: string) => {
+    toast((t) => (
+      <div className="flex flex-col space-y-4 p-1">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
+            <Trash2 size={20} />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-secondary text-sm">¿Eliminar producto?</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">Se borrará permanentemente "{name}".</p>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              const { error } = await supabase.from('productos').delete().eq('id', id);
+              if (error) {
+                toast.error('Error al eliminar: ' + error.message);
+              } else {
+                toast.success('Producto eliminado.');
+                fetchProducts();
+              }
+            }}
+            className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
+          >
+            Sí, eliminar
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
   };
 
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1290,14 +1486,14 @@ const ProductManagement = () => {
         return Object.keys(updateData).length > 1 ? updateData : null;
       }).filter(p => p !== null);
 
-      if (productsToUpsert.length === 0) return alert('No se encontraron datos válidos');
+      if (productsToUpsert.length === 0) return toast.error('No se encontraron datos válidos');
 
       const { error } = await supabase.from('productos').upsert(productsToUpsert, { onConflict: 'sku' });
       if (!error) {
-        alert('Importación completada con éxito');
+        toast.success('Importación completada con éxito');
         fetchProducts();
       } else {
-        alert('Error en importación: ' + error.message);
+        toast.error('Error en importación: ' + error.message);
       }
     };
     reader.readAsText(file);
@@ -1456,7 +1652,7 @@ const ProductManagement = () => {
                     <Edit size={16} />
                   </button>
                   <button 
-                    onClick={() => handleDelete(p.id)}
+                    onClick={() => handleDelete(p.id, p.nombre)}
                     className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" 
                     title="Eliminar"
                   >
@@ -1560,6 +1756,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
       }
 
       if (!error) {
+        toast.success(product ? 'Producto actualizado correctamente.' : 'Producto creado con éxito.');
         onRefresh();
         onClose();
       } else {
@@ -1567,6 +1764,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
       }
     } catch (error: any) {
       console.error('Error saving product:', error);
+      toast.error('Error al guardar: ' + error.message);
       setErrorMsg('Error al guardar: ' + error.message);
     } finally {
       setSaving(false);
@@ -1874,7 +2072,7 @@ const OrderManagement = () => {
     setLoading(false);
 
     if (error) {
-      alert("Error exportando pedidos: " + error.message);
+      toast.error("Error exportando pedidos: " + error.message);
       return;
     }
 

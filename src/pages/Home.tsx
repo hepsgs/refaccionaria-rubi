@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Warehouse, Clock, Settings2 } from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
@@ -98,6 +99,55 @@ const Home = () => {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Distributors Section */}
+      <section className="bg-secondary py-20 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-primary rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary rounded-full translate-x-1/2 translate-y-1/2 blur-3xl" />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8 animate-in slide-in-from-left duration-700">
+              <h2 className="text-4xl md:text-6xl font-black text-white leading-tight">
+                {config?.distributors_title_1 || '¿Quieres unirte a nuestro'} <br />
+                <span className="text-primary">{config?.distributors_title_2 || 'Grupo de Distribuidores?'}</span>
+              </h2>
+              <p className="text-slate-300 text-lg leading-relaxed max-w-xl">
+                {config?.distributors_text || 'Ofrecemos beneficios exclusivos para socios comerciales, talleres y empresas del sector automotriz. Accede a precios preferenciales, stock garantizado y soporte técnico prioritario.'}
+              </p>
+              <div className="flex flex-wrap gap-4 pt-4">
+                <Link 
+                  to="/register"
+                  className="btn-primary py-4 px-10 shadow-xl shadow-primary/20 flex items-center space-x-3 group"
+                >
+                  <span className="font-black uppercase tracking-widest">{config?.distributors_cta_text || 'Regístrate'}</span>
+                </Link>
+              </div>
+            </div>
+            
+            <div className="relative animate-in zoom-in duration-700 delay-100">
+              <div className="aspect-[16/10] rounded-[30px] overflow-hidden shadow-2xl border-4 border-white/10 relative">
+                {config?.distributors_image_url ? (
+                  <img src={config.distributors_image_url} alt="Distribuidores" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                    <Warehouse size={120} className="text-slate-700 animate-pulse" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-secondary/60 to-transparent" />
+              </div>
+              
+              {/* Floating Badge */}
+              <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-2xl border border-slate-100 hidden md:block animate-bounce duration-[3000ms]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Socios Activos</p>
+                <p className="text-3xl font-black text-secondary">{config?.stats_clients || '500+'}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
