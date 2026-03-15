@@ -41,21 +41,73 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [location]);
 
-  // Handle dynamic document title and favicon
+  // Handle dynamic document title, favicon, and PWA manifest
   React.useEffect(() => {
     if (config?.platform_name) {
       document.title = config.platform_name;
     }
     
+    // Update Favicon
     if (config?.favicon_url) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
+        document.head.appendChild(link);
       }
       link.href = config.favicon_url;
     }
+
+    // Update Apple Touch Icon (iOS)
+    if (config?.logo_url) {
+      let appleIcon: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+      if (!appleIcon) {
+        appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        document.head.appendChild(appleIcon);
+      }
+      appleIcon.href = config.logo_url;
+    }
+
+    // Update PWA Manifest dynamically (Android/iOS)
+    const manifest = {
+      name: config?.platform_name || 'GML Importaciones',
+      short_name: config?.abreviatura || 'GML',
+      display: 'standalone',
+      start_url: '/?utm_source=pwa#catalogo',
+      theme_color: '#1e293b',
+      background_color: '#f8fafc',
+      icons: [
+        {
+          src: config?.logo_url || '/favicon.svg',
+          sizes: '192x192',
+          type: 'image/png', // Using PNG or SVG depending on URL, browser usually handles
+          purpose: 'any'
+        },
+        {
+          src: config?.logo_url || '/favicon.svg',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any'
+        }
+      ]
+    };
+
+    const stringManifest = JSON.stringify(manifest);
+    const blob = new Blob([stringManifest], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(blob);
+    
+    let manifestLink: HTMLLinkElement | null = document.querySelector("link[rel='manifest']");
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      document.head.appendChild(manifestLink);
+    }
+    manifestLink.href = manifestURL;
+
+    return () => {
+      URL.revokeObjectURL(manifestURL);
+    };
   }, [config]);
 
   const handleLogout = async () => {
