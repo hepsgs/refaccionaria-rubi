@@ -20,10 +20,19 @@ import {
   Download,
   FileText,
   ChevronLeft,
-  ChevronRight,
-  ShieldAlert,
   Settings2,
-  Smartphone
+  Smartphone,
+  CheckCircle2,
+  MessageSquare,
+  Truck,
+  Star,
+  ShieldCheck,
+  Award,
+  Zap,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  ShieldAlert
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -177,8 +186,21 @@ const Admin = () => {
     notify_register_email: true,
     notify_register_whatsapp: false,
     notify_activation_email: true,
-    notify_activation_whatsapp: false
+    notify_activation_whatsapp: false,
+    about_features: []
   });
+
+  const IconMap: Record<string, any> = {
+    CheckCircle2,
+    MessageSquare,
+    Truck,
+    Star,
+    ShieldCheck,
+    Award,
+    Zap,
+    Clock,
+    Settings2
+  };
   const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
   const { profile, config, setConfig } = useStore();
@@ -414,6 +436,78 @@ const Admin = () => {
                         />
                         <Plus size={24} />
                       </label>
+                    </div>
+                  </div>
+
+                  {/* About Features (Editable Bullets) */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Características (Viñetas)</label>
+                      <button 
+                        onClick={() => setSettings({ 
+                          ...settings, 
+                          about_features: [...(settings.about_features || []), { text: '', icon: 'CheckCircle2' }] 
+                        })}
+                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
+                      >
+                        <Plus size={14} />
+                        <span>Añadir Viñeta</span>
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {(settings.about_features || []).map((feature: any, idx: number) => (
+                        <div key={idx} className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border border-slate-100 group">
+                          <div className="relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                              {(() => {
+                                const Icon = IconMap[feature.icon] || CheckCircle2;
+                                return <Icon size={18} />;
+                              })()}
+                            </div>
+                            <select
+                              value={feature.icon}
+                              onChange={(e) => {
+                                const newFeatures = [...settings.about_features];
+                                newFeatures[idx].icon = e.target.value;
+                                setSettings({ ...settings, about_features: newFeatures });
+                              }}
+                              className="appearance-none w-48 h-10 bg-white border border-slate-200 rounded-lg pl-10 pr-8 text-sm cursor-pointer hover:border-primary/50 transition-colors"
+                            >
+                              <option value="CheckCircle2">Círculo Check</option>
+                              <option value="MessageSquare">Mensaje</option>
+                              <option value="Truck">Envío/Camión</option>
+                              <option value="Star">Estrella</option>
+                              <option value="ShieldCheck">Escudo</option>
+                              <option value="Award">Premio</option>
+                              <option value="Zap">Rayo</option>
+                              <option value="Clock">Reloj</option>
+                              <option value="Settings2">Ajustes</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                          <input
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
+                            placeholder="Texto de la característica..."
+                            value={feature.text}
+                            onChange={(e) => {
+                              const newFeatures = [...settings.about_features];
+                              newFeatures[idx].text = e.target.value;
+                              setSettings({ ...settings, about_features: newFeatures });
+                            }}
+                          />
+                          <button
+                            onClick={() => setSettings({
+                              ...settings,
+                              about_features: (settings.about_features || []).filter((_: any, i: number) => i !== idx)
+                            })}
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

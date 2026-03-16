@@ -1,9 +1,32 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Warehouse, Clock, Settings2 } from 'lucide-react';
+import { 
+  Warehouse, 
+  Clock, 
+  Settings2, 
+  CheckCircle2, 
+  MessageSquare, 
+  Truck, 
+  Star, 
+  ShieldCheck, 
+  Award, 
+  Zap 
+} from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
 import { useStore } from '../store/useStore';
+
+const IconMap: Record<string, any> = {
+  CheckCircle2,
+  MessageSquare,
+  Truck,
+  Star,
+  ShieldCheck,
+  Award,
+  Zap,
+  Clock,
+  Settings2
+};
 
 const Home = () => {
   const config = useStore(state => state.config);
@@ -91,13 +114,27 @@ const Home = () => {
             <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-line">
               {config?.about_text || `En ${config?.platform_name || 'nuestra empresa'}, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.`}
             </p>
-            <ul className="space-y-3">
-              {['Calidad certificada en cada pieza', 'Atención técnica personalizada', 'Entrega eficiente y garantizada'].map((item) => (
-                <li key={item} className="flex items-center space-x-3 text-secondary font-semibold">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                  <span>{item}</span>
-                </li>
-              ))}
+            <ul className="space-y-4">
+              {(config?.about_features && config.about_features.length > 0) ? (
+                config.about_features.map((feature: any, idx: number) => {
+                  const Icon = IconMap[feature.icon] || CheckCircle2;
+                  return (
+                    <li key={idx} className="flex items-center space-x-4 text-secondary font-semibold group">
+                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-110">
+                        <Icon size={20} />
+                      </div>
+                      <span className="text-lg">{feature.text}</span>
+                    </li>
+                  );
+                })
+              ) : (
+                ['Calidad certificada en cada pieza', 'Atención técnica personalizada', 'Entrega eficiente y garantizada'].map((item) => (
+                  <li key={item} className="flex items-center space-x-3 text-secondary font-semibold">
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    <span>{item}</span>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </div>
