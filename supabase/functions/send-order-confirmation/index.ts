@@ -218,9 +218,10 @@ Deno.serve(async (req) => {
       if (order.cliente.telefono) {
         let clientMsg = dbConfig.whatsapp_template_pedido_cliente || "Hola {nombre}, recibimos tu pedido #{folio}.";
         clientMsg = clientMsg
-          .replace('{nombre}', order.cliente.nombre_completo)
-          .replace('{folio}', order.folio || order.id)
-          .replace('{detalles}', orderDetails);
+          .replaceAll('{nombre}', order.cliente.nombre_completo)
+          .replaceAll('{folio}', order.folio || order.id)
+          .replaceAll('{detalles}', orderDetails)
+          .replaceAll('{telefono}', order.cliente.telefono || 'N/A');
         await sendWhatsApp(order.cliente.telefono, clientMsg, dbConfig);
         
         // Anti-spam recipient delay
@@ -234,10 +235,11 @@ Deno.serve(async (req) => {
       if (adminNumbers.length > 0) {
         let adminMsg = dbConfig.whatsapp_template_pedido_admin || "Nuevo pedido de {nombre}. Folio: {folio}. Total: {total}.\n\nDetalles:\n{detalles}";
         adminMsg = adminMsg
-          .replace('{nombre}', order.cliente.nombre_completo)
-          .replace('{folio}', order.folio || order.id)
-          .replace('{total}', `$${formatPrice(order.total)}`)
-          .replace('{detalles}', orderDetails);
+          .replaceAll('{nombre}', order.cliente.nombre_completo)
+          .replaceAll('{folio}', order.folio || order.id)
+          .replaceAll('{total}', `$${formatPrice(order.total)}`)
+          .replaceAll('{detalles}', orderDetails)
+          .replaceAll('{telefono}', order.cliente.telefono || 'N/A');
 
         for (const num of adminNumbers) {
           await sendWhatsApp(num, adminMsg, dbConfig);

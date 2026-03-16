@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import jsPDF from 'jspdf';
@@ -465,19 +465,27 @@ const Catalogue = () => {
       </div>
 
       {profile && (
-        <div className="flex justify-end space-x-3">
-          <button 
-            onClick={() => exportToCSV(products)}
-            className="flex items-center space-x-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl border border-emerald-100 font-bold text-xs hover:bg-emerald-100 transition-colors"
-          >
-            <span>Exportar CSV</span>
-          </button>
-          <button 
-            onClick={() => exportToPDF(products)}
-            className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-colors"
-          >
-            <span>Exportar PDF</span>
-          </button>
+        <div className="flex flex-col items-center justify-center space-y-4 pt-2 pb-6">
+          <div className="flex items-center space-x-2 text-slate-500 bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-white shadow-sm">
+            <Info size={14} className="text-primary" />
+            <p className="text-[10px] md:text-xs font-medium">
+              Filtra los productos deseados y usa estos botones para exportar tu catálogo personalizado
+            </p>
+          </div>
+          <div className="flex justify-center space-x-3">
+            <button 
+              onClick={() => exportToCSV(products)}
+              className="flex items-center space-x-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-xl border border-emerald-100 font-bold text-xs hover:bg-emerald-100 transition-all hover:scale-105 active:scale-95 shadow-sm"
+            >
+              <span>Exportar CSV</span>
+            </button>
+            <button 
+              onClick={() => exportToPDF(products)}
+              className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-5 py-2.5 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-all hover:scale-105 active:scale-95 shadow-sm"
+            >
+              <span>Exportar PDF</span>
+            </button>
+          </div>
         </div>
       )}
 

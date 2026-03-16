@@ -1463,7 +1463,7 @@ const Admin = () => {
                             <Info size={12} className="text-primary" />
                             <span>Etiquetas Disponibles para Mensajes</span>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             <div className="space-y-0.5">
                               <code className="text-[10px] font-bold text-primary">{'{nombre}'}</code>
                               <p className="text-[9px] text-slate-500 leading-tight">Nombre del cliente</p>
@@ -1479,6 +1479,10 @@ const Admin = () => {
                             <div className="space-y-0.5">
                               <code className="text-[10px] font-bold text-primary">{'{detalles}'}</code>
                               <p className="text-[9px] text-slate-500 leading-tight">Lista de productos y cant.</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <code className="text-[10px] font-bold text-primary">{'{telefono}'}</code>
+                              <p className="text-[9px] text-slate-500 leading-tight">Teléfono del cliente</p>
                             </div>
                           </div>
                         </div>
