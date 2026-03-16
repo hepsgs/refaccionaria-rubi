@@ -124,8 +124,12 @@
 }
 
 @layer base {
-  html, body {
-    @apply overflow-x-hidden w-full;
+  html {
+    @apply w-full;
+  }
+
+  body {
+    @apply bg-background text-secondary font-sans overflow-x-hidden w-full;
   }
 
   body.modal-open {

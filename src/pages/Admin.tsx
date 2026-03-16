@@ -32,7 +32,9 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Info,
+  HelpCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -1452,6 +1454,32 @@ const Admin = () => {
                               value={settings.whatsapp_template_pedido_admin || ''}
                               onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_admin: e.target.value })}
                             />
+                          </div>
+                        </div>
+
+                        {/* WhatsApp Tags Guide */}
+                        <div className="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center space-x-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <Info size={12} className="text-primary" />
+                            <span>Etiquetas Disponibles para Mensajes</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="space-y-0.5">
+                              <code className="text-[10px] font-bold text-primary">{'{nombre}'}</code>
+                              <p className="text-[9px] text-slate-500 leading-tight">Nombre del cliente</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <code className="text-[10px] font-bold text-primary">{'{folio}'}</code>
+                              <p className="text-[9px] text-slate-500 leading-tight">ID o folio del pedido</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <code className="text-[10px] font-bold text-primary">{'{total}'}</code>
+                              <p className="text-[9px] text-slate-500 leading-tight">Total con signo $</p>
+                            </div>
+                            <div className="space-y-0.5">
+                              <code className="text-[10px] font-bold text-primary">{'{detalles}'}</code>
+                              <p className="text-[9px] text-slate-500 leading-tight">Lista de productos y cant.</p>
+                            </div>
                           </div>
                         </div>
                       </div>

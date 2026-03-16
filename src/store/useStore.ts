@@ -6,6 +6,7 @@ interface CartItem {
   nombre: string;
   precio: number;
   cantidad: number;
+  stock: number;
 }
 
 interface UserProfile {
@@ -32,7 +33,7 @@ interface AppState {
   cart: CartItem[];
   setProfile: (profile: UserProfile | null) => void;
   setConfig: (config: any | null) => void;
-  addToCart: (item: Omit<CartItem, 'cantidad'>) => void;
+  addToCart: (item: Omit<CartItem, 'cantidad'>, requestedQuantity?: number) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, cantidad: number) => void;
   clearCart: () => void;
@@ -44,23 +45,25 @@ export const useStore = create<AppState>((set) => ({
   cart: [],
   setProfile: (profile) => set({ profile }),
   setConfig: (config) => set({ config }),
-  addToCart: (item) => set((state) => {
+  addToCart: (item, requestedQuantity = 1) => set((state) => {
     const existing = state.cart.find((i) => i.id === item.id);
     if (existing) {
+      const newQuantity = Math.min(existing.cantidad + requestedQuantity, item.stock);
       return {
         cart: state.cart.map((i) =>
-          i.id === item.id ? { ...i, cantidad: i.cantidad + 1 } : i
+          i.id === item.id ? { ...i, cantidad: newQuantity } : i
         ),
       };
     }
-    return { cart: [...state.cart, { ...item, cantidad: 1 }] };
+    const initialQuantity = Math.min(requestedQuantity, item.stock);
+    return { cart: [...state.cart, { ...item, cantidad: initialQuantity }] };
   }),
   removeFromCart: (id) => set((state) => ({
     cart: state.cart.filter((i) => i.id !== id),
   })),
   updateQuantity: (id, cantidad) => set((state) => ({
     cart: state.cart.map((i) =>
-      i.id === id ? { ...i, cantidad: Math.max(0, cantidad) } : i
+      i.id === id ? { ...i, cantidad: Math.min(Math.max(0, cantidad), i.stock) } : i
     ).filter(i => i.cantidad > 0),
   })),
   clearCart: () => set({ cart: [] }),

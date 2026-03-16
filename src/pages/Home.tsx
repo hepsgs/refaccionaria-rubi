@@ -265,7 +265,7 @@ const Home = () => {
       </section>
 
       {/* Catalogue Section */}
-      <section id="catalogo" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 space-y-12 reveal reveal-up">
+      <section id="catalogo" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 space-y-12">
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <h2 className="text-4xl font-black text-secondary">Nuestro Catálogo</h2>
           <p className="text-slate-500">Busca entre miles de refacciones por número de parte o especificaciones técnicas del vehículo.</p>

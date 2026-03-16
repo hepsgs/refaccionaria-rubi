@@ -212,10 +212,15 @@ Deno.serve(async (req) => {
 
     // --- WHATSAPP LOGIC ---
     if (notifyWhatsApp && dbConfig?.whatsapp_koonetxa_enabled) {
+      const orderDetails = order.items.map((item: any) => `${item.cantidad}x ${item.sku} - ${item.nombre || 'N/A'}`).join('\n');
+
       // 1. WhatsApp to Client
       if (order.cliente.telefono) {
         let clientMsg = dbConfig.whatsapp_template_pedido_cliente || "Hola {nombre}, recibimos tu pedido #{folio}.";
-        clientMsg = clientMsg.replace('{nombre}', order.cliente.nombre_completo).replace('{folio}', order.folio || order.id);
+        clientMsg = clientMsg
+          .replace('{nombre}', order.cliente.nombre_completo)
+          .replace('{folio}', order.folio || order.id)
+          .replace('{detalles}', orderDetails);
         await sendWhatsApp(order.cliente.telefono, clientMsg, dbConfig);
         
         // Anti-spam recipient delay
@@ -227,11 +232,12 @@ Deno.serve(async (req) => {
       const adminNumbers = adminNumbersStr.split(',').map((n: string) => n.trim()).filter((n: string) => n.length >= 10);
       
       if (adminNumbers.length > 0) {
-        let adminMsg = dbConfig.whatsapp_template_pedido_admin || "Nuevo pedido de {nombre}. Folio: {folio}. Total: {total}.";
+        let adminMsg = dbConfig.whatsapp_template_pedido_admin || "Nuevo pedido de {nombre}. Folio: {folio}. Total: {total}.\n\nDetalles:\n{detalles}";
         adminMsg = adminMsg
           .replace('{nombre}', order.cliente.nombre_completo)
           .replace('{folio}', order.folio || order.id)
-          .replace('{total}', `$${formatPrice(order.total)}`);
+          .replace('{total}', `$${formatPrice(order.total)}`)
+          .replace('{detalles}', orderDetails);
 
         for (const num of adminNumbers) {
           await sendWhatsApp(num, adminMsg, dbConfig);
