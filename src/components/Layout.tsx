@@ -558,7 +558,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </button>
         )}
         <a 
-          href={`https://wa.me/${config?.whatsapp_number || '5212345678'}?text=${encodeURIComponent(config?.whatsapp_message || 'Hola, me gustaría más información.')}`}
+          href={`https://wa.me/${
+            config?.whatsapp_number 
+              ? (config.whatsapp_number.replace(/\D/g, '').length === 10 ? '52' : '') + config.whatsapp_number.replace(/\D/g, '')
+              : '5212345678'
+          }?text=${encodeURIComponent(config?.whatsapp_message || 'Hola, me gustaría más información.')}`}
           target="_blank"
           rel="noopener noreferrer"
           className="w-14 h-14 bg-[#25D366] text-white rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"

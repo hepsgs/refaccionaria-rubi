@@ -678,10 +678,10 @@ const Admin = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (10 dígitos)</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (Incluir 52 para México)</label>
                       <input
                         className="input-rubi"
-                        placeholder="Ej: 5212345678"
+                        placeholder="Ej: 529616075008"
                         value={settings.whatsapp_number || ''}
                         onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
                       />
