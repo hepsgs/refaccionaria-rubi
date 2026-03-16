@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Building, Mail, Save, Clock, Package, X } from 'lucide-react';
+import { User, Building, Mail, Save, Clock, Package, X, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
+import { generateOrderPDF } from '../utils/pdfGenerator';
 
 const Profile = () => {
   const { profile, setProfile } = useStore();
@@ -385,12 +386,21 @@ const Profile = () => {
                 <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">Total del Pedido</span>
                 <span className="text-3xl font-black text-primary tracking-tighter">${selectedOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <button 
-                onClick={() => setSelectedOrder(null)}
-                className="w-full btn-primary py-4 rounded-2xl shadow-xl shadow-primary/20"
-              >
-                Cerrar Detalles
-              </button>
+              <div className="flex gap-3 mt-8">
+                <button 
+                  onClick={() => generateOrderPDF(selectedOrder, useStore.getState().config)}
+                  className="flex-1 bg-rose-50 text-rose-600 py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center space-x-2 border border-rose-100 hover:bg-rose-100 transition-all shadow-sm group"
+                >
+                  <FileText size={18} className="group-hover:scale-110 transition-transform" />
+                  <span>Descargar PDF</span>
+                </button>
+                <button 
+                  onClick={() => setSelectedOrder(null)}
+                  className="flex-[1.5] btn-primary py-4 rounded-2xl shadow-xl shadow-primary/20"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

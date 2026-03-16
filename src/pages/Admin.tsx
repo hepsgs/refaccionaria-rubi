@@ -40,8 +40,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { optimizeImage } from '../utils/imageOptimizer';
 import toast from 'react-hot-toast';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateOrderPDF } from '../utils/pdfGenerator';
 
 const downloadCSV = (content: string, filename: string) => {
   const BOM = "\uFEFF";
@@ -230,30 +229,7 @@ const Admin = () => {
   };
 
   const exportSingleOrderPDF = (order: any) => {
-    if (!order) return;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    doc.setFontSize(22); doc.setTextColor(15, 23, 42); doc.text('Refaccionaria Rubi', 14, 20);
-    doc.setFontSize(10); doc.setTextColor(100, 116, 139); doc.text('Detalle de Pedido', 14, 28);
-    doc.setFontSize(12); doc.setTextColor(15, 23, 42);
-    doc.text(`Folio: ${order.folio || 'N/A'}`, 14, 40);
-    doc.text(`Fecha: ${new Date(order.creado_at).toLocaleString()}`, 14, 46);
-    doc.text(`Estado: ${order.estatus.toUpperCase()}`, 14, 52);
-    const clientInfo = order.perfiles || {};
-    doc.text('Cliente:', 100, 40); doc.setFontSize(10);
-    doc.text(`Nombre: ${clientInfo.nombre_completo || 'N/A'}`, 100, 46);
-    doc.text(`Empresa: ${clientInfo.empresa || 'N/A'}`, 100, 52);
-    doc.text(`ID Cliente: ${order.cliente_id}`, 100, 58);
-    const tableColumn = ["SKU", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
-    const tableRows = order.items.map((item: any) => [
-      item.sku, item.nombre || 'N/A', item.cantidad.toString(),
-      `$${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      `$${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ]);
-    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 70, theme: 'grid', headStyles: { fillColor: [51, 65, 85] } });
-    const finalY = (doc as any).lastAutoTable.finalY || 70;
-    doc.setFontSize(14); doc.setTextColor(15, 23, 42);
-    doc.text(`Total del Pedido: $${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, finalY + 15);
-    doc.save(`Pedido_${order.folio || order.id.slice(0, 8)}.pdf`);
+    generateOrderPDF(order, config);
   };
 
 
