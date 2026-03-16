@@ -38,7 +38,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { optimizeImage } from '../utils/imageOptimizer';
 import toast from 'react-hot-toast';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const downloadCSV = (content: string, filename: string) => {
@@ -207,7 +207,78 @@ const Admin = () => {
   };
   const [testEmail, setTestEmail] = useState('');
   const [testingSMTP, setTestingSMTP] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const { profile, config, setConfig } = useStore();
+
+  const exportSingleOrderCSV = (order: any) => {
+    if (!order) return;
+    const exportData = order.items.map((item: any) => ({
+      'Numero de Parte': item.sku,
+      'Producto': item.nombre || 'N/A',
+      'Cantidad': item.cantidad,
+      'Folio': order.folio || 'N/A'
+    }));
+    const header = "Numero de Parte,Producto,Cantidad,Folio\n";
+    const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Producto']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
+    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0, 8)}.csv`);
+  };
+
+  const exportSingleOrderPDF = (order: any) => {
+    if (!order) return;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.setFontSize(22); doc.setTextColor(15, 23, 42); doc.text('Refaccionaria Rubi', 14, 20);
+    doc.setFontSize(10); doc.setTextColor(100, 116, 139); doc.text('Detalle de Pedido', 14, 28);
+    doc.setFontSize(12); doc.setTextColor(15, 23, 42);
+    doc.text(`Folio: ${order.folio || 'N/A'}`, 14, 40);
+    doc.text(`Fecha: ${new Date(order.creado_at).toLocaleString()}`, 14, 46);
+    doc.text(`Estado: ${order.estatus.toUpperCase()}`, 14, 52);
+    const clientInfo = order.perfiles || {};
+    doc.text('Cliente:', 100, 40); doc.setFontSize(10);
+    doc.text(`Nombre: ${clientInfo.nombre_completo || 'N/A'}`, 100, 46);
+    doc.text(`Empresa: ${clientInfo.empresa || 'N/A'}`, 100, 52);
+    doc.text(`ID Cliente: ${order.cliente_id}`, 100, 58);
+    const tableColumn = ["SKU", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
+    const tableRows = order.items.map((item: any) => [
+      item.sku, item.nombre || 'N/A', item.cantidad.toString(),
+      `$${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ]);
+    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 70, theme: 'grid', headStyles: { fillColor: [51, 65, 85] } });
+    const finalY = (doc as any).lastAutoTable.finalY || 70;
+    doc.setFontSize(14); doc.setTextColor(15, 23, 42);
+    doc.text(`Total del Pedido: $${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, finalY + 15);
+    doc.save(`Pedido_${order.folio || order.id.slice(0, 8)}.pdf`);
+  };
+
+
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    const { data } = await supabase.from('perfiles').select('*').order('creado_at', { ascending: false });
+    if (data) setUsers(data);
+    setLoadingUsers(false);
+  }, []);
+
+  const fetchProducts = useCallback(async () => {
+    setLoadingProducts(true);
+    const { data } = await supabase.from('productos').select('*').order('creado_at', { ascending: false });
+    if (data) setProducts(data);
+    setLoadingProducts(false);
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchProducts();
+  }, [fetchUsers, fetchProducts]);
 
   // Update local settings state when global config changes
   useEffect(() => {
@@ -251,7 +322,8 @@ const Admin = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
         <div>
           <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
@@ -276,9 +348,30 @@ const Admin = () => {
       </div>
 
       <div className="card-rubi p-8 min-h-[600px] border border-slate-100">
-        {activeTab === 'users' && <UserManagement />}
-        {activeTab === 'products' && <ProductManagement />}
-        {activeTab === 'orders' && <OrderManagement />}
+        {activeTab === 'users' && (
+          <UserManagement 
+            users={users}
+            loading={loadingUsers}
+            onRefresh={fetchUsers}
+            setShowAddUser={setShowAddUser} 
+            setEditingUser={setEditingUser} 
+          />
+        )}
+        {activeTab === 'products' && (
+          <ProductManagement 
+            products={products}
+            loading={loadingProducts}
+            onRefresh={fetchProducts}
+            setShowAdd={setShowAddProduct} 
+            setEditingProduct={setEditingProduct} 
+          />
+        )}
+        {activeTab === 'orders' && (
+          <OrderManagement 
+            selectedOrder={selectedOrder} 
+            setSelectedOrder={setSelectedOrder} 
+          />
+        )}
         {activeTab === 'cms' && (
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
@@ -1476,27 +1569,52 @@ const Admin = () => {
           </>
         )}
       </div>
+
+      {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
+      {editingUser && <EditUserModal key={editingUser.id} user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
+      
+      {(showAddProduct || editingProduct) && (
+        <ProductModal
+          product={editingProduct}
+          catalogues={{
+            marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
+            proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
+            tipos: Array.from(new Set(products.map(p => p.tipo).filter(Boolean))),
+            modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
+            años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
+          }}
+          onClose={() => { setShowAddProduct(false); setEditingProduct(null); }}
+          onRefresh={fetchProducts}
+        />
+      )}
+
+      {selectedOrder && (
+        <OrderDetailModal 
+          order={selectedOrder} 
+          onClose={() => setSelectedOrder(null)} 
+          exportCSV={exportSingleOrderCSV}
+          exportPDF={exportSingleOrderPDF}
+        />
+      )}
     </div>
+    </>
   );
 };
 
-const UserManagement = () => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+const UserManagement = ({ 
+  users, 
+  loading, 
+  onRefresh, 
+  setShowAddUser, 
+  setEditingUser 
+}: { 
+  users: any[], 
+  loading: boolean, 
+  onRefresh: () => void, 
+  setShowAddUser: (v: boolean) => void, 
+  setEditingUser: (v: any) => void 
+}) => {
   const { profile } = useStore();
-
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase.from('perfiles').select('*').order('creado_at', { ascending: false });
-    if (data) setUsers(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   const updateStatus = async (uid: string, status: string) => {
     const { error } = await supabase.from('perfiles').update({ estatus: status }).eq('id', uid);
@@ -1506,7 +1624,7 @@ const UserManagement = () => {
         body: { type: 'activation', user_id: uid }
       }).catch(err => console.error('Error enviando notificación de activación:', err));
     }
-    fetchUsers();
+    onRefresh();
   };
 
   return (
@@ -1638,7 +1756,7 @@ const UserManagement = () => {
                                       if (data && !data.success) throw new Error(data.error);
 
                                       toast.success('Usuario eliminado permanentemente.');
-                                      fetchUsers();
+                                      onRefresh();
                                     } catch (err: any) {
                                       toast.error('Error al eliminar: ' + err.message);
                                     }
@@ -1671,8 +1789,7 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
-      {editingUser && <EditUserModal key={editingUser.id} user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
+      {/* Modals moved to Admin root */}
     </div>
   );
 };
@@ -1744,8 +1861,8 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
         <div className="bg-secondary p-8 text-white relative">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all">
             <X size={24} />
@@ -1939,8 +2056,8 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
         <div className="bg-slate-800 p-8 text-white relative">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all text-white/50 hover:text-white">
             <X size={24} />
@@ -2063,23 +2180,20 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
   );
 };
 
-const ProductManagement = () => {
-  const [products, setProducts] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+const ProductManagement = ({ 
+  products, 
+  loading, 
+  onRefresh, 
+  setShowAdd, 
+  setEditingProduct 
+}: { 
+  products: any[], 
+  loading: boolean, 
+  onRefresh: () => void, 
+  setShowAdd: (v: boolean) => void, 
+  setEditingProduct: (v: any) => void 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase.from('productos').select('*').order('creado_at', { ascending: false });
-    if (data) setProducts(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
 
   const handleDelete = async (id: string, name: string) => {
     toast((t) => (
@@ -2102,7 +2216,7 @@ const ProductManagement = () => {
                 toast.error('Error al eliminar: ' + error.message);
               } else {
                 toast.success('Producto eliminado.');
-                fetchProducts();
+                onRefresh();
               }
             }}
             className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
@@ -2141,7 +2255,7 @@ const ProductManagement = () => {
                 toast.error('Error al vaciar: ' + error.message);
               } else {
                 toast.success('Catálogo vaciado correctamente.');
-                fetchProducts();
+                onRefresh();
               }
             }}
             className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
@@ -2265,7 +2379,7 @@ const ProductManagement = () => {
       const { error } = await supabase.from('productos').upsert(productsToUpsert, { onConflict: 'sku' });
       if (!error) {
         toast.success('Importación completada con éxito');
-        fetchProducts();
+        onRefresh();
       } else {
         if (error.code === '23502') {
           toast.error('Faltan datos obligatorios (Nombre). Use la plantilla completa para productos nuevos.');
@@ -2465,20 +2579,7 @@ const ProductManagement = () => {
         </table>
       </div>
 
-      {(showAdd || editingProduct) && (
-        <ProductModal
-          product={editingProduct}
-          catalogues={{
-            marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
-            proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
-            tipos: Array.from(new Set(products.map(p => p.tipo).filter(Boolean))),
-            modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
-            años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
-          }}
-          onClose={() => { setShowAdd(false); setEditingProduct(null); }}
-          onRefresh={fetchProducts}
-        />
-      )}
+      {/* Modals moved to Admin root */}
     </div>
   );
 };
@@ -2575,8 +2676,8 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
         <div className="bg-secondary p-8 text-white relative">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all">
             <X size={24} />
@@ -2808,9 +2909,8 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
   );
 };
 
-const OrderManagement = () => {
+const OrderManagement = ({ selectedOrder, setSelectedOrder }: { selectedOrder: any, setSelectedOrder: (v: any) => void }) => {
   const [orders, setOrders] = useState<any[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Filters & Pagination
@@ -2927,88 +3027,7 @@ const OrderManagement = () => {
     downloadCSV(headers + rows, `pedidos_reporte_${new Date().getTime()}.csv`);
   };
 
-  const exportSingleOrderCSV = (order: any) => {
-    if (!order) return;
-    const exportData = order.items.map((item: any) => ({
-      'Numero de Parte': item.sku,
-      'Producto': item.nombre || 'N/A',
-      'Cantidad': item.cantidad,
-      'Folio': order.folio || 'N/A'
-    }));
 
-    const header = "Numero de Parte,Producto,Cantidad,Folio\n";
-    const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Producto']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
-    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0, 8)}.csv`);
-  };
-
-  const exportSingleOrderPDF = (order: any) => {
-    if (!order) return;
-
-    // Explicitly define parameters to prevent corrupted generation in some environments
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    // Header
-    doc.setFontSize(22);
-    doc.setTextColor(15, 23, 42); // slate-900
-    doc.text('Refaccionaria Rubi', 14, 20);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139); // slate-500
-    doc.text('Detalle de Pedido', 14, 28);
-
-    // Order Info
-    doc.setFontSize(12);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Folio: ${order.folio || 'N/A'}`, 14, 40);
-    doc.text(`Fecha: ${new Date(order.creado_at).toLocaleString()}`, 14, 46);
-    doc.text(`Estado: ${order.estatus.toUpperCase()}`, 14, 52);
-
-    // Client Info
-    const clientInfo = order.perfiles || {};
-    doc.text('Cliente:', 100, 40);
-    doc.setFontSize(10);
-    doc.text(`Nombre: ${clientInfo.nombre_completo || 'N/A'}`, 100, 46);
-    doc.text(`Empresa: ${clientInfo.empresa || 'N/A'}`, 100, 52);
-    doc.text(`ID Cliente: ${order.cliente_id}`, 100, 58);
-
-    // Table
-    const tableColumn = ["SKU", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
-    const tableRows = order.items.map((item: any) => [
-      item.sku,
-      item.nombre || 'N/A',
-      item.cantidad.toString(),
-      `$${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      `$${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 70,
-      theme: 'grid',
-      headStyles: { fillColor: [51, 65, 85] }, // slate-700
-      columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 70 },
-        2: { halign: 'center' },
-        3: { halign: 'right' },
-        4: { halign: 'right' }
-      }
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY || 70;
-
-    // Total
-    doc.setFontSize(14);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Total del Pedido: $${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, finalY + 15);
-
-    doc.save(`Pedido_${order.folio || order.id.slice(0, 8)}.pdf`);
-  };
 
   return (
     <div className="space-y-6">
@@ -3127,103 +3146,105 @@ const OrderManagement = () => {
           </button>
         </div>
       )}
+    </div>
 
-      {/* Order Details Modal Admin */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={() => setSelectedOrder(null)} />
-          <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300">
-            <button
-              onClick={() => setSelectedOrder(null)}
-              className="absolute right-6 top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
-            >
-              <X size={20} />
-            </button>
+  );
+};
 
-            <div className="flex items-center space-x-4 mb-8">
-              <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                <ClipboardList size={28} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Detalle Maestro de Pedido</p>
-                <h3 className="text-3xl font-black text-secondary uppercase tracking-tight">
-                  {selectedOrder.folio ? `Folio #${selectedOrder.folio}` : `ID: ${selectedOrder.id.slice(0, 12)}...`}
-                </h3>
-              </div>
-            </div>
+const OrderDetailModal = ({ order, onClose, exportCSV, exportPDF }: { order: any, onClose: () => void, exportCSV: (order: any) => void, exportPDF: (order: any) => void }) => {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={onClose} />
+      <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300">
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
+        >
+          <X size={20} />
+        </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
-                <p className="font-bold text-secondary text-base truncate">{selectedOrder.perfiles?.nombre_completo || 'Cliente Desconocido'}</p>
-                <p className="font-bold text-slate-500 text-xs truncate mb-1">{selectedOrder.perfiles?.empresa || 'Empresa Desconocida'}</p>
-                <p className="font-medium text-slate-400 text-[10px] truncate">ID: {selectedOrder.cliente_id}</p>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
-                <div className="flex items-center space-x-2">
-                  <span className={`w-2 h-2 rounded-full ${selectedOrder.estatus === 'entregado' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-                  <span className="font-bold text-secondary uppercase text-sm">{selectedOrder.estatus}</span>
-                </div>
-              </div>
-            </div>
+        <div className="flex items-center space-x-4 mb-8">
+          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <ClipboardList size={28} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Detalle Maestro de Pedido</p>
+            <h3 className="text-3xl font-black text-secondary uppercase tracking-tight">
+              {order.folio ? `Folio #${order.folio}` : `ID: ${order.id.slice(0, 12)}...`}
+            </h3>
+          </div>
+        </div>
 
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Productos Solicitados</p>
-              {selectedOrder.items?.map((item: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
-                      <Package size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-secondary">{item.sku}</p>
-                      <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                        Cant: {item.cantidad}
-                        <span className="mx-2 text-slate-200">|</span>
-                        Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total</p>
-                <p className="text-4xl font-black text-secondary tracking-tighter">${selectedOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => exportSingleOrderCSV(selectedOrder)}
-                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
-                  title="Exportar a CSV"
-                >
-                  <FileDown size={20} />
-                  <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">CSV</span>
-                </button>
-                <button
-                  onClick={() => exportSingleOrderPDF(selectedOrder)}
-                  className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
-                  title="Exportar a PDF"
-                >
-                  <FileDown size={20} />
-                  <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">PDF</span>
-                </button>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="btn-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20"
-                >
-                  Cerrar
-                </button>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
+            <p className="font-bold text-secondary text-base truncate">{order.perfiles?.nombre_completo || 'Cliente Desconocido'}</p>
+            <p className="font-bold text-slate-500 text-xs truncate mb-1">{order.perfiles?.empresa || 'Empresa Desconocida'}</p>
+            <p className="font-medium text-slate-400 text-[10px] truncate">ID: {order.cliente_id}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
+            <div className="flex items-center space-x-2">
+              <span className={`w-2 h-2 rounded-full ${order.estatus === 'entregado' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+              <span className="font-bold text-secondary uppercase text-sm">{order.estatus}</span>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Productos Solicitados</p>
+          {order.items?.map((item: any, idx: number) => (
+            <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                  <Package size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-secondary">{item.sku}</p>
+                  <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                    Cant: {item.cantidad}
+                    <span className="mx-2 text-slate-200">|</span>
+                    Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total</p>
+            <p className="text-4xl font-black text-secondary tracking-tighter">${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => exportCSV(order)}
+              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+              title="Exportar a CSV"
+            >
+              <FileDown size={20} />
+              <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">CSV</span>
+            </button>
+            <button
+              onClick={() => exportPDF(order)}
+              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+              title="Exportar a PDF"
+            >
+              <FileDown size={20} />
+              <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">PDF</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="btn-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

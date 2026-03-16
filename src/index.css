@@ -125,6 +125,10 @@
 
 @layer base {
   html, body {
-    @apply overflow-x-clip w-full;
+    @apply overflow-x-hidden w-full;
+  }
+
+  body.modal-open {
+    @apply overflow-hidden pr-[var(--scrollbar-width,0px)];
   }
 }
