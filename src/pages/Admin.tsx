@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { optimizeImage } from '../utils/imageOptimizer';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -338,7 +339,8 @@ const Admin = () => {
                             try {
                               const fileExt = file.name.split('.').pop();
                               const fileName = `hero-${Math.random()}.${fileExt}`;
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                              const processedFile = await optimizeImage(file);
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                               if (uploadError) throw uploadError;
                               const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                               setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
@@ -531,7 +533,8 @@ const Admin = () => {
                             try {
                               const fileExt = file.name.split('.').pop();
                               const fileName = `about-${Math.random()}.${fileExt}`;
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                              const processedFile = await optimizeImage(file);
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                               if (uploadError) throw uploadError;
                               const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                               setSettings({ ...settings, about_images: [...(settings.about_images || []), publicUrl] });
@@ -676,7 +679,8 @@ const Admin = () => {
                                 try {
                                   const fileExt = file.name.split('.').pop();
                                   const fileName = `distributors-${Math.random()}.${fileExt}`;
-                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                  const processedFile = await optimizeImage(file);
+                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                                   if (uploadError) throw uploadError;
                                   const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                                   setSettings({ ...settings, distributors_image_url: publicUrl });
@@ -1002,7 +1006,8 @@ const Admin = () => {
                             try {
                               const fileExt = file.name.split('.').pop();
                               const fileName = `brand-${Math.random()}.${fileExt}`;
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                              const processedFile = await optimizeImage(file);
+                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                               if (uploadError) throw uploadError;
                               const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                               setSettings({ ...settings, branding_images: [...(settings.branding_images || []), publicUrl] });
@@ -1190,7 +1195,8 @@ const Admin = () => {
                                   try {
                                     const fileExt = file.name.split('.').pop();
                                     const fileName = `watermark-${Math.random()}.${fileExt}`;
-                                    const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                    const processedFile = await optimizeImage(file);
+                                    const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                                     if (uploadError) throw uploadError;
                                     const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
                                     setSettings({ ...settings, watermark_image_url: publicUrl });
@@ -2386,7 +2392,8 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
       const filePath = `${fileName}`;
 
       const { config } = useStore.getState();
-      const processedFile = await addWatermark(file, config);
+      const watermarkedFile = await addWatermark(file, config);
+      const processedFile = await optimizeImage(watermarkedFile as File);
       const { error: uploadError } = await supabase.storage
         .from('product-images')
         .upload(filePath, processedFile);
