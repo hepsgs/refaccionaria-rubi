@@ -352,6 +352,13 @@ const Catalogue = () => {
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-100 flex items-center space-x-1">
                   <span className="text-[10px] font-black text-secondary uppercase tracking-tight">{product.marca}</span>
                 </div>
+                {product.stock <= 0 && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                    <span className="bg-rose-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-rose-500/20 uppercase tracking-widest ring-4 ring-rose-500/10 animate-in fade-in zoom-in duration-300">
+                      Sin Existencia
+                    </span>
+                  </div>
+                )}
               </div>
               
               <div 
@@ -376,11 +383,19 @@ const Catalogue = () => {
                         </p>
                       </div>
                       <button 
-                        onClick={(e) => handleGridAddToCart(e, product)}
-                        disabled={addingToCartId === product.id}
-                        className={`h-12 ${addingToCartId === product.id ? 'w-auto px-4 bg-emerald-500' : 'w-12 bg-primary'} text-white rounded-2xl flex items-center justify-center space-x-2 transition-all ${addingToCartId === product.id ? 'shadow-lg shadow-emerald-500/20' : 'hover:scale-110 active:scale-95 shadow-lg shadow-primary/20'}`}
+                        onClick={(e) => product.stock > 0 && handleGridAddToCart(e, product)}
+                        disabled={addingToCartId === product.id || product.stock <= 0}
+                        className={`h-12 ${
+                          product.stock <= 0 
+                            ? 'w-12 bg-slate-200 text-slate-400 cursor-not-allowed' 
+                            : addingToCartId === product.id 
+                              ? 'w-auto px-4 bg-emerald-500 text-white' 
+                              : 'w-12 bg-primary text-white hover:scale-110 active:scale-95 shadow-lg shadow-primary/20'
+                        } rounded-2xl flex items-center justify-center space-x-2 transition-all`}
                       >
-                        {addingToCartId === product.id ? (
+                        {product.stock <= 0 ? (
+                          <X size={20} />
+                        ) : addingToCartId === product.id ? (
                           <>
                             <CheckCircle2 size={18} />
                             <span className="text-[10px] font-black uppercase tracking-wider">Agregado</span>
@@ -571,9 +586,12 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proveedor</p>
                     <p className="font-bold text-secondary">{product.proveedor || 'N/A'}</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo</p>
-                    <p className="font-bold text-secondary">{product.tipo || 'N/A'}</p>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden">
+                    <div className={`absolute top-0 right-0 w-1 h-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Disponibilidad</p>
+                    <p className={`font-bold ${product.stock <= 0 ? 'text-rose-500' : 'text-secondary'}`}>
+                      {product.stock > 0 ? `${product.stock} unidades en stock` : 'Sin Existencia'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -588,18 +606,29 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
                       </p>
                     </div>
                     <button 
-                      onClick={handleAddToCart}
-                      disabled={added}
-                      className={`${added ? 'bg-emerald-500 shadow-emerald-200' : 'btn-primary'} h-16 px-8 rounded-2xl shadow-xl flex items-center justify-center space-x-3 group transition-all min-w-[160px]`}
+                      onClick={() => product.stock > 0 && handleAddToCart()}
+                      disabled={added || product.stock <= 0}
+                      className={`${
+                        product.stock <= 0
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-none shadow-none'
+                          : added 
+                            ? 'bg-emerald-500 shadow-emerald-200 text-white' 
+                            : 'btn-primary text-white shadow-xl group'
+                      } h-16 px-8 rounded-2xl flex items-center justify-center space-x-3 transition-all min-w-[200px]`}
                     >
-                      {added ? (
+                      {product.stock <= 0 ? (
                         <>
-                          <CheckCircle2 size={24} className="text-white" />
-                          <span className="font-black uppercase tracking-wider text-white">¡Agregado!</span>
+                          <X size={24} />
+                          <span className="font-black uppercase tracking-wider">Sin Existencia</span>
+                        </>
+                      ) : added ? (
+                        <>
+                          <CheckCircle2 size={24} />
+                          <span className="font-black uppercase tracking-wider">¡Agregado!</span>
                         </>
                       ) : (
                         <>
-                          <span className="font-black uppercase tracking-wider">Agregar</span>
+                          <span className="font-black uppercase tracking-wider">Agregar al Carrito</span>
                           <ChevronDown size={20} className="-rotate-90 group-hover:translate-x-1 transition-transform" />
                         </>
                       )}

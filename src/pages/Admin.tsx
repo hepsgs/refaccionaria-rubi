@@ -2120,6 +2120,45 @@ const ProductManagement = () => {
     ), { duration: 6000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
   };
 
+  const handleClearAllProducts = () => {
+    toast((t) => (
+      <div className="flex flex-col space-y-4 p-1">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-secondary text-sm">¿VACIAR TODO EL CATÁLOGO?</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">Esta acción eliminará TODOS los productos permanentemente.</p>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              const { error } = await supabase.from('productos').delete().neq('sku', '____NON_EXISTENT____');
+              if (error) {
+                toast.error('Error al vaciar: ' + error.message);
+              } else {
+                toast.success('Catálogo vaciado correctamente.');
+                fetchProducts();
+              }
+            }}
+            className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
+          >
+            SÍ, VACIAR TODO
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ), { duration: 8000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
+  };
+
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2127,36 +2166,67 @@ const ProductManagement = () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       let text = event.target?.result as string;
-      // Remove UTF-8 BOM if present
       if (text.startsWith('\uFEFF')) {
         text = text.substring(1);
       }
-      const lines = text.split('\n');
-      const productsToUpsert = lines.slice(1).map(line => {
-        const parts = line.split(',');
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return toast.error('El archivo está vacío');
+
+      // Robust CSV line parser that handles quoted values with commas
+      const parseCSVLine = (line: string) => {
+        const result = [];
+        let curValue = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(curValue.trim());
+            curValue = "";
+          } else {
+            curValue += char;
+          }
+        }
+        result.push(curValue.trim());
+        return result;
+      };
+
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/^"(.*)"$/, '$1'));
+      const hasNombre = headers.includes('nombre');
+      
+      let productsToUpsert = lines.slice(1).map(line => {
+        const parts = parseCSVLine(line);
         if (parts.length < 1) return null;
-        const [sku, nombre, precio, stock, marca, modelo, año_inicio, año_fin, proveedor, tipo, descripcion, imagenes] = parts.map(p => p?.trim());
-        if (!sku) return null;
+        
+        const rowData: any = {};
+        parts.forEach((part, index) => {
+          if (headers[index]) {
+            rowData[headers[index]] = part;
+          }
+        });
 
-        const updateData: any = { sku };
+        if (!rowData.sku) return null;
 
-        if (nombre !== undefined) updateData.nombre = nombre.replace(/^"(.*)"$/, '$1');
-        if (precio !== undefined && precio !== '') updateData.precio = parseFloat(precio);
-        if (stock !== undefined && stock !== '') updateData.stock = parseInt(stock);
-        if (marca !== undefined) updateData.marca = marca.replace(/^"(.*)"$/, '$1');
-        if (modelo !== undefined) updateData.modelo = modelo.replace(/^"(.*)"$/, '$1');
-        if (año_inicio !== undefined && año_inicio !== '') updateData.año_inicio = parseInt(año_inicio);
-        if (año_fin !== undefined && año_fin !== '') updateData.año_fin = parseInt(año_fin);
-        if (proveedor !== undefined) updateData.proveedor = proveedor.replace(/^"(.*)"$/, '$1');
-        if (tipo !== undefined) updateData.tipo = tipo.replace(/^"(.*)"$/, '$1');
-        if (descripcion !== undefined) updateData.descripcion = descripcion.replace(/^"(.*)"$/, '$1');
+        const updateData: any = { sku: rowData.sku };
 
-        if (imagenes) {
-          const cleanImg = imagenes.replace(/^"(.*)"$/, '$1');
+        if (rowData.nombre !== undefined) updateData.nombre = rowData.nombre.replace(/^"(.*)"$/, '$1');
+        if (rowData.precio !== undefined && rowData.precio !== '') updateData.precio = parseFloat(rowData.precio);
+        if (rowData.stock !== undefined && rowData.stock !== '') updateData.stock = parseInt(rowData.stock);
+        if (rowData.marca !== undefined) updateData.marca = rowData.marca.replace(/^"(.*)"$/, '$1');
+        if (rowData.modelo !== undefined) updateData.modelo = rowData.modelo.replace(/^"(.*)"$/, '$1');
+        if (rowData.año_inicio !== undefined && rowData.año_inicio !== '') updateData.año_inicio = parseInt(rowData.año_inicio);
+        if (rowData.año_fin !== undefined && rowData.año_fin !== '') updateData.año_fin = parseInt(rowData.año_fin);
+        if (rowData.proveedor !== undefined) updateData.proveedor = rowData.proveedor.replace(/^"(.*)"$/, '$1');
+        if (rowData.tipo !== undefined) updateData.tipo = rowData.tipo.replace(/^"(.*)"$/, '$1');
+        if (rowData.descripcion !== undefined) updateData.descripcion = rowData.descripcion.replace(/^"(.*)"$/, '$1');
+
+        if (rowData.imagenes) {
+          const cleanImg = rowData.imagenes.replace(/^"(.*)"$/, '$1');
           if (cleanImg.startsWith('[') && cleanImg.endsWith(']')) {
             try { updateData.imagenes = JSON.parse(cleanImg); } catch (e) { console.error(e); }
           } else {
-            updateData.imagenes = cleanImg.split(';').map(i => i.trim()).filter(i => i);
+            updateData.imagenes = cleanImg.split(';').map((i: string) => i.trim()).filter((i: string) => i);
           }
         }
 
@@ -2165,12 +2235,43 @@ const ProductManagement = () => {
 
       if (productsToUpsert.length === 0) return toast.error('No se encontraron datos válidos');
 
+      // If nombre is missing, we must supplement it from existing records to satisfy Postgres NOT NULL constraints during upsert
+      if (!hasNombre) {
+        const skus = (productsToUpsert as any[]).map(p => p.sku);
+        // Supabase select filter can handle large arrays but let's be safe and select what we need
+        const { data: existingProducts } = await supabase
+          .from('productos')
+          .select('sku, nombre')
+          .in('sku', skus);
+        
+        const existingMap = new Map(existingProducts?.map(p => [String(p.sku), p.nombre]) || []);
+        const filteredToUpsert = (productsToUpsert as any[])
+          .filter(p => existingMap.has(String(p.sku)))
+          .map(p => ({
+            ...p,
+            nombre: existingMap.get(String(p.sku)) // Supplement with existing name
+          }));
+
+        if (filteredToUpsert.length === 0) {
+          return toast.error('No se encontraron productos existentes para actualizar. Use la plantilla completa para agregar productos nuevos.');
+        }
+
+        if (filteredToUpsert.length < productsToUpsert.length) {
+          toast.loading(`Actualizando ${filteredToUpsert.length} productos (se saltaron ${productsToUpsert.length - filteredToUpsert.length} no encontrados)...`, { duration: 3000 });
+        }
+        productsToUpsert = filteredToUpsert;
+      }
+
       const { error } = await supabase.from('productos').upsert(productsToUpsert, { onConflict: 'sku' });
       if (!error) {
         toast.success('Importación completada con éxito');
         fetchProducts();
       } else {
-        toast.error('Error en importación: ' + error.message);
+        if (error.code === '23502') {
+          toast.error('Faltan datos obligatorios (Nombre). Use la plantilla completa para productos nuevos.');
+        } else {
+          toast.error('Error en importación: ' + error.message);
+        }
       }
     };
     reader.readAsText(file);
@@ -2223,7 +2324,7 @@ const ProductManagement = () => {
             </button>
             <button
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'imagenes'];
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'descripcion', 'imagenes'];
                 const rows = products.map(p => [
                   p.sku,
                   `"${p.nombre}"`,
@@ -2235,6 +2336,7 @@ const ProductManagement = () => {
                   p.año_fin || '',
                   `"${p.proveedor || ''}"`,
                   `"${p.tipo || ''}"`,
+                  `"${p.descripcion || ''}"`,
                   `"${p.imagenes ? p.imagenes.join(';') : ''}"`
                 ].join(","));
                 downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
@@ -2246,6 +2348,14 @@ const ProductManagement = () => {
             </button>
           </div>
 
+          <button
+            onClick={handleClearAllProducts}
+            className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+            title="Vaciar Catálogo"
+          >
+            <Trash2 size={20} />
+          </button>
+
           <label className="btn-secondary flex items-center space-x-2 py-2.5 px-5 cursor-pointer text-sm">
             <Upload size={18} />
             <span>Importar CSV</span>
@@ -2255,6 +2365,19 @@ const ProductManagement = () => {
             <Plus size={18} />
             <span>Nuevo Producto</span>
           </button>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl mb-6 flex items-start space-x-3">
+        <div className="p-2 bg-amber-100 text-amber-600 rounded-lg shrink-0">
+          <ShieldAlert size={18} />
+        </div>
+        <div>
+          <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Nota importante de importación</p>
+          <p className="text-[11px] text-amber-700 leading-relaxed">
+            La importación de archivos CSV <strong>sustituye (reemplaza)</strong> las existencias y precios actuales basándose en el SKU. 
+            Asegúrate de que tu archivo contenga los datos más recientes de tu sistema externo.
+          </p>
         </div>
       </div>
 
@@ -2732,6 +2855,45 @@ const OrderManagement = () => {
     fetchOrders();
   }, [fetchOrders]);
 
+  const handleClearAllOrders = () => {
+    toast((t) => (
+      <div className="flex flex-col space-y-4 p-1">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-secondary text-sm">¿ELIMINAR TODOS LOS PEDIDOS?</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">Esta acción borrará TODO el historial permanentemente.</p>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              const { error } = await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+              if (error) {
+                toast.error('Error al eliminar: ' + error.message);
+              } else {
+                toast.success('Pedidos eliminados correctamente.');
+                fetchOrders();
+              }
+            }}
+            className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
+          >
+            SÍ, ELIMINAR TODO
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    ), { duration: 8000, position: 'top-center', style: { borderRadius: '20px', padding: '16px', border: '1px solid #f1f5f9' } });
+  };
+
   const exportAllOrdersCSV = async () => {
     setLoading(true);
     // Use !inner join when searching to filter results correctly for export too
@@ -2869,6 +3031,15 @@ const OrderManagement = () => {
               }}
             />
           </div>
+
+          <button
+            onClick={handleClearAllOrders}
+            className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+            title="Vaciar Historial"
+          >
+            <Trash2 size={18} />
+          </button>
+
           <button
             onClick={exportAllOrdersCSV}
             className="btn-secondary py-2 px-4 flex items-center space-x-2 text-xs font-bold leading-none"
