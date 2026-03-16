@@ -25,11 +25,11 @@
 
 @layer components {
   .card-rubi {
-    @apply bg-white rounded-rubi shadow-soft p-6 transition-all duration-300 hover:shadow-lg;
+    @apply bg-white rounded-rubi shadow-soft p-6 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2;
   }
 
   .btn-primary {
-    @apply bg-primary text-white px-6 py-3 rounded-rubi font-semibold transition-all duration-300 hover:opacity-90 active:scale-95 disabled:opacity-50;
+    @apply bg-primary text-white px-6 py-3 rounded-rubi font-semibold transition-all duration-300 hover:opacity-90 hover:shadow-lg hover:shadow-primary/20 active:scale-95 disabled:opacity-50;
   }
 
   .btn-secondary {
@@ -52,6 +52,59 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #cbd5e1;
+  }
+
+  /* Reveal on Scroll System */
+  .reveal {
+    opacity: 0;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .reveal-up {
+    transform: translateY(40px);
+  }
+
+  .reveal-down {
+    transform: translateY(-40px);
+  }
+
+  .reveal-left {
+    transform: translateX(-40px);
+  }
+
+  .reveal-right {
+    transform: translateX(40px);
+  }
+
+  .reveal.active {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+
+  /* Micro-animations */
+  .hover-float {
+    @apply transition-transform duration-300;
+  }
+  .hover-float:hover {
+    @apply -translate-y-2;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.02); }
   }
 
   .animate-marquee {

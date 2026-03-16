@@ -50,7 +50,9 @@ function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [fetchProfile, fetchConfig, setProfile]);
 
   return (
