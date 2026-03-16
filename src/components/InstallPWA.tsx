@@ -55,7 +55,7 @@ const InstallPWA = () => {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-[100] animate-in slide-in-from-bottom duration-500">
+    <div className="fixed bottom-24 left-4 right-4 md:left-8 md:right-auto md:max-w-sm w-auto z-[100] animate-in slide-in-from-bottom duration-500">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 flex items-center space-x-4 relative overflow-hidden">
         {/* Progress bar background for a premium feel */}
         <div className="absolute top-0 left-0 h-1 bg-primary/20 w-full" />
