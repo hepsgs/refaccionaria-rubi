@@ -33,8 +33,8 @@ import {
   ChevronDown,
   ChevronRight,
   ShieldAlert,
-  Info,
-  HelpCircle
+  Info
+  //,HelpCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -326,617 +326,71 @@ const Admin = () => {
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
-          <p className="text-slate-500 font-medium">Gestión de {settings.platform_name || 'TecnosisMX'}</p>
-        </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+          <div>
+            <h1 className="text-4xl font-black text-secondary tracking-tight">PANEL DE CONTROL</h1>
+            <p className="text-slate-500 font-medium">Gestión de {settings.platform_name || 'TecnosisMX'}</p>
+          </div>
 
-        <div className="flex bg-white p-1.5 rounded-2xl shadow-soft border border-slate-100 overflow-x-auto max-w-full">
-          {availableTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+          <div className="flex bg-white p-1.5 rounded-2xl shadow-soft border border-slate-100 overflow-x-auto max-w-full">
+            {availableTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${activeTab === tab.id
                   ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
                   : 'text-slate-400 hover:text-secondary'
-                }`}
-            >
-              <tab.icon size={18} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card-rubi p-8 min-h-[600px] border border-slate-100">
-        {activeTab === 'users' && (
-          <UserManagement 
-            users={users}
-            loading={loadingUsers}
-            onRefresh={fetchUsers}
-            setShowAddUser={setShowAddUser} 
-            setEditingUser={setEditingUser} 
-          />
-        )}
-        {activeTab === 'products' && (
-          <ProductManagement 
-            products={products}
-            loading={loadingProducts}
-            onRefresh={fetchProducts}
-            setShowAdd={setShowAddProduct} 
-            setEditingProduct={setEditingProduct} 
-          />
-        )}
-        {activeTab === 'orders' && (
-          <OrderManagement 
-            selectedOrder={selectedOrder} 
-            setSelectedOrder={setSelectedOrder} 
-          />
-        )}
-        {activeTab === 'cms' && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <ImagePlus size={32} />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">CMS Landing Page</h2>
-                  <p className="text-slate-500 font-medium text-sm">Modifica los textos principales de la página de inicio.</p>
-                </div>
-              </div>
-              <button
-                onClick={async () => {
-                  const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
-                  if (!error) {
-                    toast.success('Textos guardados correctamente.');
-                    setConfig(settings);
-                  } else {
-                    toast.error('Error: ' + error.message);
-                  }
-                }}
-                className="btn-primary px-8"
+                  }`}
               >
-                Guardar Cambios
+                <tab.icon size={18} />
+                <span>{tab.label}</span>
               </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Sección Principal (Hero)</span>
-                </h3>
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Principal (Hero Slider)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {settings.hero_images?.map((img: string, idx: number) => (
-                        <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                          <img src={img} alt="Hero" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setSettings({ ...settings, hero_images: settings.hero_images.filter((_: any, i: number) => i !== idx) })}
-                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const fileExt = file.name.split('.').pop();
-                              const fileName = `hero-${Math.random()}.${fileExt}`;
-                              const processedFile = await optimizeImage(file);
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
-                              if (uploadError) throw uploadError;
-                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                              setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
-                            } catch (error: any) { toast.error('Error: ' + error.message); }
-                          }}
-                        />
-                        <Plus size={24} />
-                      </label>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.hero_title_1}
-                      onChange={(e) => setSettings({ ...settings, hero_title_1: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.hero_title_2}
-                      onChange={(e) => setSettings({ ...settings, hero_title_2: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
-                    <textarea
-                      className="input-rubi min-h-[100px] resize-none py-3"
-                      value={settings.hero_subtitle}
-                      onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                  <span>Sección Nosotros e Imágenes</span>
-                </h3>
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Negra)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.about_title_1}
-                      onChange={(e) => setSettings({ ...settings, about_title_1: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.about_title_2}
-                      onChange={(e) => setSettings({ ...settings, about_title_2: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Descriptivo</label>
-                    <textarea
-                      className="input-rubi min-h-[100px] resize-none py-3"
-                      value={settings.about_text}
-                      onChange={(e) => setSettings({ ...settings, about_text: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Mission / Vision Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Misión</label>
-                      <textarea
-                        className="input-rubi min-h-[120px] resize-none py-3 text-sm"
-                        value={settings.about_mision}
-                        placeholder="Escribe la misión de la empresa..."
-                        onChange={(e) => setSettings({ ...settings, about_mision: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Visión</label>
-                      <textarea
-                        className="input-rubi min-h-[120px] resize-none py-3 text-sm"
-                        value={settings.about_vision}
-                        placeholder="Escribe la visión de la empresa..."
-                        onChange={(e) => setSettings({ ...settings, about_vision: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Values Editor */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestros Valores</label>
-                      <button 
-                        onClick={() => setSettings({ 
-                          ...settings, 
-                          about_valores: [...(settings.about_valores || []), { title: '', description: '', icon: 'Star' }] 
-                        })}
-                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
-                      >
-                        <Plus size={14} />
-                        <span>Añadir Valor</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {(settings.about_valores || []).map((valor: any, idx: number) => (
-                        <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 group relative">
-                          <button
-                            onClick={() => setSettings({
-                              ...settings,
-                              about_valores: (settings.about_valores || []).filter((_: any, i: number) => i !== idx)
-                            })}
-                            className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          
-                          <div className="flex items-center space-x-3">
-                            <div className="relative">
-                              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
-                                {(() => {
-                                  const Icon = IconMap[valor.icon] || Star;
-                                  return <Icon size={16} />;
-                                })()}
-                              </div>
-                              <select
-                                value={valor.icon}
-                                onChange={(e) => {
-                                  const newValues = [...settings.about_valores];
-                                  newValues[idx].icon = e.target.value;
-                                  setSettings({ ...settings, about_valores: newValues });
-                                }}
-                                className="appearance-none w-36 h-9 bg-white border border-slate-200 rounded-lg pl-8 pr-6 text-xs cursor-pointer hover:border-primary/50"
-                              >
-                                {Object.keys(IconMap).map(iconName => (
-                                  <option key={iconName} value={iconName}>{iconName}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <input
-                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus:border-primary"
-                              placeholder="Título del Valor (ej: Integridad)"
-                              value={valor.title}
-                              onChange={(e) => {
-                                const newValues = [...settings.about_valores];
-                                newValues[idx].title = e.target.value;
-                                setSettings({ ...settings, about_valores: newValues });
-                              }}
-                            />
-                          </div>
-                          <textarea
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs min-h-[60px] resize-none focus:outline-none focus:border-primary"
-                            placeholder="Descripción corta del valor..."
-                            value={valor.description}
-                            onChange={(e) => {
-                              const newValues = [...settings.about_valores];
-                              newValues[idx].description = e.target.value;
-                              setSettings({ ...settings, about_valores: newValues });
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Multiple About Images Gallery */}
-                  <div className="space-y-2 pt-4 border-t border-slate-100">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Galería Bento (Sube 3 imágenes)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {settings.about_images?.map((img: string, idx: number) => (
-                        <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                          <img src={img} alt="About" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setSettings({ ...settings, about_images: settings.about_images.filter((_: any, i: number) => i !== idx) })}
-                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const fileExt = file.name.split('.').pop();
-                              const fileName = `about-${Math.random()}.${fileExt}`;
-                              const processedFile = await optimizeImage(file);
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
-                              if (uploadError) throw uploadError;
-                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                              setSettings({ ...settings, about_images: [...(settings.about_images || []), publicUrl] });
-                            } catch (error: any) { toast.error('Error: ' + error.message); }
-                          }}
-                        />
-                        <Plus size={24} />
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* About Features (Editable Bullets) */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Características (Viñetas)</label>
-                      <button 
-                        onClick={() => setSettings({ 
-                          ...settings, 
-                          about_features: [...(settings.about_features || []), { text: '', icon: 'CheckCircle2' }] 
-                        })}
-                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
-                      >
-                        <Plus size={14} />
-                        <span>Añadir Viñeta</span>
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {(settings.about_features || []).map((feature: any, idx: number) => (
-                        <div key={idx} className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border border-slate-100 group">
-                          <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
-                              {(() => {
-                                const Icon = IconMap[feature.icon] || CheckCircle2;
-                                return <Icon size={18} />;
-                              })()}
-                            </div>
-                            <select
-                              value={feature.icon}
-                              onChange={(e) => {
-                                const newFeatures = [...settings.about_features];
-                                newFeatures[idx].icon = e.target.value;
-                                setSettings({ ...settings, about_features: newFeatures });
-                              }}
-                              className="appearance-none w-48 h-10 bg-white border border-slate-200 rounded-lg pl-10 pr-8 text-sm cursor-pointer hover:border-primary/50 transition-colors"
-                            >
-                              <option value="CheckCircle2">Círculo Check</option>
-                              <option value="MessageSquare">Mensaje</option>
-                              <option value="Truck">Envío/Camión</option>
-                              <option value="Star">Estrella</option>
-                              <option value="ShieldCheck">Escudo</option>
-                              <option value="Award">Premio</option>
-                              <option value="Zap">Rayo</option>
-                              <option value="Clock">Reloj</option>
-                              <option value="Settings2">Ajustes</option>
-                            </select>
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                              <ChevronDown size={14} />
-                            </div>
-                          </div>
-                          <input
-                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
-                            placeholder="Texto de la característica..."
-                            value={feature.text}
-                            onChange={(e) => {
-                              const newFeatures = [...settings.about_features];
-                              newFeatures[idx].text = e.target.value;
-                              setSettings({ ...settings, about_features: newFeatures });
-                            }}
-                          />
-                          <button
-                            onClick={() => setSettings({
-                              ...settings,
-                              about_features: (settings.about_features || []).filter((_: any, i: number) => i !== idx)
-                            })}
-                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Sección Distribuidores</span>
-                </h3>
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 1</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.distributors_title_1}
-                      onChange={(e) => setSettings({ ...settings, distributors_title_1: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 2 (Color)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.distributors_title_2}
-                      onChange={(e) => setSettings({ ...settings, distributors_title_2: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Informativo</label>
-                    <textarea
-                      className="input-rubi min-h-[100px] resize-none py-3"
-                      value={settings.distributors_text}
-                      onChange={(e) => setSettings({ ...settings, distributors_text: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto del Botón (CTA)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.distributors_cta_text}
-                      onChange={(e) => setSettings({ ...settings, distributors_cta_text: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de la Sección</label>
-                    <div className="flex items-center space-x-4">
-                      {settings.distributors_image_url ? (
-                        <div className="relative group w-32 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
-                          <img
-                            src={settings.distributors_image_url}
-                            alt="Distribuidores"
-                            className="w-full h-full object-cover"
-                          />
-                          <label className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                try {
-                                  const fileExt = file.name.split('.').pop();
-                                  const fileName = `distributors-${Math.random()}.${fileExt}`;
-                                  const processedFile = await optimizeImage(file);
-                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
-                                  if (uploadError) throw uploadError;
-                                  const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                  setSettings({ ...settings, distributors_image_url: publicUrl });
-                                } catch (error: any) { toast.error('Error: ' + error.message); }
-                              }}
-                            />
-                            <Edit size={16} />
-                          </label>
-                        </div>
-                      ) : (
-                        <label className="w-32 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              try {
-                                const fileExt = file.name.split('.').pop();
-                                const fileName = `distributors-${Math.random()}.${fileExt}`;
-                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
-                                if (uploadError) throw uploadError;
-                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                setSettings({ ...settings, distributors_image_url: publicUrl });
-                              } catch (error: any) { toast.error('Error: ' + error.message); }
-                            }}
-                          />
-                          <Plus size={24} />
-                        </label>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-[10px] text-slate-400 font-medium leading-tight">
-                          Recomendado: Imagen horizontal (landscape) <br />
-                          JPG o PNG, máx 2MB
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-rubi bg-slate-50 border-slate-100 space-y-6 p-6 md:col-span-2">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Estadísticas y Versión</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Refacciones Stock</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.stats_products || ''}
-                      placeholder="Ej: 15K+"
-                      onChange={(e) => setSettings({ ...settings, stats_products: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Talleres Afiliados</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.stats_clients || ''}
-                      placeholder="Ej: 500+"
-                      onChange={(e) => setSettings({ ...settings, stats_clients: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Años Experiencia</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.stats_years || ''}
-                      placeholder="Ej: 20+"
-                      onChange={(e) => setSettings({ ...settings, stats_years: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Versión Catálogo</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.cms_version_text || ''}
-                      placeholder="Ej: v2.0"
-                      onChange={(e) => setSettings({ ...settings, cms_version_text: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-rubi bg-slate-50/50 border-slate-100 space-y-6 p-6 md:col-span-2">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                  <span>Configuración de Generales y Footer</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre de la Plataforma</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.platform_name || ''}
-                      placeholder="Ej: Refaccionaria Rubi"
-                      onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Descripción (Footer)</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.footer_description || ''}
-                      placeholder="Breve descripción de la empresa"
-                      onChange={(e) => setSettings({ ...settings, footer_description: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email de Contacto</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.footer_contact_email || ''}
-                      placeholder="ventas@empresa.com"
-                      onChange={(e) => setSettings({ ...settings, footer_contact_email: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Teléfono de Contacto</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.footer_contact_phone || ''}
-                      placeholder="+52 (000) 000 0000"
-                      onChange={(e) => setSettings({ ...settings, footer_contact_phone: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Dirección Física</label>
-                    <input
-                      className="input-rubi"
-                      value={settings.footer_contact_address || ''}
-                      placeholder="Dirección completa de la sucursal"
-                      onChange={(e) => setSettings({ ...settings, footer_contact_address: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        )}
-        {activeTab === 'config' && (
-          <>
+        </div>
+
+        <div className="card-rubi p-8 min-h-[600px] border border-slate-100">
+          {activeTab === 'users' && (
+            <UserManagement
+              users={users}
+              loading={loadingUsers}
+              onRefresh={fetchUsers}
+              setShowAddUser={setShowAddUser}
+              setEditingUser={setEditingUser}
+            />
+          )}
+          {activeTab === 'products' && (
+            <ProductManagement
+              products={products}
+              loading={loadingProducts}
+              onRefresh={fetchProducts}
+              setShowAdd={setShowAddProduct}
+              setEditingProduct={setEditingProduct}
+            />
+          )}
+          {activeTab === 'orders' && (
+            <OrderManagement
+              selectedOrder={selectedOrder}
+              setSelectedOrder={setSelectedOrder}
+            />
+          )}
+          {activeTab === 'cms' && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <SettingsIcon size={32} />
+                    <ImagePlus size={32} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
-                    <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
+                    <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">CMS Landing Page</h2>
+                    <p className="text-slate-500 font-medium text-sm">Modifica los textos principales de la página de inicio.</p>
                   </div>
                 </div>
                 <button
                   onClick={async () => {
                     const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
                     if (!error) {
-                      toast.success('Configuración guardada correctamente.');
+                      toast.success('Textos guardados correctamente.');
                       setConfig(settings);
                     } else {
                       toast.error('Error: ' + error.message);
@@ -949,66 +403,29 @@ const Admin = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Branding Section */}
                 <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
                   <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
                     <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                    <span>Branding y Logo</span>
+                    <span>Sección Principal (Hero)</span>
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre Comercial</label>
-                      <input
-                        className="input-rubi"
-                        placeholder="Ej: Refaccionaria Rubi"
-                        value={settings.platform_name || ''}
-                        onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Abreviatura (Logo/Header)</label>
-                      <input
-                        className="input-rubi"
-                        placeholder="Ej: RUBI"
-                        value={settings.abreviatura || ''}
-                        onChange={(e) => setSettings({ ...settings, abreviatura: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (Incluir 52 para México)</label>
-                      <input
-                        className="input-rubi"
-                        placeholder="Ej: 529616075008"
-                        value={settings.whatsapp_number || ''}
-                        onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Mensaje WhatsApp</label>
-                      <input
-                        className="input-rubi"
-                        placeholder="Hola, me gustaría..."
-                        value={settings.whatsapp_message || ''}
-                        onChange={(e) => setSettings({ ...settings, whatsapp_message: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Logo Principal</label>
-                      <div className="flex items-center space-x-6">
-                        <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
-                          {settings.logo_url ? (
-                            <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                          ) : (
-                            <ImageIcon size={24} className="text-slate-300" />
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Principal (Hero Slider)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {settings.hero_images?.map((img: string, idx: number) => (
+                          <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                            <img src={img} alt="Hero" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => setSettings({ ...settings, hero_images: settings.hero_images.filter((_: any, i: number) => i !== idx) })}
+                              className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
                           <input
                             type="file"
-                            id="logo-upload-config"
                             className="hidden"
                             accept="image/*"
                             onChange={async (e) => {
@@ -1016,270 +433,337 @@ const Admin = () => {
                               if (!file) return;
                               try {
                                 const fileExt = file.name.split('.').pop();
-                                const fileName = `logo-${Math.random()}.${fileExt}`;
-                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                const fileName = `hero-${Math.random()}.${fileExt}`;
+                                const processedFile = await optimizeImage(file);
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                                 if (uploadError) throw uploadError;
-                                const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                setSettings({ ...settings, logo_url: publicUrlData.publicUrl });
+                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, hero_images: [...(settings.hero_images || []), publicUrl] });
                               } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
-                          <label
-                            htmlFor="logo-upload-config"
-                            className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
-                          >
-                            <Upload size={14} />
-                            <span>Subir Logo</span>
-                          </label>
-                        </div>
+                          <Plus size={24} />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Blanca)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.hero_title_1}
+                        onChange={(e) => setSettings({ ...settings, hero_title_1: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.hero_title_2}
+                        onChange={(e) => setSettings({ ...settings, hero_title_2: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Subtítulo</label>
+                      <textarea
+                        className="input-rubi min-h-[100px] resize-none py-3"
+                        value={settings.hero_subtitle}
+                        onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                    <span>Sección Nosotros e Imágenes</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 1 Negra)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.about_title_1}
+                        onChange={(e) => setSettings({ ...settings, about_title_1: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título (Parte 2 Color)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.about_title_2}
+                        onChange={(e) => setSettings({ ...settings, about_title_2: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Descriptivo</label>
+                      <textarea
+                        className="input-rubi min-h-[100px] resize-none py-3"
+                        value={settings.about_text}
+                        onChange={(e) => setSettings({ ...settings, about_text: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Mission / Vision Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Misión</label>
+                        <textarea
+                          className="input-rubi min-h-[120px] resize-none py-3 text-sm"
+                          value={settings.about_mision}
+                          placeholder="Escribe la misión de la empresa..."
+                          onChange={(e) => setSettings({ ...settings, about_mision: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Visión</label>
+                        <textarea
+                          className="input-rubi min-h-[120px] resize-none py-3 text-sm"
+                          value={settings.about_vision}
+                          placeholder="Escribe la visión de la empresa..."
+                          onChange={(e) => setSettings({ ...settings, about_vision: e.target.value })}
+                        />
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Favicon (Pestaña)</label>
-                      <div className="flex items-center space-x-6">
-                        <div className="w-12 h-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center overflow-hidden">
-                          {settings.favicon_url ? (
-                            <img src={settings.favicon_url} alt="Favicon" className="w-full h-full object-contain" />
-                          ) : (
-                            <div className="w-2 h-2 bg-slate-300 rounded-full" />
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-2">
+                    {/* Values Editor */}
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestros Valores</label>
+                        <button
+                          onClick={() => setSettings({
+                            ...settings,
+                            about_valores: [...(settings.about_valores || []), { title: '', description: '', icon: 'Star' }]
+                          })}
+                          className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
+                        >
+                          <Plus size={14} />
+                          <span>Añadir Valor</span>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {(settings.about_valores || []).map((valor: any, idx: number) => (
+                          <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 group relative">
+                            <button
+                              onClick={() => setSettings({
+                                ...settings,
+                                about_valores: (settings.about_valores || []).filter((_: any, i: number) => i !== idx)
+                              })}
+                              className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+
+                            <div className="flex items-center space-x-3">
+                              <div className="relative">
+                                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                                  {(() => {
+                                    const Icon = IconMap[valor.icon] || Star;
+                                    return <Icon size={16} />;
+                                  })()}
+                                </div>
+                                <select
+                                  value={valor.icon}
+                                  onChange={(e) => {
+                                    const newValues = [...settings.about_valores];
+                                    newValues[idx].icon = e.target.value;
+                                    setSettings({ ...settings, about_valores: newValues });
+                                  }}
+                                  className="appearance-none w-36 h-9 bg-white border border-slate-200 rounded-lg pl-8 pr-6 text-xs cursor-pointer hover:border-primary/50"
+                                >
+                                  {Object.keys(IconMap).map(iconName => (
+                                    <option key={iconName} value={iconName}>{iconName}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <input
+                                className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus:border-primary"
+                                placeholder="Título del Valor (ej: Integridad)"
+                                value={valor.title}
+                                onChange={(e) => {
+                                  const newValues = [...settings.about_valores];
+                                  newValues[idx].title = e.target.value;
+                                  setSettings({ ...settings, about_valores: newValues });
+                                }}
+                              />
+                            </div>
+                            <textarea
+                              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs min-h-[60px] resize-none focus:outline-none focus:border-primary"
+                              placeholder="Descripción corta del valor..."
+                              value={valor.description}
+                              onChange={(e) => {
+                                const newValues = [...settings.about_valores];
+                                newValues[idx].description = e.target.value;
+                                setSettings({ ...settings, about_valores: newValues });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Multiple About Images Gallery */}
+                    <div className="space-y-2 pt-4 border-t border-slate-100">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Galería Bento (Sube 3 imágenes)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {settings.about_images?.map((img: string, idx: number) => (
+                          <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                            <img src={img} alt="About" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => setSettings({ ...settings, about_images: settings.about_images.filter((_: any, i: number) => i !== idx) })}
+                              className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
                           <input
                             type="file"
-                            id="favicon-upload-config"
                             className="hidden"
-                            accept=".ico,.png,.svg,.jpg"
+                            accept="image/*"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
                               try {
                                 const fileExt = file.name.split('.').pop();
-                                const fileName = `favicon-${Math.random()}.${fileExt}`;
-                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                const fileName = `about-${Math.random()}.${fileExt}`;
+                                const processedFile = await optimizeImage(file);
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                                 if (uploadError) throw uploadError;
-                                const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                setSettings({ ...settings, favicon_url: publicUrlData.publicUrl });
+                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, about_images: [...(settings.about_images || []), publicUrl] });
                               } catch (error: any) { toast.error('Error: ' + error.message); }
                             }}
                           />
-                          <label
-                            htmlFor="favicon-upload-config"
-                            className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
-                          >
-                            <Upload size={14} />
-                            <span>Subir Favicon</span>
-                          </label>
-                        </div>
+                          <Plus size={24} />
+                        </label>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Logotipos (Footer/Branding)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {settings.branding_images?.map((img: string, idx: number) => (
-                        <div key={idx} className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
-                          <img src={img} alt="Brand" className="w-full h-full object-contain p-1" />
-                          <button
-                            onClick={() => setSettings({ ...settings, branding_images: settings.branding_images.filter((_: any, i: number) => i !== idx) })}
-                            className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                      <label className="w-14 h-14 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-100 text-slate-400 hover:text-primary">
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const fileExt = file.name.split('.').pop();
-                              const fileName = `brand-${Math.random()}.${fileExt}`;
-                              const processedFile = await optimizeImage(file);
-                              const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
-                              if (uploadError) throw uploadError;
-                              const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                              setSettings({ ...settings, branding_images: [...(settings.branding_images || []), publicUrl] });
-                            } catch (error: any) { toast.error('Error: ' + error.message); }
-                          }}
-                        />
-                        <Plus size={18} />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SMTP Mailer Card */}
-                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                    <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
-                    <span>Servidor de Correo (SMTP)</span>
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
-                      <input className="input-rubi" value={settings.smtp_host || ''} onChange={(e) => setSettings({ ...settings, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
-                      <input className="input-rubi" value={settings.smtp_port || ''} onChange={(e) => setSettings({ ...settings, smtp_port: e.target.value })} placeholder="587" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario SMTP</label>
-                      <input className="input-rubi" value={settings.smtp_user || ''} onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })} placeholder="email@gmail.com" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
-                      <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({ ...settings, smtp_pass: e.target.value })} placeholder="••••••••" />
-                    </div>
-                    <div className="space-y-1">
-                      <select
-                        className="input-rubi py-2 text-sm"
-                        value={settings.smtp_security || 'tls'}
-                        onChange={(e) => setSettings({ ...settings, smtp_security: e.target.value })}
-                      >
-                        <option value="none">Ninguno (Puerto 25/587)</option>
-                        <option value="tls">STARTTLS (Puerto 587)</option>
-                        <option value="ssl">SSL/TLS (Port 465)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Registro (separados por comas)</label>
-                      <input
-                        className="input-rubi"
-                        value={settings.notificacion_registro_emails || ''}
-                        onChange={(e) => setSettings({ ...settings, notificacion_registro_emails: e.target.value })}
-                        placeholder="admin@empresa.com, ventas@empresa.com"
-                      />
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Pedidos (NUEVO - separados por comas)</label>
-                      <input
-                        className="input-rubi border-primary/20 bg-primary/[0.02]"
-                        value={settings.notificacion_pedidos_emails || ''}
-                        onChange={(e) => setSettings({ ...settings, notificacion_pedidos_emails: e.target.value })}
-                        placeholder="pedidos@empresa.com, sucursal@empresa.com"
-                      />
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
-                      <input
-                        className="input-rubi"
-                        value={settings.site_url || ''}
-                        onChange={(e) => setSettings({ ...settings, site_url: e.target.value })}
-                        placeholder="https://tu-dominio.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-50 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Prueba de Envío</p>
-                      <div className="flex space-x-2">
-                        <input
-                          type="email"
-                          placeholder="Email destino..."
-                          className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none w-40"
-                          value={testEmail}
-                          onChange={(e) => setTestEmail(e.target.value)}
-                        />
+                    {/* About Features (Editable Bullets) */}
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Características (Viñetas)</label>
                         <button
-                          onClick={async () => {
-                            if (!testEmail) return toast.error('Ingresa un email de destino');
-                            setTestingSMTP(true);
-                            try {
-                              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                              if (sessionError || !session) {
-                                throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
-                              }
-
-                              const { data, error } = await supabase.functions.invoke('test-smtp', {
-                                body: { settings, recipient: testEmail },
-                                headers: {
-                                  Authorization: `Bearer ${session.access_token}`
-                                }
-                              });
-
-                              if (error) {
-                                console.error("Invoke error:", error);
-                                // Handle specific function errors
-                                const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-                                throw new Error(`Error al llamar a la función: ${errorMsg}`);
-                              }
-
-                              if (data && !data.success) {
-                                throw new Error(data.error || 'Error desconocido en la prueba SMTP');
-                              }
-
-                              toast.success('¡Correo de prueba enviado con éxito!');
-                            } catch (e: any) {
-                              console.error('SMTP Test catch:', e);
-                              toast.error('Error: ' + e.message);
-                            }
-                            finally { setTestingSMTP(false); }
-                          }}
-                          disabled={testingSMTP}
-                          className="bg-secondary text-white p-1.5 rounded-lg hover:opacity-90 disabled:opacity-50"
+                          onClick={() => setSettings({
+                            ...settings,
+                            about_features: [...(settings.about_features || []), { text: '', icon: 'CheckCircle2' }]
+                          })}
+                          className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
                         >
-                          {testingSMTP ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                          <Plus size={14} />
+                          <span>Añadir Viñeta</span>
                         </button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Marca de Agua - Now strictly independent and full width */}
-              <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-primary rounded-full"></span>
-                  <span>Marca de Agua para Productos</span>
-                </h3>
-
-                <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => setSettings({ ...settings, watermark_enabled: !settings.watermark_enabled })}>
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.watermark_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </div>
-                  <span className="text-sm font-bold text-secondary">{settings.watermark_enabled ? 'Activada' : 'Desactivada'}</span>
-                  <p className="text-[10px] text-slate-400 font-medium ml-auto">Se aplica automáticamente al subir imágenes manuales.</p>
-                </div>
-
-                {settings.watermark_enabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Tipo de Marca</label>
-                      <select
-                        className="input-rubi py-2 text-sm"
-                        value={settings.watermark_type || 'text'}
-                        onChange={(e) => setSettings({ ...settings, watermark_type: e.target.value })}
-                      >
-                        <option value="text">Texto Personalizado</option>
-                        <option value="image">Logotipo / Imagen</option>
-                      </select>
-                    </div>
-
-                    {settings.watermark_type === 'image' ? (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de Marca</label>
-                        <div className="flex items-center space-x-4">
-                          {settings.watermark_image_url ? (
-                            <div className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
-                              <img src={settings.watermark_image_url} alt="Watermark" className="w-full h-full object-contain p-1" />
-                              <button
-                                onClick={() => setSettings({ ...settings, watermark_image_url: '' })}
-                                className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      <div className="space-y-3">
+                        {(settings.about_features || []).map((feature: any, idx: number) => (
+                          <div key={idx} className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border border-slate-100 group">
+                            <div className="relative">
+                              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                                {(() => {
+                                  const Icon = IconMap[feature.icon] || CheckCircle2;
+                                  return <Icon size={18} />;
+                                })()}
+                              </div>
+                              <select
+                                value={feature.icon}
+                                onChange={(e) => {
+                                  const newFeatures = [...settings.about_features];
+                                  newFeatures[idx].icon = e.target.value;
+                                  setSettings({ ...settings, about_features: newFeatures });
+                                }}
+                                className="appearance-none w-48 h-10 bg-white border border-slate-200 rounded-lg pl-10 pr-8 text-sm cursor-pointer hover:border-primary/50 transition-colors"
                               >
-                                <X size={12} />
-                              </button>
+                                <option value="CheckCircle2">Círculo Check</option>
+                                <option value="MessageSquare">Mensaje</option>
+                                <option value="Truck">Envío/Camión</option>
+                                <option value="Star">Estrella</option>
+                                <option value="ShieldCheck">Escudo</option>
+                                <option value="Award">Premio</option>
+                                <option value="Zap">Rayo</option>
+                                <option value="Clock">Reloj</option>
+                                <option value="Settings2">Ajustes</option>
+                              </select>
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <ChevronDown size={14} />
+                              </div>
                             </div>
-                          ) : (
-                            <label className="w-12 h-12 bg-white border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400">
+                            <input
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
+                              placeholder="Texto de la característica..."
+                              value={feature.text}
+                              onChange={(e) => {
+                                const newFeatures = [...settings.about_features];
+                                newFeatures[idx].text = e.target.value;
+                                setSettings({ ...settings, about_features: newFeatures });
+                              }}
+                            />
+                            <button
+                              onClick={() => setSettings({
+                                ...settings,
+                                about_features: (settings.about_features || []).filter((_: any, i: number) => i !== idx)
+                              })}
+                              className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <span>Sección Distribuidores</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 1</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.distributors_title_1}
+                        onChange={(e) => setSettings({ ...settings, distributors_title_1: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Título Línea 2 (Color)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.distributors_title_2}
+                        onChange={(e) => setSettings({ ...settings, distributors_title_2: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Informativo</label>
+                      <textarea
+                        className="input-rubi min-h-[100px] resize-none py-3"
+                        value={settings.distributors_text}
+                        onChange={(e) => setSettings({ ...settings, distributors_text: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto del Botón (CTA)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.distributors_cta_text}
+                        onChange={(e) => setSettings({ ...settings, distributors_cta_text: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de la Sección</label>
+                      <div className="flex items-center space-x-4">
+                        {settings.distributors_image_url ? (
+                          <div className="relative group w-32 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                            <img
+                              src={settings.distributors_image_url}
+                              alt="Distribuidores"
+                              className="w-full h-full object-cover"
+                            />
+                            <label className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                               <input
                                 type="file"
                                 className="hidden"
@@ -1289,362 +773,878 @@ const Admin = () => {
                                   if (!file) return;
                                   try {
                                     const fileExt = file.name.split('.').pop();
-                                    const fileName = `watermark-${Math.random()}.${fileExt}`;
+                                    const fileName = `distributors-${Math.random()}.${fileExt}`;
                                     const processedFile = await optimizeImage(file);
                                     const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
                                     if (uploadError) throw uploadError;
                                     const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
-                                    setSettings({ ...settings, watermark_image_url: publicUrl });
+                                    setSettings({ ...settings, distributors_image_url: publicUrl });
                                   } catch (error: any) { toast.error('Error: ' + error.message); }
                                 }}
                               />
-                              <Plus size={18} />
+                              <Edit size={16} />
                             </label>
-                          )}
-                          <p className="text-[10px] text-slate-400 leading-tight italic">Usa un PNG con transparencia para mejores resultados.</p>
+                          </div>
+                        ) : (
+                          <label className="w-32 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-all text-slate-400 hover:text-primary hover:border-primary/50">
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fileExt = file.name.split('.').pop();
+                                  const fileName = `distributors-${Math.random()}.${fileExt}`;
+                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                  if (uploadError) throw uploadError;
+                                  const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                  setSettings({ ...settings, distributors_image_url: publicUrl });
+                                } catch (error: any) { toast.error('Error: ' + error.message); }
+                              }}
+                            />
+                            <Plus size={24} />
+                          </label>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-[10px] text-slate-400 font-medium leading-tight">
+                            Recomendado: Imagen horizontal (landscape) <br />
+                            JPG o PNG, máx 2MB
+                          </p>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto de la Marca</label>
-                        <input
-                          className="input-rubi"
-                          value={settings.watermark_text || ''}
-                          onChange={(e) => setSettings({ ...settings, watermark_text: e.target.value })}
-                          placeholder="Ej: CONFIDENCIAL / COPIA"
-                        />
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Posición</label>
-                      <select
-                        className="input-rubi py-2 text-sm"
-                        value={settings.watermark_position || 'bottom-right'}
-                        onChange={(e) => setSettings({ ...settings, watermark_position: e.target.value })}
-                      >
-                        <option value="top-left">Arriba Izquierda</option>
-                        <option value="top-right">Arriba Derecha</option>
-                        <option value="bottom-left">Abajo Izquierda</option>
-                        <option value="bottom-right">Abajo Derecha</option>
-                        <option value="center">Centro</option>
-                      </select>
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-                        Opacidad ({Math.round((settings.watermark_opacity || 0.7) * 100)}%)
-                      </label>
-                      <div className="flex items-center space-x-3 px-2">
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="1.0"
-                          step="0.05"
-                          className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
-                          value={settings.watermark_opacity || 0.7}
-                          onChange={(e) => setSettings({ ...settings, watermark_opacity: parseFloat(e.target.value) })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="md:col-span-2 card-rubi bg-white border-slate-100 p-0 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
-                      <Smartphone size={22} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-secondary text-lg leading-tight">Comunicaciones y WhatsApp</h3>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Servicio vía Koonetxa</p>
-                    </div>
-                  </div>
-                  <div
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full cursor-pointer transition-colors shadow-inner ${settings.whatsapp_koonetxa_enabled ? 'bg-green-500' : 'bg-slate-200'}`}
-                    onClick={() => setSettings({ ...settings, whatsapp_koonetxa_enabled: !settings.whatsapp_koonetxa_enabled })}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${settings.whatsapp_koonetxa_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                   </div>
                 </div>
 
-                <div className="p-6 space-y-8">
-                  {/* Instancia Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2 text-slate-400">
-                      <SettingsIcon size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Configuración de Instancia</span>
+                <div className="card-rubi bg-slate-50 border-slate-100 space-y-6 p-6 md:col-span-2">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <span>Estadísticas y Versión</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Refacciones Stock</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.stats_products || ''}
+                        placeholder="Ej: 15K+"
+                        onChange={(e) => setSettings({ ...settings, stats_products: e.target.value })}
+                      />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Talleres Afiliados</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.stats_clients || ''}
+                        placeholder="Ej: 500+"
+                        onChange={(e) => setSettings({ ...settings, stats_clients: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Años Experiencia</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.stats_years || ''}
+                        placeholder="Ej: 20+"
+                        onChange={(e) => setSettings({ ...settings, stats_years: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto Versión Catálogo</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.cms_version_text || ''}
+                        placeholder="Ej: v2.0"
+                        onChange={(e) => setSettings({ ...settings, cms_version_text: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-rubi bg-slate-50/50 border-slate-100 space-y-6 p-6 md:col-span-2">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                    <span>Configuración de Generales y Footer</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre de la Plataforma</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.platform_name || ''}
+                        placeholder="Ej: Refaccionaria Rubi"
+                        onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Descripción (Footer)</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.footer_description || ''}
+                        placeholder="Breve descripción de la empresa"
+                        onChange={(e) => setSettings({ ...settings, footer_description: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Email de Contacto</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.footer_contact_email || ''}
+                        placeholder="ventas@empresa.com"
+                        onChange={(e) => setSettings({ ...settings, footer_contact_email: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Teléfono de Contacto</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.footer_contact_phone || ''}
+                        placeholder="+52 (000) 000 0000"
+                        onChange={(e) => setSettings({ ...settings, footer_contact_phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Dirección Física</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.footer_contact_address || ''}
+                        placeholder="Dirección completa de la sucursal"
+                        onChange={(e) => setSettings({ ...settings, footer_contact_address: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab === 'config' && (
+            <>
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                      <SettingsIcon size={32} />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
+                      <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const { error } = await supabase.from('configuracion').upsert({ id: 1, ...settings });
+                      if (!error) {
+                        toast.success('Configuración guardada correctamente.');
+                        setConfig(settings);
+                      } else {
+                        toast.error('Error: ' + error.message);
+                      }
+                    }}
+                    className="btn-primary px-8"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Branding Section */}
+                  <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                    <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                      <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                      <span>Branding y Logo</span>
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">API Key Koonetxa</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nombre Comercial</label>
                         <input
-                          type="password"
-                          className="input-rubi font-mono text-xs bg-slate-50/50"
-                          value={settings.whatsapp_koonetxa_api_key || ''}
-                          onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_api_key: e.target.value })}
-                          placeholder="XAiOiJKV1QiLCJhb..."
+                          className="input-rubi"
+                          placeholder="Ej: Refaccionaria Rubi"
+                          value={settings.platform_name || ''}
+                          onChange={(e) => setSettings({ ...settings, platform_name: e.target.value })}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sesión (Session Name)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Abreviatura (Logo/Header)</label>
                         <input
-                          className="input-rubi bg-slate-50/50"
-                          value={settings.whatsapp_koonetxa_session || ''}
-                          onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_session: e.target.value })}
-                          placeholder="testKN"
+                          className="input-rubi"
+                          placeholder="Ej: RUBI"
+                          value={settings.abreviatura || ''}
+                          onChange={(e) => setSettings({ ...settings, abreviatura: e.target.value })}
                         />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">WhatsApp (Incluir 52 para México)</label>
+                        <input
+                          className="input-rubi"
+                          placeholder="Ej: 529616075008"
+                          value={settings.whatsapp_number || ''}
+                          onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Mensaje WhatsApp</label>
+                        <input
+                          className="input-rubi"
+                          placeholder="Hola, me gustaría..."
+                          value={settings.whatsapp_message || ''}
+                          onChange={(e) => setSettings({ ...settings, whatsapp_message: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Logo Principal</label>
+                        <div className="flex items-center space-x-6">
+                          <div className="w-20 h-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
+                            {settings.logo_url ? (
+                              <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                            ) : (
+                              <ImageIcon size={24} className="text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="file"
+                              id="logo-upload-config"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fileExt = file.name.split('.').pop();
+                                  const fileName = `logo-${Math.random()}.${fileExt}`;
+                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                  if (uploadError) throw uploadError;
+                                  const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                  setSettings({ ...settings, logo_url: publicUrlData.publicUrl });
+                                } catch (error: any) { toast.error('Error: ' + error.message); }
+                              }}
+                            />
+                            <label
+                              htmlFor="logo-upload-config"
+                              className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
+                            >
+                              <Upload size={14} />
+                              <span>Subir Logo</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Favicon (Pestaña)</label>
+                        <div className="flex items-center space-x-6">
+                          <div className="w-12 h-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center overflow-hidden">
+                            {settings.favicon_url ? (
+                              <img src={settings.favicon_url} alt="Favicon" className="w-full h-full object-contain" />
+                            ) : (
+                              <div className="w-2 h-2 bg-slate-300 rounded-full" />
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="file"
+                              id="favicon-upload-config"
+                              className="hidden"
+                              accept=".ico,.png,.svg,.jpg"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const fileExt = file.name.split('.').pop();
+                                  const fileName = `favicon-${Math.random()}.${fileExt}`;
+                                  const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, file);
+                                  if (uploadError) throw uploadError;
+                                  const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                  setSettings({ ...settings, favicon_url: publicUrlData.publicUrl });
+                                } catch (error: any) { toast.error('Error: ' + error.message); }
+                              }}
+                            />
+                            <label
+                              htmlFor="favicon-upload-config"
+                              className="btn-secondary py-2 px-4 inline-flex items-center space-x-2 cursor-pointer text-xs"
+                            >
+                              <Upload size={14} />
+                              <span>Subir Favicon</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería Logotipos (Footer/Branding)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {settings.branding_images?.map((img: string, idx: number) => (
+                          <div key={idx} className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
+                            <img src={img} alt="Brand" className="w-full h-full object-contain p-1" />
+                            <button
+                              onClick={() => setSettings({ ...settings, branding_images: settings.branding_images.filter((_: any, i: number) => i !== idx) })}
+                              className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <label className="w-14 h-14 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-100 text-slate-400 hover:text-primary">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split('.').pop();
+                                const fileName = `brand-${Math.random()}.${fileExt}`;
+                                const processedFile = await optimizeImage(file);
+                                const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
+                                if (uploadError) throw uploadError;
+                                const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                setSettings({ ...settings, branding_images: [...(settings.branding_images || []), publicUrl] });
+                              } catch (error: any) { toast.error('Error: ' + error.message); }
+                            }}
+                          />
+                          <Plus size={18} />
+                        </label>
                       </div>
                     </div>
                   </div>
 
-                  <div className="h-px bg-slate-100" />
+                  {/* SMTP Mailer Card */}
+                  <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                    <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                      <span className="w-1.5 h-6 bg-secondary rounded-full"></span>
+                      <span>Servidor de Correo (SMTP)</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Host SMTP</label>
+                        <input className="input-rubi" value={settings.smtp_host || ''} onChange={(e) => setSettings({ ...settings, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Puerto</label>
+                        <input className="input-rubi" value={settings.smtp_port || ''} onChange={(e) => setSettings({ ...settings, smtp_port: e.target.value })} placeholder="587" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Usuario SMTP</label>
+                        <input className="input-rubi" value={settings.smtp_user || ''} onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })} placeholder="email@gmail.com" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Contraseña</label>
+                        <input type="password" className="input-rubi" value={settings.smtp_pass || ''} onChange={(e) => setSettings({ ...settings, smtp_pass: e.target.value })} placeholder="••••••••" />
+                      </div>
+                      <div className="space-y-1">
+                        <select
+                          className="input-rubi py-2 text-sm"
+                          value={settings.smtp_security || 'tls'}
+                          onChange={(e) => setSettings({ ...settings, smtp_security: e.target.value })}
+                        >
+                          <option value="none">Ninguno (Puerto 25/587)</option>
+                          <option value="tls">STARTTLS (Puerto 587)</option>
+                          <option value="ssl">SSL/TLS (Port 465)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Registro (separados por comas)</label>
+                        <input
+                          className="input-rubi"
+                          value={settings.notificacion_registro_emails || ''}
+                          onChange={(e) => setSettings({ ...settings, notificacion_registro_emails: e.target.value })}
+                          placeholder="admin@empresa.com, ventas@empresa.com"
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Emails de Notificación de Pedidos (NUEVO - separados por comas)</label>
+                        <input
+                          className="input-rubi border-primary/20 bg-primary/[0.02]"
+                          value={settings.notificacion_pedidos_emails || ''}
+                          onChange={(e) => setSettings({ ...settings, notificacion_pedidos_emails: e.target.value })}
+                          placeholder="pedidos@empresa.com, sucursal@empresa.com"
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">URL del Sitio (Para links en correos)</label>
+                        <input
+                          className="input-rubi"
+                          value={settings.site_url || ''}
+                          onChange={(e) => setSettings({ ...settings, site_url: e.target.value })}
+                          placeholder="https://tu-dominio.com"
+                        />
+                      </div>
+                    </div>
 
-                  {/* Notification Blocks */}
-                  <div className="grid grid-cols-1 gap-6">
-                    {/* Pedidos Block */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Package size={16} className="text-primary" />
-                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Gestión de Pedidos</span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_email ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>Email</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                    <div className="pt-4 border-t border-slate-50 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Prueba de Envío</p>
+                        <div className="flex space-x-2">
+                          <input
+                            type="email"
+                            placeholder="Email destino..."
+                            className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none w-40"
+                            value={testEmail}
+                            onChange={(e) => setTestEmail(e.target.value)}
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!testEmail) return toast.error('Ingresa un email de destino');
+                              setTestingSMTP(true);
+                              try {
+                                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                                if (sessionError || !session) {
+                                  throw new Error("No se pudo obtener la sesión. Por favor, inicia sesión de nuevo.");
+                                }
+
+                                const { data, error } = await supabase.functions.invoke('test-smtp', {
+                                  body: { settings, recipient: testEmail },
+                                  headers: {
+                                    Authorization: `Bearer ${session.access_token}`
+                                  }
+                                });
+
+                                if (error) {
+                                  console.error("Invoke error:", error);
+                                  // Handle specific function errors
+                                  const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+                                  throw new Error(`Error al llamar a la función: ${errorMsg}`);
+                                }
+
+                                if (data && !data.success) {
+                                  throw new Error(data.error || 'Error desconocido en la prueba SMTP');
+                                }
+
+                                toast.success('¡Correo de prueba enviado con éxito!');
+                              } catch (e: any) {
+                                console.error('SMTP Test catch:', e);
+                                toast.error('Error: ' + e.message);
+                              }
+                              finally { setTestingSMTP(false); }
+                            }}
+                            disabled={testingSMTP}
+                            className="bg-secondary text-white p-1.5 rounded-lg hover:opacity-90 disabled:opacity-50"
+                          >
+                            {testingSMTP ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                          </button>
                         </div>
                       </div>
-                      <div className="p-4 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
-                            <label className="flex items-center space-x-2 cursor-pointer group">
-                              <input type="checkbox" checked={settings.notify_order_email} onChange={(e) => setSettings({ ...settings, notify_order_email: e.target.checked })} className="rounded text-primary focus:ring-primary h-4 w-4" />
-                              <span className="text-xs font-semibold text-slate-600 group-hover:text-primary transition-colors">Notificar vía Email</span>
-                            </label>
-                            <label className="flex items-center space-x-2 cursor-pointer group">
-                              <input type="checkbox" checked={settings.notify_order_whatsapp} onChange={(e) => setSettings({ ...settings, notify_order_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
-                              <span className="text-xs font-semibold text-slate-600 group-hover:text-green-600 transition-colors">Notificar vía WhatsApp</span>
-                            </label>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Pedidos</label>
-                            <input
-                              className="input-rubi py-1.5 text-xs"
-                              value={settings.whatsapp_notificacion_pedidos_numeros || ''}
-                              onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_pedidos_numeros: e.target.value })}
-                              placeholder="52155..."
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje para el Cliente</label>
-                            <textarea
-                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
-                              value={settings.whatsapp_template_pedido_cliente || ''}
-                              onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_cliente: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso para Administración</label>
-                            <textarea
-                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
-                              value={settings.whatsapp_template_pedido_admin || ''}
-                              onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_admin: e.target.value })}
-                            />
-                          </div>
-                        </div>
+                    </div>
+                  </div>
+                </div>
 
-                        {/* WhatsApp Tags Guide */}
-                        <div className="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2">
-                          <div className="flex items-center space-x-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <Info size={12} className="text-primary" />
-                            <span>Etiquetas Disponibles para Mensajes</span>
+                {/* Marca de Agua - Now strictly independent and full width */}
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-primary rounded-full"></span>
+                    <span>Marca de Agua para Productos</span>
+                  </h3>
+
+                  <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => setSettings({ ...settings, watermark_enabled: !settings.watermark_enabled })}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.watermark_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                    <span className="text-sm font-bold text-secondary">{settings.watermark_enabled ? 'Activada' : 'Desactivada'}</span>
+                    <p className="text-[10px] text-slate-400 font-medium ml-auto">Se aplica automáticamente al subir imágenes manuales.</p>
+                  </div>
+
+                  {settings.watermark_enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Tipo de Marca</label>
+                        <select
+                          className="input-rubi py-2 text-sm"
+                          value={settings.watermark_type || 'text'}
+                          onChange={(e) => setSettings({ ...settings, watermark_type: e.target.value })}
+                        >
+                          <option value="text">Texto Personalizado</option>
+                          <option value="image">Logotipo / Imagen</option>
+                        </select>
+                      </div>
+
+                      {settings.watermark_type === 'image' ? (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Imagen de Marca</label>
+                          <div className="flex items-center space-x-4">
+                            {settings.watermark_image_url ? (
+                              <div className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+                                <img src={settings.watermark_image_url} alt="Watermark" className="w-full h-full object-contain p-1" />
+                                <button
+                                  onClick={() => setSettings({ ...settings, watermark_image_url: '' })}
+                                  className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-12 h-12 bg-white border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400">
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    try {
+                                      const fileExt = file.name.split('.').pop();
+                                      const fileName = `watermark-${Math.random()}.${fileExt}`;
+                                      const processedFile = await optimizeImage(file);
+                                      const { error: uploadError } = await supabase.storage.from('branding').upload(fileName, processedFile);
+                                      if (uploadError) throw uploadError;
+                                      const { data: { publicUrl } } = supabase.storage.from('branding').getPublicUrl(fileName);
+                                      setSettings({ ...settings, watermark_image_url: publicUrl });
+                                    } catch (error: any) { toast.error('Error: ' + error.message); }
+                                  }}
+                                />
+                                <Plus size={18} />
+                              </label>
+                            )}
+                            <p className="text-[10px] text-slate-400 leading-tight italic">Usa un PNG con transparencia para mejores resultados.</p>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <div className="space-y-0.5">
-                              <code className="text-[10px] font-bold text-primary">{'{nombre}'}</code>
-                              <p className="text-[9px] text-slate-500 leading-tight">Nombre del cliente</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <code className="text-[10px] font-bold text-primary">{'{folio}'}</code>
-                              <p className="text-[9px] text-slate-500 leading-tight">ID o folio del pedido</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <code className="text-[10px] font-bold text-primary">{'{total}'}</code>
-                              <p className="text-[9px] text-slate-500 leading-tight">Total con signo $</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <code className="text-[10px] font-bold text-primary">{'{detalles}'}</code>
-                              <p className="text-[9px] text-slate-500 leading-tight">Lista de productos y cant.</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <code className="text-[10px] font-bold text-primary">{'{telefono}'}</code>
-                              <p className="text-[9px] text-slate-500 leading-tight">Teléfono del cliente</p>
-                            </div>
-                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Texto de la Marca</label>
+                          <input
+                            className="input-rubi"
+                            value={settings.watermark_text || ''}
+                            onChange={(e) => setSettings({ ...settings, watermark_text: e.target.value })}
+                            placeholder="Ej: CONFIDENCIAL / COPIA"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Posición</label>
+                        <select
+                          className="input-rubi py-2 text-sm"
+                          value={settings.watermark_position || 'bottom-right'}
+                          onChange={(e) => setSettings({ ...settings, watermark_position: e.target.value })}
+                        >
+                          <option value="top-left">Arriba Izquierda</option>
+                          <option value="top-right">Arriba Derecha</option>
+                          <option value="bottom-left">Abajo Izquierda</option>
+                          <option value="bottom-right">Abajo Derecha</option>
+                          <option value="center">Centro</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                          Opacidad ({Math.round((settings.watermark_opacity || 0.7) * 100)}%)
+                        </label>
+                        <div className="flex items-center space-x-3 px-2">
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.05"
+                            className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                            value={settings.watermark_opacity || 0.7}
+                            onChange={(e) => setSettings({ ...settings, watermark_opacity: parseFloat(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 card-rubi bg-white border-slate-100 p-0 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
+                        <Smartphone size={22} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-secondary text-lg leading-tight">Comunicaciones y WhatsApp</h3>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Servicio vía Koonetxa</p>
+                      </div>
+                    </div>
+                    <div
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full cursor-pointer transition-colors shadow-inner ${settings.whatsapp_koonetxa_enabled ? 'bg-green-500' : 'bg-slate-200'}`}
+                      onClick={() => setSettings({ ...settings, whatsapp_koonetxa_enabled: !settings.whatsapp_koonetxa_enabled })}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${settings.whatsapp_koonetxa_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-8">
+                    {/* Instancia Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 text-slate-400">
+                        <SettingsIcon size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Configuración de Instancia</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">API Key Koonetxa</label>
+                          <input
+                            type="password"
+                            className="input-rubi font-mono text-xs bg-slate-50/50"
+                            value={settings.whatsapp_koonetxa_api_key || ''}
+                            onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_api_key: e.target.value })}
+                            placeholder="XAiOiJKV1QiLCJhb..."
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sesión (Session Name)</label>
+                          <input
+                            className="input-rubi bg-slate-50/50"
+                            value={settings.whatsapp_koonetxa_session || ''}
+                            onChange={(e) => setSettings({ ...settings, whatsapp_koonetxa_session: e.target.value })}
+                            placeholder="testKN"
+                          />
                         </div>
                       </div>
                     </div>
 
-                    {/* Registro Block */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Users size={16} className="text-amber-500" />
-                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Nuevos Registros</span>
+                    <div className="h-px bg-slate-100" />
+
+                    {/* Notification Blocks */}
+                    <div className="grid grid-cols-1 gap-6">
+                      {/* Pedidos Block */}
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Package size={16} className="text-primary" />
+                            <span className="text-xs font-bold text-secondary uppercase tracking-tight">Gestión de Pedidos</span>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_email ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_order_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_email ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
+                              <label className="flex items-center space-x-2 cursor-pointer group">
+                                <input type="checkbox" checked={settings.notify_order_email} onChange={(e) => setSettings({ ...settings, notify_order_email: e.target.checked })} className="rounded text-primary focus:ring-primary h-4 w-4" />
+                                <span className="text-xs font-semibold text-slate-600 group-hover:text-primary transition-colors">Notificar vía Email</span>
+                              </label>
+                              <label className="flex items-center space-x-2 cursor-pointer group">
+                                <input type="checkbox" checked={settings.notify_order_whatsapp} onChange={(e) => setSettings({ ...settings, notify_order_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                                <span className="text-xs font-semibold text-slate-600 group-hover:text-green-600 transition-colors">Notificar vía WhatsApp</span>
+                              </label>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Pedidos</label>
+                              <input
+                                className="input-rubi py-1.5 text-xs"
+                                value={settings.whatsapp_notificacion_pedidos_numeros || ''}
+                                onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_pedidos_numeros: e.target.value })}
+                                placeholder="52155..."
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje para el Cliente</label>
+                              <textarea
+                                className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                                value={settings.whatsapp_template_pedido_cliente || ''}
+                                onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_cliente: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso para Administración</label>
+                              <textarea
+                                className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                                value={settings.whatsapp_template_pedido_admin || ''}
+                                onChange={(e) => setSettings({ ...settings, whatsapp_template_pedido_admin: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          {/* WhatsApp Tags Guide */}
+                          <div className="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2">
+                            <div className="flex items-center space-x-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                              <Info size={12} className="text-primary" />
+                              <span>Etiquetas Disponibles para Mensajes</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                              <div className="space-y-0.5">
+                                <code className="text-[10px] font-bold text-primary">{'{nombre}'}</code>
+                                <p className="text-[9px] text-slate-500 leading-tight">Nombre del cliente</p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <code className="text-[10px] font-bold text-primary">{'{folio}'}</code>
+                                <p className="text-[9px] text-slate-500 leading-tight">ID o folio del pedido</p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <code className="text-[10px] font-bold text-primary">{'{total}'}</code>
+                                <p className="text-[9px] text-slate-500 leading-tight">Total con signo $</p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <code className="text-[10px] font-bold text-primary">{'{detalles}'}</code>
+                                <p className="text-[9px] text-slate-500 leading-tight">Lista de productos y cant.</p>
+                              </div>
+                              <div className="space-y-0.5">
+                                <code className="text-[10px] font-bold text-primary">{'{telefono}'}</code>
+                                <p className="text-[9px] text-slate-500 leading-tight">Teléfono del cliente</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="p-4 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
+
+                      {/* Registro Block */}
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Users size={16} className="text-amber-500" />
+                            <span className="text-xs font-bold text-secondary uppercase tracking-tight">Nuevos Registros</span>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_email ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_register_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50">
+                              <label className="flex items-center space-x-2 cursor-pointer group">
+                                <input type="checkbox" checked={settings.notify_register_email} onChange={(e) => setSettings({ ...settings, notify_register_email: e.target.checked })} className="rounded text-amber-500 focus:ring-amber-500 h-4 w-4" />
+                                <span className="text-xs font-semibold text-slate-600">Email</span>
+                              </label>
+                              <label className="flex items-center space-x-2 cursor-pointer group">
+                                <input type="checkbox" checked={settings.notify_register_whatsapp} onChange={(e) => setSettings({ ...settings, notify_register_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                                <span className="text-xs font-semibold text-slate-600">WhatsApp</span>
+                              </label>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Registros</label>
+                              <input
+                                className="input-rubi py-1.5 text-xs"
+                                value={settings.whatsapp_notificacion_registro_numeros || ''}
+                                onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_registro_numeros: e.target.value })}
+                                placeholder="52155..."
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso de Nuevo Cliente para Admin</label>
+                            <textarea
+                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                              value={settings.whatsapp_template_registro_admin || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_template_registro_admin: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Activación Block */}
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Check size={16} className="text-green-500" />
+                            <span className="text-xs font-bold text-secondary uppercase tracking-tight">Activación de Cuenta</span>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_email ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50 max-w-max">
                             <label className="flex items-center space-x-2 cursor-pointer group">
-                              <input type="checkbox" checked={settings.notify_register_email} onChange={(e) => setSettings({ ...settings, notify_register_email: e.target.checked })} className="rounded text-amber-500 focus:ring-amber-500 h-4 w-4" />
+                              <input type="checkbox" checked={settings.notify_activation_email} onChange={(e) => setSettings({ ...settings, notify_activation_email: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
                               <span className="text-xs font-semibold text-slate-600">Email</span>
                             </label>
                             <label className="flex items-center space-x-2 cursor-pointer group">
-                              <input type="checkbox" checked={settings.notify_register_whatsapp} onChange={(e) => setSettings({ ...settings, notify_register_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
+                              <input type="checkbox" checked={settings.notify_activation_whatsapp} onChange={(e) => setSettings({ ...settings, notify_activation_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
                               <span className="text-xs font-semibold text-slate-600">WhatsApp</span>
                             </label>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Números para Notificar Registros</label>
-                            <input
-                              className="input-rubi py-1.5 text-xs"
-                              value={settings.whatsapp_notificacion_registro_numeros || ''}
-                              onChange={(e) => setSettings({ ...settings, whatsapp_notificacion_registro_numeros: e.target.value })}
-                              placeholder="52155..."
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje de Activación para el Cliente</label>
+                            <textarea
+                              className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
+                              value={settings.whatsapp_template_aprobacion_cliente || ''}
+                              onChange={(e) => setSettings({ ...settings, whatsapp_template_aprobacion_cliente: e.target.value })}
                             />
                           </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Aviso de Nuevo Cliente para Admin</label>
-                          <textarea
-                            className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
-                            value={settings.whatsapp_template_registro_admin || ''}
-                            onChange={(e) => setSettings({ ...settings, whatsapp_template_registro_admin: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Activación Block */}
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Check size={16} className="text-green-500" />
-                          <span className="text-xs font-bold text-secondary uppercase tracking-tight">Activación de Cuenta</span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_email ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>Email</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${settings.notify_activation_whatsapp ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>WhatsApp</span>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-4">
-                        <div className="flex items-center space-x-4 bg-white p-3 rounded-xl border border-slate-50 max-w-max">
-                          <label className="flex items-center space-x-2 cursor-pointer group">
-                            <input type="checkbox" checked={settings.notify_activation_email} onChange={(e) => setSettings({ ...settings, notify_activation_email: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
-                            <span className="text-xs font-semibold text-slate-600">Email</span>
-                          </label>
-                          <label className="flex items-center space-x-2 cursor-pointer group">
-                            <input type="checkbox" checked={settings.notify_activation_whatsapp} onChange={(e) => setSettings({ ...settings, notify_activation_whatsapp: e.target.checked })} className="rounded text-green-500 focus:ring-green-500 h-4 w-4" />
-                            <span className="text-xs font-semibold text-slate-600">WhatsApp</span>
-                          </label>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Mensaje de Activación para el Cliente</label>
-                          <textarea
-                            className="input-rubi text-xs min-h-[80px] leading-relaxed resize-none"
-                            value={settings.whatsapp_template_aprobacion_cliente || ''}
-                            onChange={(e) => setSettings({ ...settings, whatsapp_template_aprobacion_cliente: e.target.value })}
-                          />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
-              <div className="space-y-4">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                  <span>Aviso de Privacidad</span>
-                </h3>
-                <textarea
-                  className="input-rubi min-h-[300px] py-4 text-sm"
-                  placeholder="Escribe el aviso de privacidad aquí..."
-                  value={settings.privacy_policy || ''}
-                  onChange={(e) => setSettings({ ...settings, privacy_policy: e.target.value })}
-                />
+              <div className="card-rubi bg-white border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+                <div className="space-y-4">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                    <span>Aviso de Privacidad</span>
+                  </h3>
+                  <textarea
+                    className="input-rubi min-h-[300px] py-4 text-sm"
+                    placeholder="Escribe el aviso de privacidad aquí..."
+                    value={settings.privacy_policy || ''}
+                    onChange={(e) => setSettings({ ...settings, privacy_policy: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                    <span>Términos y Condiciones</span>
+                  </h3>
+                  <textarea
+                    className="input-rubi min-h-[300px] py-4 text-sm"
+                    placeholder="Escribe los términos y condiciones aquí..."
+                    value={settings.terms_conditions || ''}
+                    onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-4">
-                <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
-                  <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                  <span>Términos y Condiciones</span>
-                </h3>
-                <textarea
-                  className="input-rubi min-h-[300px] py-4 text-sm"
-                  placeholder="Escribe los términos y condiciones aquí..."
-                  value={settings.terms_conditions || ''}
-                  onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
-                />
-              </div>
-            </div>
-          </>
+            </>
+          )}
+        </div>
+
+        {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
+        {editingUser && <EditUserModal key={editingUser.id} user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
+
+        {(showAddProduct || editingProduct) && (
+          <ProductModal
+            product={editingProduct}
+            catalogues={{
+              marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
+              proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
+              tipos: Array.from(new Set(products.map(p => p.tipo).filter(Boolean))),
+              modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
+              años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
+            }}
+            onClose={() => { setShowAddProduct(false); setEditingProduct(null); }}
+            onRefresh={fetchProducts}
+          />
+        )}
+
+        {selectedOrder && (
+          <OrderDetailModal
+            order={selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+            exportCSV={exportSingleOrderCSV}
+            exportPDF={exportSingleOrderPDF}
+          />
         )}
       </div>
-
-      {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} onRefresh={fetchUsers} />}
-      {editingUser && <EditUserModal key={editingUser.id} user={editingUser} onClose={() => setEditingUser(null)} onRefresh={fetchUsers} />}
-      
-      {(showAddProduct || editingProduct) && (
-        <ProductModal
-          product={editingProduct}
-          catalogues={{
-            marcas: Array.from(new Set(products.map(p => p.marca).filter(Boolean))),
-            proveedores: Array.from(new Set(products.map(p => p.proveedor).filter(Boolean))),
-            tipos: Array.from(new Set(products.map(p => p.tipo).filter(Boolean))),
-            modelos: Array.from(new Set(products.map(p => p.modelo).filter(Boolean))),
-            años: Array.from(new Set([...products.map(p => p.año_inicio), ...products.map(p => p.año_fin)].filter(Boolean))).sort((a: any, b: any) => b - a)
-          }}
-          onClose={() => { setShowAddProduct(false); setEditingProduct(null); }}
-          onRefresh={fetchProducts}
-        />
-      )}
-
-      {selectedOrder && (
-        <OrderDetailModal 
-          order={selectedOrder} 
-          onClose={() => setSelectedOrder(null)} 
-          exportCSV={exportSingleOrderCSV}
-          exportPDF={exportSingleOrderPDF}
-        />
-      )}
-    </div>
     </>
   );
 };
 
-const UserManagement = ({ 
-  users, 
-  loading, 
-  onRefresh, 
-  setShowAddUser, 
-  setEditingUser 
-}: { 
-  users: any[], 
-  loading: boolean, 
-  onRefresh: () => void, 
-  setShowAddUser: (v: boolean) => void, 
-  setEditingUser: (v: any) => void 
+const UserManagement = ({
+  users,
+  loading,
+  onRefresh,
+  setShowAddUser,
+  setEditingUser
+}: {
+  users: any[],
+  loading: boolean,
+  onRefresh: () => void,
+  setShowAddUser: (v: boolean) => void,
+  setEditingUser: (v: any) => void
 }) => {
   const { profile } = useStore();
 
@@ -2212,18 +2212,18 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
   );
 };
 
-const ProductManagement = ({ 
-  products, 
-  loading, 
-  onRefresh, 
-  setShowAdd, 
-  setEditingProduct 
-}: { 
-  products: any[], 
-  loading: boolean, 
-  onRefresh: () => void, 
-  setShowAdd: (v: boolean) => void, 
-  setEditingProduct: (v: any) => void 
+const ProductManagement = ({
+  products,
+  loading,
+  onRefresh,
+  setShowAdd,
+  setEditingProduct
+}: {
+  products: any[],
+  loading: boolean,
+  onRefresh: () => void,
+  setShowAdd: (v: boolean) => void,
+  setEditingProduct: (v: any) => void
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -2340,11 +2340,11 @@ const ProductManagement = ({
 
       const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/^"(.*)"$/, '$1'));
       const hasNombre = headers.includes('nombre');
-      
+
       let productsToUpsert = lines.slice(1).map(line => {
         const parts = parseCSVLine(line);
         if (parts.length < 1) return null;
-        
+
         const rowData: any = {};
         parts.forEach((part, index) => {
           if (headers[index]) {
@@ -2389,7 +2389,7 @@ const ProductManagement = ({
           .from('productos')
           .select('sku, nombre')
           .in('sku', skus);
-        
+
         const existingMap = new Map(existingProducts?.map(p => [String(p.sku), p.nombre]) || []);
         const filteredToUpsert = (productsToUpsert as any[])
           .filter(p => existingMap.has(String(p.sku)))
@@ -2521,7 +2521,7 @@ const ProductManagement = ({
         <div>
           <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Nota importante de importación</p>
           <p className="text-[11px] text-amber-700 leading-relaxed">
-            La importación de archivos CSV <strong>sustituye (reemplaza)</strong> las existencias y precios actuales basándose en el SKU. 
+            La importación de archivos CSV <strong>sustituye (reemplaza)</strong> las existencias y precios actuales basándose en el SKU.
             Asegúrate de que tu archivo contenga los datos más recientes de tu sistema externo.
           </p>
         </div>
@@ -2941,7 +2941,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
   );
 };
 
-const OrderManagement = ({ selectedOrder, setSelectedOrder }: { selectedOrder: any, setSelectedOrder: (v: any) => void }) => {
+const OrderManagement = ({ selectedOrder: _selectedOrder, setSelectedOrder }: { selectedOrder: any, setSelectedOrder: (v: any) => void }) => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
