@@ -187,7 +187,10 @@ const Admin = () => {
     notify_register_whatsapp: false,
     notify_activation_email: true,
     notify_activation_whatsapp: false,
-    about_features: []
+    about_features: [],
+    about_mision: '',
+    about_vision: '',
+    about_valores: []
   });
 
   const IconMap: Record<string, any> = {
@@ -214,7 +217,10 @@ const Admin = () => {
         whatsapp_template_pedido_cliente: config.whatsapp_template_pedido_cliente || '📦 *¡Gracias por tu pedido, {nombre}!* \n\nTu pedido *#{folio}* ha sido recibido con éxito. En breve nos pondremos en contacto contigo para coordinar el pago y la entrega.\n\n_Refaccionaria Rubi_',
         whatsapp_template_pedido_admin: config.whatsapp_template_pedido_admin || '🚨 *NUEVO PEDIDO RECIBIDO* 🚨\n\n*Cliente:* {nombre}\n*Folio:* #{folio}\n*Total:* {total}\n\nRevisa los detalles en el panel de administración.',
         whatsapp_template_registro_admin: config.whatsapp_template_registro_admin || '🆕 *NUEVO REGISTRO DE CLIENTE* 🆕\n\nUn nuevo cliente se ha registrado en la plataforma:\n\n*Cliente:* {nombre}\n*Empresa:* {empresa}\n\nPor favor, revisa y aprueba su cuenta en el panel.',
-        whatsapp_template_aprobacion_cliente: config.whatsapp_template_aprobacion_cliente || '✅ *¡CUENTA ACTIVADA!* ✅\n\n¡Buenas noticias, {nombre}! Tu cuenta en *{plataforma}* ya ha sido verificada y activada.\n\nYa puedes acceder a nuestro catálogo completo y realizar tus pedidos. ¡Te esperamos!'
+        whatsapp_template_aprobacion_cliente: config.whatsapp_template_aprobacion_cliente || '✅ *¡CUENTA ACTIVADA!* ✅\n\n¡Buenas noticias, {nombre}! Tu cuenta en *{plataforma}* ya ha sido verificada y activada.\n\nYa puedes acceder a nuestro catálogo completo y realizar tus pedidos. ¡Te esperamos!',
+        about_mision: config.about_mision || '',
+        about_vision: config.about_vision || '',
+        about_valores: config.about_valores || []
       });
     }
   }, [config]);
@@ -401,9 +407,107 @@ const Admin = () => {
                     />
                   </div>
 
-                  {/* Multiple About Images */}
-                  <div className="space-y-2 pt-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Galería (Sección Nosotros)</label>
+                  {/* Mission / Vision Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Misión</label>
+                      <textarea
+                        className="input-rubi min-h-[120px] resize-none py-3 text-sm"
+                        value={settings.about_mision}
+                        placeholder="Escribe la misión de la empresa..."
+                        onChange={(e) => setSettings({ ...settings, about_mision: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestra Visión</label>
+                      <textarea
+                        className="input-rubi min-h-[120px] resize-none py-3 text-sm"
+                        value={settings.about_vision}
+                        placeholder="Escribe la visión de la empresa..."
+                        onChange={(e) => setSettings({ ...settings, about_vision: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Values Editor */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Nuestros Valores</label>
+                      <button 
+                        onClick={() => setSettings({ 
+                          ...settings, 
+                          about_valores: [...(settings.about_valores || []), { title: '', description: '', icon: 'Star' }] 
+                        })}
+                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center space-x-1"
+                      >
+                        <Plus size={14} />
+                        <span>Añadir Valor</span>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {(settings.about_valores || []).map((valor: any, idx: number) => (
+                        <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 group relative">
+                          <button
+                            onClick={() => setSettings({
+                              ...settings,
+                              about_valores: (settings.about_valores || []).filter((_: any, i: number) => i !== idx)
+                            })}
+                            className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary pointer-events-none">
+                                {(() => {
+                                  const Icon = IconMap[valor.icon] || Star;
+                                  return <Icon size={16} />;
+                                })()}
+                              </div>
+                              <select
+                                value={valor.icon}
+                                onChange={(e) => {
+                                  const newValues = [...settings.about_valores];
+                                  newValues[idx].icon = e.target.value;
+                                  setSettings({ ...settings, about_valores: newValues });
+                                }}
+                                className="appearance-none w-36 h-9 bg-white border border-slate-200 rounded-lg pl-8 pr-6 text-xs cursor-pointer hover:border-primary/50"
+                              >
+                                {Object.keys(IconMap).map(iconName => (
+                                  <option key={iconName} value={iconName}>{iconName}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <input
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus:border-primary"
+                              placeholder="Título del Valor (ej: Integridad)"
+                              value={valor.title}
+                              onChange={(e) => {
+                                const newValues = [...settings.about_valores];
+                                newValues[idx].title = e.target.value;
+                                setSettings({ ...settings, about_valores: newValues });
+                              }}
+                            />
+                          </div>
+                          <textarea
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs min-h-[60px] resize-none focus:outline-none focus:border-primary"
+                            placeholder="Descripción corta del valor..."
+                            value={valor.description}
+                            onChange={(e) => {
+                              const newValues = [...settings.about_valores];
+                              newValues[idx].description = e.target.value;
+                              setSettings({ ...settings, about_valores: newValues });
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Multiple About Images Gallery */}
+                  <div className="space-y-2 pt-4 border-t border-slate-100">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Galería Bento (Sube 3 imágenes)</label>
                     <div className="flex flex-wrap gap-2">
                       {settings.about_images?.map((img: string, idx: number) => (
                         <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm">

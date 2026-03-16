@@ -10,7 +10,10 @@ import {
   Star, 
   ShieldCheck, 
   Award, 
-  Zap 
+  Zap,
+  Target,
+  Eye,
+  History
 } from 'lucide-react';
 import Hero from '../components/Hero';
 import Catalogue from '../components/Catalogue';
@@ -30,6 +33,7 @@ const IconMap: Record<string, any> = {
 
 const Home = () => {
   const config = useStore(state => state.config);
+  const [activeTab, setActiveTab] = useState<'historia' | 'mision' | 'vision'>('historia');
   const [currentAboutIndex, setCurrentAboutIndex] = useState(0);
   const aboutImages = config?.about_images || [];
 
@@ -67,10 +71,11 @@ const Home = () => {
         </div>
       </section>
 
-      {/* About Us Section */}
-      <section id="nosotros" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="relative">
+      {/* About Us Section - Redesigned */}
+      <section id="nosotros" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 space-y-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* Left Side: Original Image Carousel */}
+          <div className="lg:col-span-5 relative">
             <div className="aspect-[4/3] bg-slate-100 rounded-rubi overflow-hidden shadow-2xl relative">
               {aboutImages.length > 0 ? (
                 <>
@@ -107,37 +112,104 @@ const Home = () => {
             </div>
             <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-primary rounded-rubi -z-10 opacity-10"></div>
           </div>
-          <div className="space-y-6">
-            <h2 className="text-4xl md:text-5xl font-black text-secondary leading-tight">
-              {config?.about_title_1 || 'Respaldando tu industria con'} <span className="text-primary">{config?.about_title_2 || 'Precisión y Confianza'}</span>.
-            </h2>
-            <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-line">
-              {config?.about_text || `En ${config?.platform_name || 'nuestra empresa'}, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial. Con una trayectoria sólida, hemos construido una plataforma diseñada para las necesidades reales de los expertos.`}
-            </p>
-            <ul className="space-y-4">
-              {(config?.about_features && config.about_features.length > 0) ? (
-                config.about_features.map((feature: any, idx: number) => {
-                  const Icon = IconMap[feature.icon] || CheckCircle2;
-                  return (
-                    <li key={idx} className="flex items-center space-x-4 text-secondary font-semibold group">
-                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-110">
-                        <Icon size={20} />
+
+          {/* Right Side: Content with Tabs */}
+          <div className="lg:col-span-7 space-y-8 animate-in fade-in slide-in-from-right duration-700">
+            <div className="space-y-4">
+              <h2 className="text-4xl md:text-5xl font-black text-secondary leading-tight uppercase tracking-tighter">
+                {config?.about_title_1 || 'Respaldando tu industria con'} <br />
+                <span className="text-primary">{config?.about_title_2 || 'Precisión y Confianza'}</span>
+              </h2>
+              <div className="w-20 h-2 bg-primary rounded-full" />
+            </div>
+
+            {/* Tabs Trigger */}
+            <div className="flex p-1.5 bg-slate-100 rounded-2xl w-max overflow-x-auto max-w-full">
+              {[
+                { id: 'historia', label: 'Historia', icon: History },
+                { id: 'mision', label: 'Misión', icon: Target },
+                { id: 'vision', label: 'Visión', icon: Eye },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-white text-secondary shadow-lg'
+                      : 'text-slate-400 hover:text-secondary'
+                  }`}
+                >
+                  <tab.icon size={16} />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-[200px] relative">
+              <div className={`transition-all duration-500 ${activeTab === 'historia' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'}`}>
+                <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-line">
+                  {config?.about_text || `En ${config?.platform_name || 'nuestra empresa'}, nos especializamos en proveer soluciones integrales para el sector automotriz e industrial.`}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                  {(config?.about_features || []).slice(0, 4).map((f: any, i: number) => {
+                    const Icon = IconMap[f.icon] || CheckCircle2;
+                    return (
+                      <div key={i} className="flex items-center space-x-3 text-secondary font-bold text-sm">
+                        <div className="p-2 bg-primary/5 rounded-lg text-primary"><Icon size={14} /></div>
+                        <span>{f.text}</span>
                       </div>
-                      <span className="text-lg">{feature.text}</span>
-                    </li>
-                  );
-                })
-              ) : (
-                ['Calidad certificada en cada pieza', 'Atención técnica personalizada', 'Entrega eficiente y garantizada'].map((item) => (
-                  <li key={item} className="flex items-center space-x-3 text-secondary font-semibold">
-                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                    <span>{item}</span>
-                  </li>
-                ))
-              )}
-            </ul>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={`transition-all duration-500 ${activeTab === 'mision' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'}`}>
+                <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10">
+                  <p className="text-secondary text-xl font-medium leading-relaxed italic">
+                    "{config?.about_mision || 'Escribe aquí la misión de tu empresa...'}"
+                  </p>
+                </div>
+              </div>
+
+              <div className={`transition-all duration-500 ${activeTab === 'vision' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'}`}>
+                <div className="bg-secondary p-8 rounded-[32px] shadow-2xl relative overflow-hidden group">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-all" />
+                  <p className="text-white text-xl font-medium leading-relaxed relative z-10">
+                    {config?.about_vision || 'Escribe aquí la visión de tu empresa...'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Bottom Section: Our Values */}
+        {config?.about_valores && config.about_valores.length > 0 && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom duration-1000">
+            <div className="text-center space-y-2">
+              <h3 className="text-sm font-black text-primary uppercase tracking-[0.3em]">Nuestros Cimientos</h3>
+              <p className="text-3xl font-black text-secondary">Valores que nos Definen</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {config.about_valores.map((valor: any, idx: number) => {
+                const Icon = IconMap[valor.icon] || Star;
+                return (
+                  <div key={idx} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-soft hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group">
+                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors duration-500">
+                      <Icon size={28} />
+                    </div>
+                    <h4 className="text-xl font-black text-secondary mb-3">{valor.title}</h4>
+                    <p className="text-slate-500 leading-relaxed text-sm">
+                      {valor.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Distributors Section */}
