@@ -2391,6 +2391,7 @@ const ProductManagement = ({
   setSearchTerm: (s: string) => void
 }) => {
   const { config } = useStore();
+  const [exporting, setExporting] = useState(false);
 
   const handleDelete = async (id: string, name: string) => {
     toast((t) => (
@@ -2657,33 +2658,55 @@ const ProductManagement = ({
               <Check size={18} />
             </button>
             <button
-              onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
-                if (config?.show_modelo !== false) headers.push('modelo');
-                headers.push('año_inicio', 'año_fin');
-                if (config?.show_proveedor !== false) headers.push('proveedor');
-                headers.push('tipo', 'descripcion', 'imagenes');
-                
-                const rows = products.map(p => {
-                  const row = [
-                    p.sku,
-                    `"${p.nombre}"`,
-                    p.precio,
-                    p.stock,
-                    `"${p.marca || ''}"`
-                  ];
-                  if (config?.show_modelo !== false) row.push(`"${p.modelo || ''}"`);
-                  row.push(p.año_inicio || '', p.año_fin || '');
-                  if (config?.show_proveedor !== false) row.push(`"${p.proveedor || ''}"`);
-                  row.push(`"${p.tipo || ''}"`, `"${p.descripcion || ''}"`, `"${p.imagenes ? p.imagenes.join(';') : ''}"`);
-                  return row.join(",");
-                });
-                downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  let query = supabase.from('productos').select('*');
+                  if (searchTerm) {
+                    query = query.or(`sku.ilike.%${searchTerm}%,nombre.ilike.%${searchTerm}%`);
+                  }
+                  
+                  const { data: allProducts, error } = await query.order('creado_at', { ascending: false });
+                  
+                  if (error) throw error;
+                  if (!allProducts) return;
+
+                  const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
+                  if (config?.show_modelo !== false) headers.push('modelo');
+                  headers.push('año_inicio', 'año_fin');
+                  if (config?.show_proveedor !== false) headers.push('proveedor');
+                  headers.push('tipo', 'descripcion', 'imagenes');
+                  
+                  const rows = allProducts.map(p => {
+                    const row = [
+                      p.sku,
+                      `"${p.nombre}"`,
+                      p.precio,
+                      p.stock,
+                      `"${p.marca || ''}"`
+                    ];
+                    if (config?.show_modelo !== false) row.push(`"${p.modelo || ''}"`);
+                    row.push(p.año_inicio || '', p.año_fin || '');
+                    if (config?.show_proveedor !== false) row.push(`"${p.proveedor || ''}"`);
+                    row.push(`"${p.tipo || ''}"`, `"${p.descripcion || ''}"`, `"${p.imagenes ? p.imagenes.join(';') : ''}"`);
+                    return row.join(",");
+                  });
+                  downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
+                } catch (error: any) {
+                  toast.error("Error al exportar: " + error.message);
+                } finally {
+                  setExporting(false);
+                }
               }}
-              className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
+              disabled={exporting}
+              className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all disabled:opacity-50"
               title="Exportar Todo"
             >
-              <Download size={18} />
+              {exporting ? (
+                <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+              ) : (
+                <Download size={18} />
+              )}
             </button>
           </div>
 
@@ -3288,7 +3311,7 @@ const OrderManagement = ({ selectedOrder: _selectedOrder, setSelectedOrder }: { 
       query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
     }
 
-    const { data: allOrders, error } = await query.limit(1000);
+    const { data: allOrders, error } = await query;
     setLoading(false);
 
     if (error) {

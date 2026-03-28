@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import toast from 'react-hot-toast';
 
 interface Product {
   id: string;
@@ -212,8 +213,10 @@ const Catalogue = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [exporting, setExporting] = useState<false | 'csv' | 'pdf'>(false);
   const { profile, config, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
+  const catalogTopRef = useRef<HTMLDivElement>(null);
 
   // Fetch unique brands
   useEffect(() => {
@@ -266,6 +269,30 @@ const Catalogue = () => {
     if (count !== null) setTotalCount(count);
     setLoading(false);
   }, [search, filters, page, pageSize]);
+
+  const getFullFilteredData = async () => {
+    let query = supabase.from('productos').select('*');
+
+    if (search) {
+      query = query.or(`sku.ilike.%${search}%,nombre.ilike.%${search}%`);
+    }
+
+    if (filters.marca) query = query.eq('marca', filters.marca);
+    if (filters.proveedor) query = query.eq('proveedor', filters.proveedor);
+    if (filters.tipo) query = query.eq('tipo', filters.tipo);
+    if (filters.modelo) query = query.eq('modelo', filters.modelo);
+    if (filters.año) {
+      const year = parseInt(filters.año);
+      query = query.or(`and(año_inicio.lte.${year},año_fin.gte.${year}),and(año_inicio.lte.${year},año_fin.is.null),and(año_inicio.is.null,año_fin.gte.${year})`);
+    }
+
+    const { data, error } = await query.order('creado_at', { ascending: false });
+    if (error) {
+      toast.error('Error al obtener datos para exportar: ' + error.message);
+      return [];
+    }
+    return (data as Product[]) || [];
+  };
 
   const exportToCSV = (data: Product[]) => {
     const headers = ['SKU', 'Nombre', 'Marca'];
@@ -354,14 +381,21 @@ const Catalogue = () => {
     
     const tableColumn = ["SKU", "Producto", "Marca"];
     if (config?.show_modelo !== false) tableColumn.push("Modelo");
-    tableColumn.push("Año");
+    tableColumn.push("Año", "Tipo");
     if (config?.show_proveedor !== false) tableColumn.push("Proveedor");
     tableColumn.push("Precio");
 
     const tableRows = data.map(p => {
       const row = [String(p.sku), p.nombre, p.marca];
       if (config?.show_modelo !== false) row.push(p.modelo || 'N/A');
-      row.push(p.año_inicio && p.año_fin ? `${p.año_inicio}-${p.año_fin}` : (String(p.año_inicio || p.año_fin || 'N/A')));
+      
+      const anoStr = p.año_inicio && p.año_fin 
+        ? `Año: ${p.año_inicio}-${p.año_fin}` 
+        : p.año_inicio 
+          ? `Año ${p.año_inicio}` 
+          : 'N/A';
+          
+      row.push(anoStr, p.tipo || 'N/A');
       if (config?.show_proveedor !== false) row.push(p.proveedor || 'N/A');
       row.push(`$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
       return row;
@@ -390,6 +424,9 @@ const Catalogue = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProducts();
+    if (page > 1 || pageSize !== 25) { // Only scroll if not on initial load
+      catalogTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [fetchProducts]);
 
 
@@ -402,7 +439,7 @@ const Catalogue = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="space-y-8">
+    <div ref={catalogTopRef} className="space-y-8">
       {/* Search and Filter Bar */}
       <div className="card-rubi p-2 sm:p-4 bg-white/50 backdrop-blur-xl border border-white">
         <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
@@ -523,16 +560,34 @@ const Catalogue = () => {
           </div>
           <div className="flex justify-center space-x-3">
             <button 
-              onClick={() => exportToCSV(products)}
-              className="flex items-center space-x-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-xl border border-emerald-100 font-bold text-xs hover:bg-emerald-100 transition-all hover:scale-105 active:scale-95 shadow-sm"
+              onClick={async () => {
+                setExporting('csv');
+                const allData = await getFullFilteredData();
+                if (allData.length > 0) exportToCSV(allData);
+                setExporting(false);
+              }}
+              disabled={exporting !== false || loading}
+              className="flex items-center space-x-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-xl border border-emerald-100 font-bold text-xs hover:bg-emerald-100 transition-all hover:scale-105 active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Exportar CSV</span>
+              {exporting === 'csv' ? (
+                <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
+              ) : null}
+              <span>{exporting === 'csv' ? 'Generando...' : 'Exportar CSV'}</span>
             </button>
             <button 
-              onClick={() => exportToPDF(products)}
-              className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-5 py-2.5 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-all hover:scale-105 active:scale-95 shadow-sm"
+              onClick={async () => {
+                setExporting('pdf');
+                const allData = await getFullFilteredData();
+                if (allData.length > 0) await exportToPDF(allData);
+                setExporting(false);
+              }}
+              disabled={exporting !== false || loading}
+              className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-5 py-2.5 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-all hover:scale-105 active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Exportar PDF</span>
+              {exporting === 'pdf' ? (
+                <div className="w-4 h-4 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin" />
+              ) : null}
+              <span>{exporting === 'pdf' ? 'Generando...' : 'Exportar PDF'}</span>
             </button>
           </div>
         </div>
