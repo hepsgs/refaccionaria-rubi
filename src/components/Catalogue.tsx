@@ -240,7 +240,7 @@ const Catalogue = () => {
     setLoading(true);
     let query = supabase
       .from('productos')
-      .select('*');
+      .select('*', { count: 'exact' });
 
     if (search) {
       query = query.or(`sku.ilike.%${search}%,nombre.ilike.%${search}%`);
@@ -729,29 +729,41 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Tipo</p>
+                    <p className="font-bold text-secondary text-xs truncate">{product.tipo || 'N/A'}</p>
+                  </div>
+                  
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Año</p>
+                    <p className="font-bold text-secondary text-xs truncate">
+                      {product.año_inicio && product.año_fin 
+                        ? `${product.año_inicio} - ${product.año_fin}`
+                        : product.año_inicio 
+                          ? `Año ${product.año_inicio}` 
+                          : 'N/A'}
+                    </p>
+                  </div>
+
                   {config?.show_modelo !== false && (
                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Modelo</p>
                       <p className="font-bold text-secondary text-xs truncate">{product.modelo || 'Universal'}</p>
                     </div>
                   )}
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Aplicación</p>
-                    <p className="font-bold text-secondary text-xs truncate">
-                      {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
-                    </p>
-                  </div>
+
                   {config?.show_proveedor !== false && (
                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Proveedor</p>
                       <p className="font-bold text-secondary text-xs truncate">{product.proveedor || 'N/A'}</p>
                     </div>
                   )}
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden">
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden col-span-2">
                     <div className={`absolute top-0 right-0 w-1 h-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Stock</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Existencia</p>
                     <p className={`font-bold text-xs truncate ${product.stock <= 0 ? 'text-rose-500' : 'text-secondary'}`}>
-                      {product.stock > 0 ? `${product.stock} pzas` : 'Sin Existencia'}
+                      {product.stock > 0 ? `${product.stock} piezas disponibles` : 'Sin Existencia'}
                     </p>
                   </div>
                 </div>

@@ -2997,20 +2997,22 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            <div className={`space-y-1 ${config?.show_proveedor === false ? 'hidden' : ''}`}>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Proveedor</label>
-              <input
-                className="input-rubi py-2.5"
-                placeholder="Ej: Distribuidora GML"
-                list="list-proveedores"
-                value={form.proveedor}
-                onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
-              />
-              <datalist id="list-proveedores">
-                {catalogues.proveedores.map((p: string) => <option key={p} value={p} />)}
-              </datalist>
-            </div>
+          <div className={`grid ${config?.show_proveedor !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-5`}>
+            {config?.show_proveedor !== false && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Proveedor</label>
+                <input
+                  className="input-rubi py-2.5"
+                  placeholder="Ej: Distribuidora GML"
+                  list="list-proveedores"
+                  value={form.proveedor}
+                  onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
+                />
+                <datalist id="list-proveedores">
+                  {catalogues.proveedores.map((p: string) => <option key={p} value={p} />)}
+                </datalist>
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Tipo / Categoría Técnica</label>
               <input
@@ -3026,20 +3028,22 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-5">
-            <div className="col-span-1 space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Modelo</label>
-              <input
-                className="input-rubi py-2.5"
-                placeholder="Tsuru"
-                list="list-modelos"
-                value={form.modelo}
-                onChange={(e) => setForm({ ...form, modelo: e.target.value })}
-              />
-              <datalist id="list-modelos">
-                {catalogues.modelos.map((m: string) => <option key={m} value={m} />)}
-              </datalist>
-            </div>
+          <div className={`grid ${config?.show_modelo !== false ? 'grid-cols-3' : 'grid-cols-2'} gap-5`}>
+            {config?.show_modelo !== false && (
+              <div className="col-span-1 space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Modelo</label>
+                <input
+                  className="input-rubi py-2.5"
+                  placeholder="Tsuru"
+                  list="list-modelos"
+                  value={form.modelo}
+                  onChange={(e) => setForm({ ...form, modelo: e.target.value })}
+                />
+                <datalist id="list-modelos">
+                  {catalogues.modelos.map((m: string) => <option key={m} value={m} />)}
+                </datalist>
+              </div>
+            )}
             <div className="col-span-1 space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Año Inicio (Opc)</label>
               <input
