@@ -33,7 +33,8 @@ import {
   ChevronDown,
   ChevronRight,
   ShieldAlert,
-  Info
+  Info,
+  Copy
   //,HelpCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -136,8 +137,134 @@ const addWatermark = async (file: File, config: any): Promise<Blob> => {
   });
 };
 
+const MediaGallery = () => {
+  const [images, setImages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const { config } = useStore();
+
+  const fetchImages = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.storage.from('product-images').list('', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'name', order: 'desc' }
+      });
+      if (error) throw error;
+      setImages(data || []);
+    } catch (error: any) {
+      toast.error('Error al cargar imágenes: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const watermarkedFile = await addWatermark(file, config);
+      const processedFile = await optimizeImage(watermarkedFile as File);
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, processedFile);
+
+      if (uploadError) throw uploadError;
+
+      toast.success('Imagen subida correctamente');
+      fetchImages();
+    } catch (error: any) {
+      toast.error('Error al subir: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const copyUrl = (name: string) => {
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(name);
+    navigator.clipboard.writeText(publicUrl);
+    toast.success('URL copiada al portapapeles');
+  };
+
+  const deleteImage = async (name: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta imagen?')) return;
+    try {
+      const { error } = await supabase.storage.from('product-images').remove([name]);
+      if (error) throw error;
+      toast.success('Imagen eliminada');
+      fetchImages();
+    } catch (error: any) {
+      toast.error('Error al eliminar: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-black text-secondary flex items-center space-x-3">
+          <div className="p-2 bg-secondary text-white rounded-lg"><ImageIcon size={20} /></div>
+          <span>Galería de Medios</span>
+        </h2>
+        <div className="flex items-center space-x-3">
+          <label className={`btn-primary py-2 px-5 flex items-center space-x-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Upload size={18} />}
+            <span>{uploading ? 'Subiendo...' : 'Subir Imagen'}</span>
+            <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {loading ? (
+          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
+            Cargando galería...
+          </div>
+        ) : images.length === 0 ? (
+          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
+            No hay imágenes en la galería.
+          </div>
+        ) : images.map((img) => {
+          const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
+          return (
+            <div key={img.name} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
+              <div className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
+                <img src={publicUrl} alt={img.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" />
+              </div>
+              <div className="absolute inset-0 bg-secondary/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 space-y-2">
+                <button onClick={() => copyUrl(img.name)} className="w-full py-2 bg-white text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-2 hover:bg-primary hover:text-white transition-all">
+                  <Copy size={14} />
+                  <span>Copiar URL</span>
+                </button>
+                <button onClick={() => deleteImage(img.name)} className="w-full py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-2 hover:bg-rose-600 transition-all">
+                  <Trash2 size={14} />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+              <div className="p-2 border-t border-slate-50">
+                <p className="text-[8px] font-bold text-slate-400 truncate">{img.name}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config' | 'cms'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders' | 'config' | 'cms' | 'media'>('users');
   const [settings, setSettings] = useState<any>({
     smtp_host: '',
     smtp_port: '587',
@@ -238,6 +365,10 @@ const Admin = () => {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsPageSize, setProductsPageSize] = useState(25);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [productsSearch, setProductsSearch] = useState('');
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -248,10 +379,27 @@ const Admin = () => {
 
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
-    const { data } = await supabase.from('productos').select('*').order('creado_at', { ascending: false });
-    if (data) setProducts(data);
+    let query = supabase.from('productos').select('*', { count: 'exact' });
+
+    if (productsSearch) {
+      query = query.or(`sku.ilike.%${productsSearch}%,nombre.ilike.%${productsSearch}%`);
+    }
+
+    const from = (productsPage - 1) * productsPageSize;
+    const to = from + productsPageSize - 1;
+
+    const { data, count, error } = await query
+      .order('creado_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error("Error fetching products:", error);
+    } else {
+      if (data) setProducts(data);
+      if (count !== null) setTotalProducts(count);
+    }
     setLoadingProducts(false);
-  }, []);
+  }, [productsSearch, productsPage, productsPageSize]);
 
   useEffect(() => {
     fetchUsers();
@@ -287,7 +435,8 @@ const Admin = () => {
     ...(profile.rol === 'admin' || (profile.rol === 'empleado' && profile.permisos?.configuracion) ? [
       { id: 'cms', label: 'Página Web', icon: ImagePlus },
       { id: 'config', label: 'Configuración', icon: SettingsIcon }
-    ] : [])
+    ] : []),
+    ...(profile.rol === 'admin' || (profile.rol === 'empleado' && (profile.permisos as any)?.galeria) ? [{ id: 'media', label: 'Galería', icon: ImageIcon }] : [])
   ];
 
   // If the active tab is not available, set it to the first available tab
@@ -342,6 +491,13 @@ const Admin = () => {
               onRefresh={fetchProducts}
               setShowAdd={setShowAddProduct}
               setEditingProduct={setEditingProduct}
+              page={productsPage}
+              setPage={setProductsPage}
+              pageSize={productsPageSize}
+              setPageSize={setProductsPageSize}
+              totalCount={totalProducts}
+              searchTerm={productsSearch}
+              setSearchTerm={setProductsSearch}
             />
           )}
           {activeTab === 'orders' && (
@@ -349,6 +505,9 @@ const Admin = () => {
               selectedOrder={selectedOrder}
               setSelectedOrder={setSelectedOrder}
             />
+          )}
+          {activeTab === 'media' && (
+            <MediaGallery />
           )}
           {activeTab === 'cms' && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1814,7 +1973,8 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
       pedidos: false,
       configuracion: false,
       usuarios: false,
-      aprobar_usuarios: false
+      aprobar_usuarios: false,
+      galeria: false
     }
   });
   const [saving, setSaving] = useState(false);
@@ -1990,6 +2150,13 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
                   />
                   <span>Solo Aprobar Usuarios</span>
                 </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={(form.permisos as any).galeria}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, galeria: e.target.checked } })}
+                  />
+                  <span>Galería de Medios</span>
+                </label>
               </div>
             </div>
           )}
@@ -2029,7 +2196,8 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
         pedidos: !!p.pedidos,
         configuracion: !!p.configuracion,
         usuarios: !!p.usuarios,
-        aprobar_usuarios: !!p.aprobar_usuarios
+        aprobar_usuarios: !!p.aprobar_usuarios,
+        galeria: !!p.galeria
       }
     };
   });
@@ -2165,6 +2333,13 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
                   />
                   <span>Solo Aprobar Usuarios</span>
                 </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={(form.permisos as any).galeria}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, galeria: e.target.checked } })}
+                  />
+                  <span>Galería de Medios</span>
+                </label>
               </div>
             </div>
           )}
@@ -2193,15 +2368,29 @@ const ProductManagement = ({
   loading,
   onRefresh,
   setShowAdd,
-  setEditingProduct
+  setEditingProduct,
+  page,
+  setPage,
+  pageSize,
+  setPageSize,
+  totalCount,
+  searchTerm,
+  setSearchTerm
 }: {
   products: any[],
   loading: boolean,
   onRefresh: () => void,
   setShowAdd: (v: boolean) => void,
-  setEditingProduct: (v: any) => void
+  setEditingProduct: (v: any) => void,
+  page: number,
+  setPage: (p: any) => void,
+  pageSize: number,
+  setPageSize: (s: number) => void,
+  totalCount: number,
+  searchTerm: string,
+  setSearchTerm: (s: string) => void
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const { config } = useStore();
 
   const handleDelete = async (id: string, name: string) => {
     toast((t) => (
@@ -2336,10 +2525,16 @@ const ProductManagement = ({
         if (rowData.precio !== undefined && rowData.precio !== '') updateData.precio = parseFloat(rowData.precio);
         if (rowData.stock !== undefined && rowData.stock !== '') updateData.stock = parseInt(rowData.stock);
         if (rowData.marca !== undefined) updateData.marca = rowData.marca.replace(/^"(.*)"$/, '$1');
-        if (rowData.modelo !== undefined) updateData.modelo = rowData.modelo.replace(/^"(.*)"$/, '$1');
+        if (rowData.modelo !== undefined) {
+          const val = rowData.modelo.replace(/^"(.*)"$/, '$1').trim();
+          updateData.modelo = val === '' ? null : val;
+        }
         if (rowData.año_inicio !== undefined && rowData.año_inicio !== '') updateData.año_inicio = parseInt(rowData.año_inicio);
         if (rowData.año_fin !== undefined && rowData.año_fin !== '') updateData.año_fin = parseInt(rowData.año_fin);
-        if (rowData.proveedor !== undefined) updateData.proveedor = rowData.proveedor.replace(/^"(.*)"$/, '$1');
+        if (rowData.proveedor !== undefined) {
+          const val = rowData.proveedor.replace(/^"(.*)"$/, '$1').trim();
+          updateData.proveedor = val === '' ? null : val;
+        }
         if (rowData.tipo !== undefined) updateData.tipo = rowData.tipo.replace(/^"(.*)"$/, '$1');
         if (rowData.descripcion !== undefined) updateData.descripcion = rowData.descripcion.replace(/^"(.*)"$/, '$1');
 
@@ -2399,10 +2594,6 @@ const ProductManagement = ({
     reader.readAsText(file);
   };
 
-  const filteredProducts = products.filter(p =>
-    p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
@@ -2412,21 +2603,42 @@ const ProductManagement = ({
           <span>Gestión de Catálogo</span>
         </h2>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2">
+            <select 
+              className="input-rubi py-2 px-4 bg-slate-50 border-primary/20 text-primary font-bold text-xs"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(parseInt(e.target.value));
+                setPage(1);
+              }}
+            >
+              <option value="25">Ver 25</option>
+              <option value="50">Ver 50</option>
+              <option value="100">Ver 100</option>
+            </select>
+          </div>
+
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por SKU o Nombre..."
-              className="input-rubi pl-12 py-2.5 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <form onSubmit={(e) => { e.preventDefault(); setPage(1); onRefresh(); }}>
+              <input
+                type="text"
+                placeholder="Buscar por SKU o Nombre..."
+                className="input-rubi pl-12 py-2.5 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </form>
           </div>
 
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'descripcion', 'imagenes'];
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
+                if (config?.show_modelo !== false) headers.push('modelo');
+                headers.push('año_inicio', 'año_fin');
+                if (config?.show_proveedor !== false) headers.push('proveedor');
+                headers.push('tipo', 'descripcion', 'imagenes');
                 downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
               }}
               className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
@@ -2446,21 +2658,26 @@ const ProductManagement = ({
             </button>
             <button
               onClick={() => {
-                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca', 'modelo', 'año_inicio', 'año_fin', 'proveedor', 'tipo', 'descripcion', 'imagenes'];
-                const rows = products.map(p => [
-                  p.sku,
-                  `"${p.nombre}"`,
-                  p.precio,
-                  p.stock,
-                  `"${p.marca || ''}"`,
-                  `"${p.modelo || ''}"`,
-                  p.año_inicio || '',
-                  p.año_fin || '',
-                  `"${p.proveedor || ''}"`,
-                  `"${p.tipo || ''}"`,
-                  `"${p.descripcion || ''}"`,
-                  `"${p.imagenes ? p.imagenes.join(';') : ''}"`
-                ].join(","));
+                const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
+                if (config?.show_modelo !== false) headers.push('modelo');
+                headers.push('año_inicio', 'año_fin');
+                if (config?.show_proveedor !== false) headers.push('proveedor');
+                headers.push('tipo', 'descripcion', 'imagenes');
+                
+                const rows = products.map(p => {
+                  const row = [
+                    p.sku,
+                    `"${p.nombre}"`,
+                    p.precio,
+                    p.stock,
+                    `"${p.marca || ''}"`
+                  ];
+                  if (config?.show_modelo !== false) row.push(`"${p.modelo || ''}"`);
+                  row.push(p.año_inicio || '', p.año_fin || '');
+                  if (config?.show_proveedor !== false) row.push(`"${p.proveedor || ''}"`);
+                  row.push(`"${p.tipo || ''}"`, `"${p.descripcion || ''}"`, `"${p.imagenes ? p.imagenes.join(';') : ''}"`);
+                  return row.join(",");
+                });
                 downloadCSV(headers.join(",") + "\n" + rows.join("\n"), "catalogo_completo.csv");
               }}
               className="p-2 text-slate-500 hover:text-secondary hover:bg-white rounded-lg transition-all"
@@ -2503,13 +2720,19 @@ const ProductManagement = ({
         </div>
       </div>
 
+      <div className="flex items-center justify-between px-2 mb-4">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Mostrando <span className="text-secondary">{Math.min(totalCount, (page - 1) * pageSize + 1)}</span> - <span className="text-secondary">{Math.min(totalCount, page * pageSize)}</span> de <span className="text-secondary font-black">{totalCount}</span> productos
+        </p>
+      </div>
+
       <div className="overflow-x-auto rounded-2xl border border-slate-100">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 whitespace-nowrap">SKU / Marca</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Descripción</th>
-              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Proveedor / Tipo</th>
+              <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">{(config?.show_proveedor !== false) ? 'Proveedor / Tipo' : 'Tipo / Categoría'}</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Stock</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6">Precio</th>
               <th className="py-4 font-bold text-slate-400 uppercase text-[10px] tracking-widest px-6 text-right">Acciones</th>
@@ -2518,9 +2741,9 @@ const ProductManagement = ({
           <tbody className="divide-y divide-slate-50">
             {loading ? (
               <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium font-sans">Sincronizando inventario...</td></tr>
-            ) : filteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-medium">No se encontraron productos</td></tr>
-            ) : filteredProducts.map((p) => (
+            ) : products.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="py-5 px-6">
                   <div className="flex items-center space-x-3">
@@ -2542,7 +2765,7 @@ const ProductManagement = ({
                 <td className="py-5 px-6">
                   <span className="font-bold text-secondary line-clamp-1">{p.nombre}</span>
                   <div className="flex items-center space-x-2">
-                    {p.modelo && <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">{p.modelo}</span>}
+                    {config?.show_modelo !== false && p.modelo && <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">{p.modelo}</span>}
                     {(p.año_inicio || p.año_fin) && (
                       <span className="text-[10px] text-slate-400 font-medium italic">
                         {p.año_inicio || '...'} - {p.año_fin || '...'}
@@ -2552,7 +2775,7 @@ const ProductManagement = ({
                 </td>
                 <td className="py-5 px-6">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-secondary">{p.proveedor || 'S/P'}</span>
+                    {config?.show_proveedor !== false && <span className="text-xs font-bold text-secondary">{p.proveedor || 'S/P'}</span>}
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{p.tipo || 'General'}</span>
                   </div>
                 </td>
@@ -2587,12 +2810,53 @@ const ProductManagement = ({
         </table>
       </div>
 
+      {Math.ceil(totalCount / pageSize) > 1 && (
+        <div className="flex justify-center items-center space-x-2 pt-8">
+          <button 
+            disabled={page === 1}
+            onClick={() => setPage((p: number) => Math.max(1, p - 1))}
+            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-secondary disabled:opacity-30 transition-all shadow-sm"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: Math.ceil(totalCount / pageSize) }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === Math.ceil(totalCount / pageSize) || Math.abs(p - page) <= 1)
+              .map((p, i, arr) => (
+                <React.Fragment key={p}>
+                  {i > 0 && arr[i-1] !== p-1 && <span className="text-slate-300">...</span>}
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`w-10 h-10 rounded-xl font-bold text-xs transition-all ${
+                      page === p 
+                        ? 'bg-secondary text-white shadow-lg shadow-secondary/20' 
+                        : 'bg-white border border-slate-100 text-slate-500 hover:border-secondary/50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </React.Fragment>
+              ))}
+          </div>
+
+          <button 
+            disabled={page === Math.ceil(totalCount / pageSize)}
+            onClick={() => setPage((p: number) => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+            className="p-2 rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-secondary disabled:opacity-30 transition-all shadow-sm"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
+
       {/* Modals moved to Admin root */}
     </div>
   );
 };
 
 const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: any, catalogues: any, onClose: () => void, onRefresh: () => void }) => {
+  const { config } = useStore();
   const [form, setForm] = useState({
     sku: product?.sku || '',
     nombre: product?.nombre || '',
@@ -2654,7 +2918,9 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
     const productData = {
       ...form,
       año_inicio: form.año_inicio === '' ? null : form.año_inicio,
-      año_fin: form.año_fin === '' ? null : form.año_fin
+      año_fin: form.año_fin === '' ? null : form.año_fin,
+      modelo: form.modelo.trim() === '' ? null : form.modelo,
+      proveedor: form.proveedor.trim() === '' ? null : form.proveedor
     };
 
     try {
@@ -2732,7 +2998,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
           </div>
 
           <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-1">
+            <div className={`space-y-1 ${config?.show_proveedor === false ? 'hidden' : ''}`}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Proveedor</label>
               <input
                 className="input-rubi py-2.5"

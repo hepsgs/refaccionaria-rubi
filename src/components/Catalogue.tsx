@@ -210,9 +210,9 @@ const Catalogue = () => {
   
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 12;
+  const [pageSize, setPageSize] = useState(25);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const { profile, addToCart } = useStore();
+  const { profile, config, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
 
   // Fetch unique brands
@@ -265,19 +265,25 @@ const Catalogue = () => {
     if (data) setProducts(data);
     if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, [search, filters, page]);
+  }, [search, filters, page, pageSize]);
 
   const exportToCSV = (data: Product[]) => {
-    const headers = ['SKU', 'Nombre', 'Marca', 'Modelo', 'Proveedor', 'Tipo', 'Precio'];
-    const rows = data.map(p => [
-      `"${p.sku}"`,
-      `"${p.nombre}"`,
-      `"${p.marca}"`,
-      `"${p.modelo || ''}"`,
-      `"${p.proveedor || ''}"`,
-      `"${p.tipo || ''}"`,
-      p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    ]);
+    const headers = ['SKU', 'Nombre', 'Marca'];
+    if (config?.show_modelo !== false) headers.push('Modelo');
+    if (config?.show_proveedor !== false) headers.push('Proveedor');
+    headers.push('Tipo', 'Precio');
+    
+    const rows = data.map(p => {
+      const row = [
+        `"${p.sku}"`,
+        `"${p.nombre}"`,
+        `"${p.marca}"`
+      ];
+      if (config?.show_modelo !== false) row.push(`"${p.modelo || ''}"`);
+      if (config?.show_proveedor !== false) row.push(`"${p.proveedor || ''}"`);
+      row.push(`"${p.tipo || ''}"`, p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      return row;
+    });
 
     const csvContent = [
       headers.join(','),
@@ -346,16 +352,20 @@ const Catalogue = () => {
     doc.text(`Catálogo de Productos - ${new Date().toLocaleDateString()}`, 14, 50);
     doc.text(`Total: ${data.length} ítems`, 180, 50, { align: 'right' });
     
-    const tableColumn = ["SKU", "Producto", "Marca", "Modelo", "Año", "Proveedor", "Precio"];
-    const tableRows = data.map(p => [
-      p.sku,
-      p.nombre,
-      p.marca,
-      p.modelo || 'N/A',
-      p.año_inicio && p.año_fin ? `${p.año_inicio}-${p.año_fin}` : (p.año_inicio || p.año_fin || 'N/A'),
-      p.proveedor || 'N/A',
-      `$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    ]);
+    const tableColumn = ["SKU", "Producto", "Marca"];
+    if (config?.show_modelo !== false) tableColumn.push("Modelo");
+    tableColumn.push("Año");
+    if (config?.show_proveedor !== false) tableColumn.push("Proveedor");
+    tableColumn.push("Precio");
+
+    const tableRows = data.map(p => {
+      const row = [String(p.sku), p.nombre, p.marca];
+      if (config?.show_modelo !== false) row.push(p.modelo || 'N/A');
+      row.push(p.año_inicio && p.año_fin ? `${p.año_inicio}-${p.año_fin}` : (String(p.año_inicio || p.año_fin || 'N/A')));
+      if (config?.show_proveedor !== false) row.push(p.proveedor || 'N/A');
+      row.push(`$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      return row;
+    });
 
     autoTable(doc, {
       head: [tableColumn],
@@ -410,58 +420,97 @@ const Catalogue = () => {
             <select 
               className="input-rubi py-2 px-4 bg-white text-xs"
               value={filters.marca}
-              onChange={(e) => setFilters({...filters, marca: e.target.value})}
+              onChange={(e) => {
+                setFilters({...filters, marca: e.target.value});
+                setPage(1);
+              }}
             >
               <option value="">Marca</option>
               {availableBrands.map(brand => (
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
-            <select 
-              className="input-rubi py-2 px-4 bg-white text-xs"
-              value={filters.proveedor}
-              onChange={(e) => setFilters({...filters, proveedor: e.target.value})}
-            >
-              <option value="">Proveedor</option>
-              {availableProviders.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+            {config?.show_proveedor !== false && (
+              <select 
+                className="input-rubi py-2 px-4 bg-white text-xs"
+                value={filters.proveedor}
+                onChange={(e) => {
+                  setFilters({...filters, proveedor: e.target.value});
+                  setPage(1);
+                }}
+              >
+                <option value="">Proveedor</option>
+                {availableProviders.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            )}
             <select 
               className="input-rubi py-2 px-4 bg-white text-xs"
               value={filters.tipo}
-              onChange={(e) => setFilters({...filters, tipo: e.target.value})}
+              onChange={(e) => {
+                setFilters({...filters, tipo: e.target.value});
+                setPage(1);
+              }}
             >
               <option value="">Tipo / Cat.</option>
               {availableTypes.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
-            <select 
-              className="input-rubi py-2 px-4 bg-white text-xs"
-              value={filters.modelo}
-              onChange={(e) => setFilters({...filters, modelo: e.target.value})}
-            >
-              <option value="">Modelo</option>
-              {availableModels.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+            {config?.show_modelo !== false && (
+              <select 
+                className="input-rubi py-2 px-4 bg-white text-xs"
+                value={filters.modelo}
+                onChange={(e) => {
+                  setFilters({...filters, modelo: e.target.value});
+                  setPage(1);
+                }}
+              >
+                <option value="">Modelo</option>
+                {availableModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            )}
             <select 
               className="input-rubi py-2 px-4 bg-white text-xs"
               value={filters.año}
-              onChange={(e) => setFilters({...filters, año: e.target.value})}
+              onChange={(e) => {
+                setFilters({...filters, año: e.target.value});
+                setPage(1);
+              }}
             >
               <option value="">Año</option>
               {availableYears.map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
+
+            <select 
+              className="input-rubi py-2 px-4 bg-slate-50 border-primary/20 text-primary font-bold text-xs"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(parseInt(e.target.value));
+                setPage(1);
+              }}
+            >
+              <option value="25">Ver 25</option>
+              <option value="50">Ver 50</option>
+              <option value="100">Ver 100</option>
+            </select>
+            
             <button type="submit" className="btn-primary py-2 px-6 text-sm">
               Buscar
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="flex items-center justify-between px-2 -mt-4">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Mostrando <span className="text-primary">{Math.min(totalCount, (page - 1) * pageSize + 1)}</span> - <span className="text-primary">{Math.min(totalCount, page * pageSize)}</span> de <span className="text-secondary font-black">{totalCount}</span> productos
+        </p>
       </div>
 
       {profile && (
@@ -574,6 +623,7 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
   addToCart: (p: any, q?: number) => void,
   isApproved: boolean
 }) => {
+  const { config } = useStore();
   const [activeImage, setActiveImage] = useState(0);
   const [added, setAdded] = useState<false | 'success' | 'limit'>(false);
   const [quantity, setQuantity] = useState(1);
@@ -679,20 +729,24 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Modelo</p>
-                    <p className="font-bold text-secondary text-xs truncate">{product.modelo || 'Universal'}</p>
-                  </div>
+                  {config?.show_modelo !== false && (
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Modelo</p>
+                      <p className="font-bold text-secondary text-xs truncate">{product.modelo || 'Universal'}</p>
+                    </div>
+                  )}
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Aplicación</p>
                     <p className="font-bold text-secondary text-xs truncate">
                       {product.año_inicio && product.año_fin ? `${product.año_inicio} - ${product.año_fin}` : 'N/A'}
                     </p>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Proveedor</p>
-                    <p className="font-bold text-secondary text-xs truncate">{product.proveedor || 'N/A'}</p>
-                  </div>
+                  {config?.show_proveedor !== false && (
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Proveedor</p>
+                      <p className="font-bold text-secondary text-xs truncate">{product.proveedor || 'N/A'}</p>
+                    </div>
+                  )}
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden">
                     <div className={`absolute top-0 right-0 w-1 h-full ${product.stock > 10 ? 'bg-green-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Stock</p>
