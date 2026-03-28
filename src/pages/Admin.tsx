@@ -2530,8 +2530,10 @@ const ProductManagement = ({
           const val = rowData.modelo.replace(/^"(.*)"$/, '$1').trim();
           updateData.modelo = val === '' ? null : val;
         }
-        if (rowData.año_inicio !== undefined && rowData.año_inicio !== '') updateData.año_inicio = parseInt(rowData.año_inicio);
-        if (rowData.año_fin !== undefined && rowData.año_fin !== '') updateData.año_fin = parseInt(rowData.año_fin);
+        const yearStart = rowData.anio_inicio || rowData.año_inicio;
+        const yearEnd = rowData.anio_fin || rowData.año_fin;
+        if (yearStart !== undefined && yearStart !== '') updateData.año_inicio = parseInt(yearStart);
+        if (yearEnd !== undefined && yearEnd !== '') updateData.año_fin = parseInt(yearEnd);
         if (rowData.proveedor !== undefined) {
           const val = rowData.proveedor.replace(/^"(.*)"$/, '$1').trim();
           updateData.proveedor = val === '' ? null : val;
@@ -2637,7 +2639,7 @@ const ProductManagement = ({
               onClick={() => {
                 const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
                 if (config?.show_modelo !== false) headers.push('modelo');
-                headers.push('año_inicio', 'año_fin');
+                headers.push('anio_inicio', 'anio_fin');
                 if (config?.show_proveedor !== false) headers.push('proveedor');
                 headers.push('tipo', 'descripcion', 'imagenes');
                 downloadCSV(headers.join(",") + "\n", "plantilla_productos.csv");
@@ -2673,7 +2675,7 @@ const ProductManagement = ({
 
                   const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
                   if (config?.show_modelo !== false) headers.push('modelo');
-                  headers.push('año_inicio', 'año_fin');
+                  headers.push('anio_inicio', 'anio_fin');
                   if (config?.show_proveedor !== false) headers.push('proveedor');
                   headers.push('tipo', 'descripcion', 'imagenes');
                   
