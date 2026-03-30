@@ -474,7 +474,7 @@ const Admin = () => {
           </div>
         </div>
 
-        <div className="card-rubi p-8 min-h-[600px] border border-slate-100">
+        <div className="card-rubi p-4 sm:p-6 md:p-8 min-h-[600px] border border-slate-100">
           {activeTab === 'users' && (
             <UserManagement
               users={users}
@@ -511,14 +511,14 @@ const Admin = () => {
           )}
           {activeTab === 'cms' && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <ImagePlus size={32} />
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0">
+                    <FileText size={32} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">CMS Landing Page</h2>
-                    <p className="text-slate-500 font-medium text-sm">Modifica los textos principales de la página de inicio.</p>
+                    <h2 className="text-2xl md:text-3xl font-black text-secondary tracking-tighter uppercase leading-none">CMS Landing Page</h2>
+                    <p className="text-slate-500 font-medium text-xs md:text-sm">Modifica los textos principales de la página de inicio.</p>
                   </div>
                 </div>
                 <button
@@ -1057,14 +1057,14 @@ const Admin = () => {
           {activeTab === 'config' && (
             <>
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                   <div className="flex items-center space-x-4">
-                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0">
                       <SettingsIcon size={32} />
                     </div>
                     <div>
-                      <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
-                      <p className="text-slate-500 font-medium text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
+                      <h2 className="text-2xl md:text-3xl font-black text-secondary tracking-tighter uppercase leading-none">Configuración General</h2>
+                      <p className="text-slate-500 font-medium text-xs md:text-sm">Gestiona la identidad visual, contacto y servidor de correo.</p>
                     </div>
                   </div>
                   <button
@@ -1796,9 +1796,9 @@ const UserManagement = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-secondary flex items-center space-x-3">
-          <span className="p-2 bg-secondary text-white rounded-lg inline-flex"><Users size={20} /></span>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <h2 className="text-xl md:text-2xl font-black text-secondary flex items-center space-x-3">
+          <span className="p-2 bg-secondary text-white rounded-lg inline-flex shrink-0"><Users size={20} /></span>
           <span>Usuarios del Sistema</span>
         </h2>
         {profile && (profile.rol === 'admin' || profile.permisos?.usuarios) && (
@@ -2029,9 +2029,9 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-        <div className="bg-secondary p-8 text-white relative">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 min-h-screen">
+      <div className="bg-white rounded-2xl md:rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh] md:max-h-[90vh] relative">
+        <div className="bg-secondary p-8 text-white relative shrink-0">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all">
             <X size={24} />
           </button>
@@ -2039,10 +2039,10 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
             <Users />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Administración</span>
           </div>
-          <h3 className="text-3xl font-black tracking-tighter uppercase">Nuevo Usuario</h3>
+          <h3 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">Nuevo Usuario</h3>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto custom-scrollbar">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Completo</label>
             <input
@@ -2232,9 +2232,9 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-        <div className="bg-slate-800 p-8 text-white relative">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 min-h-screen">
+      <div className="bg-white rounded-2xl md:rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh] md:max-h-[90vh] relative">
+        <div className="bg-slate-800 p-8 text-white relative shrink-0">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all text-white/50 hover:text-white">
             <X size={24} />
           </button>
@@ -2242,11 +2242,11 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
             <Settings2 />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Configuración de Usuario</span>
           </div>
-          <h3 className="text-3xl font-black tracking-tighter uppercase">Editar Permisos</h3>
+          <h3 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">Editar Permisos</h3>
           <p className="text-slate-400 text-xs font-medium mt-1">{user.email || 'Usuario ID: ' + user.id.slice(0, 8)}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto custom-scrollbar">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Nombre Completo</label>
             <input
@@ -2975,9 +2975,9 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
   };
 
   return (
-    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-        <div className="bg-secondary p-8 text-white relative">
+    <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 min-h-screen">
+      <div className="bg-white rounded-2xl md:rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh] md:max-h-[90vh] relative">
+        <div className="bg-secondary p-8 text-white relative shrink-0">
           <button onClick={onClose} className="absolute right-6 top-6 hover:rotate-90 transition-all">
             <X size={24} />
           </button>
@@ -2985,18 +2985,18 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
             <Package />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Inventario</span>
           </div>
-          <h3 className="text-3xl font-black tracking-tighter uppercase">{product ? 'Editar Producto' : 'Nuevo Producto'}</h3>
+          <h3 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">{product ? 'Editar Producto' : 'Nuevo Producto'}</h3>
         </div>
 
         {errorMsg && (
-          <div className="mx-8 mt-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start space-x-3 text-rose-600 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="mx-6 md:mx-8 mt-6 shrink-0 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start space-x-3 text-rose-600 animate-in fade-in slide-in-from-top-4 duration-300">
             <AlertTriangle className="flex-shrink-0" size={20} />
             <p className="text-xs font-bold leading-relaxed">{errorMsg}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <div className="grid grid-cols-2 gap-5">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">SKU</label>
               <input
@@ -3456,76 +3456,80 @@ const OrderManagement = ({ selectedOrder: _selectedOrder, setSelectedOrder }: { 
 
 const OrderDetailModal = ({ order, onClose, exportCSV, exportPDF }: { order: any, onClose: () => void, exportCSV: (order: any) => void, exportPDF: (order: any) => void }) => {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 min-h-screen">
       <div className="absolute inset-0 bg-secondary/60 backdrop-blur-md" onClick={onClose} />
-      <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300">
-        <button
-          onClick={onClose}
-          className="absolute right-6 top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
-        >
-          <X size={20} />
-        </button>
+      <div className="bg-white rounded-2xl md:rounded-[40px] max-w-2xl w-full shadow-2xl relative animate-in zoom-in duration-300 flex flex-col max-h-[95vh] md:max-h-[90vh]">
+        <div className="p-6 md:p-8 shrink-0 relative border-b border-slate-100">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 md:right-6 md:top-6 p-2 text-slate-400 hover:text-secondary bg-slate-50 rounded-xl transition-all"
+          >
+            <X size={20} />
+          </button>
 
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <ClipboardList size={28} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Detalle Maestro de Pedido</p>
-            <h3 className="text-3xl font-black text-secondary uppercase tracking-tight">
-              {order.folio ? `Folio #${order.folio}` : `ID: ${order.id.slice(0, 12)}...`}
-            </h3>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
-            <p className="font-bold text-secondary text-base truncate">{order.perfiles?.nombre_completo || 'Cliente Desconocido'}</p>
-            <p className="font-bold text-slate-500 text-xs truncate mb-1">{order.perfiles?.empresa || 'Empresa Desconocida'}</p>
-            <p className="font-medium text-slate-400 text-[10px] truncate">ID: {order.cliente_id}</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
-            <div className="flex items-center space-x-2">
-              <span className={`w-2 h-2 rounded-full ${order.estatus === 'entregado' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-              <span className="font-bold text-secondary uppercase text-sm">{order.estatus}</span>
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+              <ClipboardList size={24} className="md:w-[28px] md:h-[28px]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Detalle Maestro de Pedido</p>
+              <h3 className="text-xl md:text-3xl font-black text-secondary uppercase tracking-tight">
+                {order.folio ? `Folio #${order.folio}` : `ID: ${order.id.slice(0, 12)}...`}
+              </h3>
             </div>
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Productos Solicitados</p>
-          {order.items?.map((item: any, idx: number) => (
-            <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
-                  <Package size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-secondary">{item.sku}</p>
-                  <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-                    Cant: {item.cantidad}
-                    <span className="mx-2 text-slate-200">|</span>
-                    Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 md:space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Información del Cliente</p>
+              <p className="font-bold text-secondary text-base truncate">{order.perfiles?.nombre_completo || 'Cliente Desconocido'}</p>
+              <p className="font-bold text-slate-500 text-xs truncate mb-1">{order.perfiles?.empresa || 'Empresa Desconocida'}</p>
+              <p className="font-medium text-slate-400 text-[10px] truncate">ID: {order.cliente_id}</p>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estado del Pedido</p>
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${order.estatus === 'entregado' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                <span className="font-bold text-secondary uppercase text-sm">{order.estatus}</span>
               </div>
-              <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Productos Solicitados</p>
+            {order.items?.map((item: any, idx: number) => (
+              <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                    <Package size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-secondary">{item.sku}</p>
+                    <p className="text-[10px] font-bold text-slate-500 line-clamp-1">{item.nombre || 'Sin nombre'}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                      Cant: {item.cantidad}
+                      <span className="mx-2 text-slate-200">|</span>
+                      Unit: ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm font-black text-primary">${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-          <div>
+        <div className="p-6 md:p-8 shrink-0 bg-slate-50 border-t border-slate-100 rounded-b-2xl md:rounded-b-[40px] flex flex-col md:flex-row items-center md:items-center justify-between gap-4">
+          <div className="w-full md:w-auto text-center md:text-left">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total</p>
-            <p className="text-4xl font-black text-secondary tracking-tighter">${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-3xl md:text-4xl font-black text-secondary tracking-tighter">${order.total.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex w-full md:w-auto justify-end space-x-3">
             <button
               onClick={() => exportCSV(order)}
-              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+              className="p-3 md:p-4 bg-slate-100 text-slate-600 rounded-xl md:rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2 shrink-0"
               title="Exportar a CSV"
             >
               <FileDown size={20} />
@@ -3533,7 +3537,7 @@ const OrderDetailModal = ({ order, onClose, exportCSV, exportPDF }: { order: any
             </button>
             <button
               onClick={() => exportPDF(order)}
-              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2"
+              className="p-3 md:p-4 bg-slate-100 text-slate-600 rounded-xl md:rounded-2xl hover:bg-slate-200 transition-all group flex items-center space-x-2 shrink-0"
               title="Exportar a PDF"
             >
               <FileDown size={20} />
@@ -3541,7 +3545,7 @@ const OrderDetailModal = ({ order, onClose, exportCSV, exportPDF }: { order: any
             </button>
             <button
               onClick={onClose}
-              className="btn-primary px-8 py-4 rounded-2xl shadow-xl shadow-primary/20"
+              className="flex-1 md:flex-none btn-primary px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 uppercase text-xs md:text-sm tracking-widest font-black"
             >
               Cerrar
             </button>

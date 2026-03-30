@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info } from 'lucide-react';
+import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import jsPDF from 'jspdf';
@@ -680,6 +680,7 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
 }) => {
   const { config } = useStore();
   const [activeImage, setActiveImage] = useState(0);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [added, setAdded] = useState<false | 'success' | 'limit'>(false);
   const [quantity, setQuantity] = useState(1);
   const { cart } = useStore();
@@ -732,11 +733,21 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
             <div className="p-6 sm:p-10 lg:pr-5 bg-slate-50/50">
               <div className="aspect-square bg-white rounded-[32px] overflow-hidden border border-slate-100 relative group shadow-inner">
                 {images.length > 0 ? (
-                  <img 
-                    src={images[activeImage]} 
-                    alt={product.nombre} 
-                    className="w-full h-full object-contain animate-in fade-in duration-500 p-4"
-                  />
+                  <div 
+                    className="w-full h-full relative group cursor-zoom-in"
+                    onClick={() => setZoomedImage(images[activeImage])}
+                  >
+                    <img 
+                      src={images[activeImage]} 
+                      alt={product.nombre} 
+                      className="w-full h-full object-contain animate-in fade-in duration-500 p-4 transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
+                      <div className="bg-white/90 p-3 rounded-2xl shadow-xl text-primary">
+                        <ZoomIn size={32} />
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-200">
                     <Package size={80} />
@@ -891,6 +902,29 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Zoom Overlay */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200"
+          onClick={() => setZoomedImage(null)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomedImage(null);
+            }}
+            className="absolute top-4 right-4 md:top-8 md:right-8 z-50 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20"
+          >
+            <X size={28} />
+          </button>
+          <img 
+            src={zoomedImage} 
+            alt="Zoomed Product" 
+            className="max-w-full max-h-[90vh] object-contain cursor-zoom-out animate-in zoom-in duration-300 pointer-events-none"
+          />
+        </div>
+      )}
     </div>
   );
 };
