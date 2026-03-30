@@ -34,7 +34,8 @@ import {
   ChevronRight,
   ShieldAlert,
   Info,
-  Copy
+  Copy,
+  ZoomIn
   //,HelpCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -141,6 +142,7 @@ const MediaGallery = () => {
   const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const { config } = useStore();
 
   const fetchImages = useCallback(async () => {
@@ -238,27 +240,58 @@ const MediaGallery = () => {
         ) : images.map((img) => {
           const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
           return (
-            <div key={img.name} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
-              <div className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
-                <img src={publicUrl} alt={img.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" />
+            <div key={img.name} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
+              <div 
+                className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden cursor-zoom-in relative"
+                onClick={() => setZoomedImage(publicUrl)}
+              >
+                <img src={publicUrl} alt={img.name} className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" />
+                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                  <div className="bg-white text-secondary p-3 rounded-2xl shadow-xl">
+                    <ZoomIn size={24} />
+                  </div>
+                </div>
               </div>
-              <div className="absolute inset-0 bg-secondary/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 space-y-2">
-                <button onClick={() => copyUrl(img.name)} className="w-full py-2 bg-white text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-2 hover:bg-primary hover:text-white transition-all">
-                  <Copy size={14} />
-                  <span>Copiar URL</span>
-                </button>
-                <button onClick={() => deleteImage(img.name)} className="w-full py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-2 hover:bg-rose-600 transition-all">
-                  <Trash2 size={14} />
-                  <span>Eliminar</span>
-                </button>
-              </div>
-              <div className="p-2 border-t border-slate-50">
-                <p className="text-[8px] font-bold text-slate-400 truncate">{img.name}</p>
+              <div className="p-3 border-t border-slate-100 bg-slate-50 flex flex-col gap-2">
+                <p className="text-[9px] font-bold text-slate-500 truncate mb-1 text-center">{img.name}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => copyUrl(img.name)} className="flex-1 py-2 bg-white text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-slate-200 transition-all border border-slate-200">
+                    <Copy size={14} />
+                    <span className="hidden sm:inline">Copiar</span>
+                  </button>
+                  <button onClick={() => deleteImage(img.name)} className="flex-1 py-2 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-rose-100 transition-all border border-rose-100">
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">Borrar</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Fullscreen Zoom Overlay */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200"
+          onClick={() => setZoomedImage(null)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomedImage(null);
+            }}
+            className="absolute top-4 right-4 md:top-8 md:right-8 z-50 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20"
+          >
+            <X size={28} />
+          </button>
+          <img 
+            src={zoomedImage} 
+            alt="Zoomed Product" 
+            className="max-w-full max-h-[90vh] object-contain cursor-zoom-out animate-in zoom-in duration-300 pointer-events-none"
+          />
+        </div>
+      )}
     </div>
   );
 };
