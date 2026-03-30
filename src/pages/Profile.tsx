@@ -372,7 +372,7 @@ const Profile = () => {
                     </div>
                     <div>
                       <p className="text-xs font-black text-secondary uppercase">{item.sku}</p>
-                      <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mb-1">{item.nombre}</p>
+                      <p className="text-[10px] text-slate-500 font-medium line-clamp-2 mb-1">{item.nombre}</p>
                       <p className="text-[10px] text-slate-400">Cantidad: {item.cantidad}</p>
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -904,9 +905,9 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
       </div>
 
       {/* Fullscreen Zoom Overlay */}
-      {zoomedImage && (
+      {zoomedImage && createPortal(
         <div 
-          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200"
           onClick={() => setZoomedImage(null)}
         >
           <button
@@ -923,7 +924,8 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
             alt="Zoomed Product" 
             className="max-w-full max-h-[90vh] object-contain cursor-zoom-out animate-in zoom-in duration-300 pointer-events-none"
           />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
