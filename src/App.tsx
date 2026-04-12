@@ -10,6 +10,7 @@ import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import ResetPassword from './pages/ResetPassword';
 import { Toaster } from 'react-hot-toast';
+import SocialFloatingProof from './components/SocialFloatingProof';
 
 function App() {
   const { setProfile, setConfig } = useStore();
@@ -69,6 +70,7 @@ function App() {
         </Routes>
       </Layout>
       <Toaster position="top-right" reverseOrder={false} />
+      <SocialFloatingProof />
     </Router>
   );
 }

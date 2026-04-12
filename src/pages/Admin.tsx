@@ -146,7 +146,13 @@ const MediaGallery = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [skuMap, setSkuMap] = useState<Record<string, { sku: string, nombre: string }[]>>({});
+  const [page, setPage] = useState(1);
+  const pageSize = 24;
   const { config } = useStore();
+
+  const removeAccents = (str: string) => {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  };
 
   const fetchImages = useCallback(async () => {
     setLoading(true);
@@ -159,7 +165,6 @@ const MediaGallery = () => {
       if (error) throw error;
       setImages(data || []);
 
-      // Fetch products to map images to SKU / Name
       const { data: products } = await supabase.from('productos').select('sku, nombre, imagenes').not('imagenes', 'is', null);
       const newMap: Record<string, { sku: string, nombre: string }[]> = {};
       if (products) {
@@ -232,124 +237,187 @@ const MediaGallery = () => {
     }
   };
 
+  const filteredImages = images.filter(img => {
+    if (!searchTerm) return true;
+    
+    const searchTerms = removeAccents(searchTerm).split(/\s+/).filter(Boolean);
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
+    const mappedList = skuMap[publicUrl];
+    
+    // Aggregate metadata for the image
+    const contentToSearch = [
+      img.name,
+      ...(mappedList?.flatMap(m => [m.sku, m.nombre]) || [])
+    ].map(s => removeAccents(s)).join(' ');
+
+    return searchTerms.every(term => contentToSearch.includes(term));
+  });
+
+  const totalPages = Math.ceil(filteredImages.length / pageSize);
+  const currentImages = filteredImages.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
-        <h2 className="text-2xl font-black text-secondary flex items-center space-x-3 shrink-0">
-          <div className="p-2 bg-secondary text-white rounded-lg"><ImageIcon size={20} /></div>
-          <span>Galería de Medios</span>
-        </h2>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto flex-1 lg:justify-end">
-          <div className="relative w-full sm:max-w-md flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por Nombre, SKU o Archivo..."
-              className="input-rubi pl-12 py-2.5 text-sm w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+          <h2 className="text-2xl font-black text-secondary flex items-center space-x-3 shrink-0">
+            <div className="p-2 bg-secondary text-white rounded-lg"><ImageIcon size={20} /></div>
+            <span>Galería de Medios</span>
+            {filteredImages.length !== images.length && (
+              <span className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                {filteredImages.length} resultados
+              </span>
+            )}
+          </h2>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto flex-1 lg:justify-end">
+            <div className="relative w-full sm:max-w-md flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input
+                type="text"
+                placeholder="Buscar por Nombre, SKU o Archivo..."
+                className="input-rubi pl-12 py-2.5 text-sm w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <label className={`btn-primary py-2.5 px-6 flex items-center justify-center space-x-2 cursor-pointer w-full sm:w-auto shrink-0 min-w-max ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" /> : <Upload size={18} className="shrink-0" />}
+              <span className="shrink-0 whitespace-nowrap">{uploading ? 'Subiendo...' : 'Subir Imagen'}</span>
+              <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+            </label>
           </div>
-          <label className={`btn-primary py-2.5 px-6 flex items-center justify-center space-x-2 cursor-pointer w-full sm:w-auto shrink-0 min-w-max ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-            {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" /> : <Upload size={18} className="shrink-0" />}
-            <span className="shrink-0 whitespace-nowrap">{uploading ? 'Subiendo...' : 'Subir Imagen'}</span>
-            <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
-          </label>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {loading ? (
-          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
-            Cargando galería...
-          </div>
-        ) : images.length === 0 ? (
-          <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
-            No hay imágenes en la galería.
-          </div>
-        ) : (function() {
-          const filteredImages = images.filter(img => {
-            if (!searchTerm) return true;
-            const searchLower = searchTerm.toLowerCase();
-            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
-            const mappedList = skuMap[publicUrl];
-            let matchProduct = false;
-            if (mappedList) {
-              matchProduct = mappedList.some(mapped => 
-                mapped.sku.toLowerCase().includes(searchLower) || 
-                mapped.nombre.toLowerCase().includes(searchLower)
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {loading ? (
+            <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
+              Cargando galería...
+            </div>
+          ) : filteredImages.length === 0 ? (
+            <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
+              No se encontraron imágenes.
+            </div>
+          ) : (
+            currentImages.map((img) => {
+              const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
+              const mappedList = skuMap[publicUrl];
+              return (
+                <div key={img.name} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
+                  <div 
+                    className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden cursor-zoom-in relative"
+                    onClick={() => setZoomedImage(publicUrl)}
+                  >
+                    <img 
+                      src={publicUrl} 
+                      alt={img.name} 
+                      className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" 
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                      <div className="bg-white text-secondary p-3 rounded-2xl shadow-xl">
+                        <ZoomIn size={24} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 border-t border-slate-100 bg-slate-50 flex flex-col gap-2 flex-grow">
+                    <p className="text-[9px] font-bold text-slate-400 truncate text-center" title={img.name}>{img.name}</p>
+                    
+                    {mappedList && mappedList.length > 0 ? (
+                      <div className="flex flex-col gap-1.5 w-full items-center">
+                        <div className="flex items-center justify-center -space-x-1.5">
+                          <div className="flex items-center h-5 px-2 bg-secondary text-white rounded-full shadow-sm z-10">
+                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">
+                              {mappedList.length} {mappedList.length === 1 ? 'Prod' : 'Prods'}
+                            </span>
+                          </div>
+                          {mappedList.length > 1 && (
+                            <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-slate-50 shadow-sm">
+                              <Plus size={10} className="text-white" strokeWidth={4} />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div 
+                          className="w-full text-center px-2 py-1.5 bg-white/50 rounded-xl border border-slate-200/50 group-hover:border-primary/30 transition-all cursor-help"
+                          title={mappedList.slice(0, 15).map(m => `• ${m.sku}: ${m.nombre}`).join('\n') + (mappedList.length > 15 ? `\n... y ${mappedList.length - 15} más` : '')}
+                        >
+                          <span className="text-[10px] font-black text-secondary uppercase block truncate leading-none mb-1">
+                            {mappedList[0].sku}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-500 block truncate leading-none px-1" title={mappedList[0].nombre}>
+                            {mappedList[0].nombre}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center w-full py-1.5 bg-slate-100/30 rounded-xl border border-dashed border-slate-200">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic leading-none">Sin asociar</span>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-auto pt-2 border-t border-slate-200/50">
+                      <button onClick={() => copyUrl(img.name)} className="flex-1 py-1.5 bg-white text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-slate-200 transition-all border border-slate-200">
+                        <Copy size={12} />
+                        <span className="hidden sm:inline">Copiar</span>
+                      </button>
+                      <button onClick={() => deleteImage(img.name)} className="flex-1 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-rose-100 transition-all border border-rose-100">
+                        <Trash2 size={12} />
+                        <span className="hidden sm:inline">Borrar</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               );
-            }
-            const matchFile = img.name.toLowerCase().includes(searchLower);
-            return matchProduct || matchFile;
-          });
+            })
+          )}
+        </div>
 
-          if (filteredImages.length === 0) {
-            return (
-              <div className="col-span-full py-20 text-center text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-3xl">
-                No se encontraron imágenes coincidiendo con tu búsqueda.
-              </div>
-            );
-          }
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 pt-8">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-secondary hover:border-secondary disabled:opacity-30 disabled:pointer-events-none transition-all"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <div className="flex items-center space-x-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+              {[...Array(totalPages)].map((_, i) => {
+                const p = i + 1;
+                if (totalPages > 7 && Math.abs(p - page) > 2 && p !== 1 && p !== totalPages) {
+                  if (Math.abs(p - page) === 3) return <span key={p} className="px-2 text-slate-300">...</span>;
+                  return null;
+                }
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-10 h-10 rounded-xl text-sm font-black transition-all ${
+                      page === p 
+                        ? 'bg-secondary text-white shadow-lg shadow-secondary/20' 
+                        : 'text-slate-400 hover:bg-slate-50 hover:text-secondary'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
 
-          return filteredImages.map((img) => {
-            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(img.name);
-            const mappedList = skuMap[publicUrl];
-            return (
-              <div key={img.name} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-                <div 
-                  className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden cursor-zoom-in relative"
-                  onClick={() => setZoomedImage(publicUrl)}
-                >
-                  <img src={publicUrl} alt={img.name} className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                    <div className="bg-white text-secondary p-3 rounded-2xl shadow-xl">
-                      <ZoomIn size={24} />
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 border-t border-slate-100 bg-slate-50 flex flex-col gap-2 flex-grow">
-                  <p className="text-[9px] font-bold text-slate-400 truncate text-center" title={img.name}>{img.name}</p>
-                  
-                  {mappedList && mappedList.length > 0 ? (
-                    <div className="text-center mb-1">
-                      {mappedList.length === 1 ? (
-                        <>
-                          <span className="text-[10px] font-black text-secondary uppercase block truncate">{mappedList[0].sku}</span>
-                          <span className="text-[9px] font-bold text-slate-500 block truncate" title={mappedList[0].nombre}>{mappedList[0].nombre}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[10px] font-black text-secondary uppercase block truncate" title={mappedList.map(m => m.sku).join(', ')}>
-                            {mappedList.length} Productos
-                          </span>
-                          <span className="text-[9px] font-bold text-slate-500 block truncate" title={mappedList.map(m => m.nombre).join(' | ')}>
-                            {mappedList[0].sku} y {mappedList.length - 1} más...
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center mb-1 opacity-50">
-                      <span className="text-[9px] font-bold text-slate-400 italic block">Sin asociar</span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 mt-auto pt-2 border-t border-slate-200/50">
-                    <button onClick={() => copyUrl(img.name)} className="flex-1 py-2 bg-white text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-slate-200 transition-all border border-slate-200">
-                      <Copy size={14} />
-                      <span className="hidden sm:inline">Copiar</span>
-                    </button>
-                    <button onClick={() => deleteImage(img.name)} className="flex-1 py-2 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center justify-center space-x-1 hover:bg-rose-100 transition-all border border-rose-100">
-                      <Trash2 size={14} />
-                      <span className="hidden sm:inline">Borrar</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          });
-        })()}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-secondary hover:border-secondary disabled:opacity-30 disabled:pointer-events-none transition-all"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Fullscreen Zoom Overlay */}
@@ -375,7 +443,7 @@ const MediaGallery = () => {
         </div>,
         document.body
       )}
-    </div>
+    </>
   );
 };
 
@@ -435,7 +503,12 @@ const Admin = () => {
     about_features: [],
     about_mision: '',
     about_vision: '',
-    about_valores: []
+    about_valores: [],
+    social_proof_enabled: true,
+    social_proof_show_image: true,
+    social_proof_mode: 'random',
+    social_proof_min_interval: 10,
+    social_proof_max_interval: 30
   });
 
   const IconMap: Record<string, any> = {
@@ -1827,6 +1900,114 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Social Proof Config Block */}
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+                        <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Zap size={16} className="text-primary" />
+                            <span className="text-xs font-bold text-secondary uppercase tracking-tight">Prueba Social</span>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              const { error } = await supabase.from('configuracion').upsert({
+                                id: 1,
+                                ...settings,
+                                social_proof_enabled: settings.social_proof_enabled,
+                                social_proof_show_image: settings.social_proof_show_image,
+                                social_proof_mode: settings.social_proof_mode,
+                                social_proof_content_type: settings.social_proof_content_type,
+                                social_proof_min_interval: settings.social_proof_min_interval,
+                                social_proof_max_interval: settings.social_proof_max_interval
+                              });
+                              if (!error) {
+                                toast.success('Módulo de Prueba Social guardado');
+                                setConfig({ ...settings });
+                              } else {
+                                toast.error('Error: ' + error.message);
+                              }
+                            }}
+                            className="bg-primary hover:bg-primary-dark text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center space-x-1"
+                          >
+                            <Check size={12} />
+                            <span>Guardar Módulo</span>
+                          </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="flex items-center space-x-3 cursor-pointer group bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-primary/20 transition-all">
+                              <input
+                                type="checkbox"
+                                checked={settings.social_proof_enabled}
+                                onChange={(e) => setSettings({ ...settings, social_proof_enabled: e.target.checked })}
+                                className="rounded text-primary focus:ring-primary h-4 w-4"
+                              />
+                              <div>
+                                <span className="block text-[11px] font-bold text-secondary leading-tight">Activar Módulo</span>
+                                <span className="text-[9px] text-slate-500">Notificaciones flotantes</span>
+                              </div>
+                            </label>
+                            <label className="flex items-center space-x-3 cursor-pointer group bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:border-primary/20 transition-all">
+                              <input
+                                type="checkbox"
+                                checked={settings.social_proof_show_image}
+                                onChange={(e) => setSettings({ ...settings, social_proof_show_image: e.target.checked })}
+                                className="rounded text-primary focus:ring-primary h-4 w-4"
+                              />
+                              <div>
+                                <span className="block text-[11px] font-bold text-secondary leading-tight">Mostrar Imágenes</span>
+                                <span className="text-[9px] text-slate-500">Miniaturas de productos</span>
+                              </div>
+                            </label>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Fuente de Productos</label>
+                              <select 
+                                className="input-rubi py-1.5 text-xs"
+                                value={settings.social_proof_mode || 'random'}
+                                onChange={(e) => setSettings({ ...settings, social_proof_mode: e.target.value })}
+                              >
+                                <option value="random">Todos los productos</option>
+                                <option value="manual">Manual (Icono Rayo)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Tipo de Mensaje</label>
+                              <select 
+                                className="input-rubi py-1.5 text-xs"
+                                value={settings.social_proof_content_type || 'viewing'}
+                                onChange={(e) => setSettings({ ...settings, social_proof_content_type: e.target.value })}
+                              >
+                                <option value="viewing">Solo "Viendo ahora"</option>
+                                <option value="purchasing">Solo "Compraron recientemente"</option>
+                                <option value="mixed">Mixto (Aleatorio)</option>
+                              </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Intervalo Mín (seg)</label>
+                                <input
+                                  type="number"
+                                  className="input-rubi py-1.5 text-xs"
+                                  value={settings.social_proof_min_interval || 10}
+                                  onChange={(e) => setSettings({ ...settings, social_proof_min_interval: parseInt(e.target.value) })}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Intervalo Máx (seg)</label>
+                                <input
+                                  type="number"
+                                  className="input-rubi py-1.5 text-xs"
+                                  value={settings.social_proof_max_interval || 30}
+                                  onChange={(e) => setSettings({ ...settings, social_proof_max_interval: parseInt(e.target.value) })}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2939,6 +3120,22 @@ const ProductManagement = ({
                   <span className="font-black text-secondary">${p.precio.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </td>
                 <td className="py-5 px-6 text-right flex items-center justify-end space-x-2">
+                  <button
+                    onClick={async () => {
+                      const { error } = await supabase
+                        .from('productos')
+                        .update({ en_social_proof: !p.en_social_proof })
+                        .eq('id', p.id);
+                      if (!error) {
+                        onRefresh();
+                        toast.success(p.en_social_proof ? 'Eliminado de Prueba Social' : 'Añadido a Prueba Social');
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl transition-all ${p.en_social_proof ? 'text-primary bg-primary/10' : 'text-slate-300 hover:text-primary hover:bg-slate-100'}`}
+                    title={p.en_social_proof ? "Quitar de Prueba Social" : "Añadir a Prueba Social"}
+                  >
+                    <Zap size={16} fill={p.en_social_proof ? "currentColor" : "none"} />
+                  </button>
                   <button
                     onClick={() => setEditingProduct(p)}
                     className="p-2.5 text-slate-300 hover:text-secondary hover:bg-slate-100 rounded-xl transition-all"
