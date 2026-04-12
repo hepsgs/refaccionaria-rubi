@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
-import { X, ShoppingBag, Eye, Zap, Package } from 'lucide-react';
+import { X, ShoppingBag, Eye, Package } from 'lucide-react';
 
 const SocialFloatingProof = () => {
   const { config } = useStore();
@@ -12,8 +12,8 @@ const SocialFloatingProof = () => {
   const [lastTime, setLastTime] = useState(2);
   const [activeType, setActiveType] = useState<'viewing' | 'purchasing'>('viewing');
   
-  const mainTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mainTimeoutRef = useRef<any>(null);
+  const hideTimeoutRef = useRef<any>(null);
   const cycleIndexRef = useRef(0);
 
   const clearAllTimeouts = () => {
