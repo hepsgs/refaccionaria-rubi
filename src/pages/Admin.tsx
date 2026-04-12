@@ -498,7 +498,16 @@ const Admin = () => {
     let query = supabase.from('productos').select('*', { count: 'exact' });
 
     if (productsSearch) {
-      query = query.or(`sku.ilike.%${productsSearch}%,nombre.ilike.%${productsSearch}%`);
+      const formattedSearch = productsSearch
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(word => `${word}:*`)
+        .join(' & ');
+
+      query = query.textSearch('fts_vector', formattedSearch, { 
+        config: 'spanish'
+      });
     }
 
     const from = (productsPage - 1) * productsPageSize;

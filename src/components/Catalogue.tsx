@@ -247,7 +247,16 @@ const Catalogue = () => {
       .select('*', { count: 'exact' });
 
     if (search) {
-      query = query.or(`sku.ilike.%${search}%,nombre.ilike.%${search}%`);
+      const formattedSearch = search
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(word => `${word}:*`)
+        .join(' & ');
+
+      query = query.textSearch('fts_vector', formattedSearch, { 
+        config: 'spanish'
+      });
     }
 
     if (filters.marca) query = query.eq('marca', filters.marca);
@@ -275,7 +284,16 @@ const Catalogue = () => {
     let query = supabase.from('productos').select('*');
 
     if (search) {
-      query = query.or(`sku.ilike.%${search}%,nombre.ilike.%${search}%`);
+      const formattedSearch = search
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(word => `${word}:*`)
+        .join(' & ');
+
+      query = query.textSearch('fts_vector', formattedSearch, { 
+        config: 'spanish'
+      });
     }
 
     if (filters.marca) query = query.eq('marca', filters.marca);
@@ -682,6 +700,8 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
   const { config } = useStore();
   const [activeImage, setActiveImage] = useState(0);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [isDeepZoom, setIsDeepZoom] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [added, setAdded] = useState<false | 'success' | 'limit'>(false);
   const [quantity, setQuantity] = useState(1);
   const { cart } = useStore();
@@ -689,14 +709,40 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
   const isAtLimit = currentInCart >= product.stock;
   const images = product.imagenes && product.imagenes.length > 0 ? product.imagenes : [];
 
+  const handleNextZoom = useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    setIsDeepZoom(false);
+    setActiveImage((prev) => (prev + 1) % images.length);
+  }, [images.length]);
+
+  const handlePrevZoom = useCallback((e?: React.MouseEvent | KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    setIsDeepZoom(false);
+    setActiveImage((prev) => (prev - 1 + images.length) % images.length);
+  }, [images.length]);
+
   useEffect(() => {
-    if (images.length > 1) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!zoomedImage) return;
+      if (e.key === 'ArrowRight') handleNextZoom(e);
+      if (e.key === 'ArrowLeft') handlePrevZoom(e);
+      if (e.key === 'Escape') {
+        setIsDeepZoom(false);
+        setZoomedImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomedImage, handleNextZoom, handlePrevZoom]);
+
+  useEffect(() => {
+    if (images.length > 1 && !zoomedImage) {
       const timer = setInterval(() => {
         setActiveImage(prev => (prev + 1) % images.length);
       }, 4000);
       return () => clearInterval(timer);
     }
-  }, [images.length]);
+  }, [images.length, zoomedImage]);
 
   const handleAddToCart = () => {
     if (isAtLimit) {
@@ -907,23 +953,79 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
       {/* Fullscreen Zoom Overlay */}
       {zoomedImage && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200"
-          onClick={() => setZoomedImage(null)}
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-in fade-in duration-200 overflow-hidden"
+          onClick={() => {
+            setIsDeepZoom(false);
+            setZoomedImage(null);
+          }}
         >
-          <button
+          {/* Header Controls */}
+          <div className="absolute top-0 inset-x-0 p-6 flex items-center justify-between z-50">
+            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 text-white font-bold text-sm">
+              {activeImage + 1} / {images.length}
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest hidden md:block">
+                {isDeepZoom ? 'Mueve el mouse para explorar' : 'Haz clic para ampliar detalles'}
+              </p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDeepZoom(false);
+                  setZoomedImage(null);
+                }}
+                className="p-3 bg-white/10 hover:bg-rose-500 text-white rounded-2xl backdrop-blur-md transition-all border border-white/10 group shadow-xl"
+              >
+                <X size={24} className="group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+          </div>
+
+          {/* Navigation Buttons */}
+          {images.length > 1 && !isDeepZoom && (
+            <>
+              <button 
+                onClick={handlePrevZoom}
+                className="absolute left-2 md:left-8 z-[100] p-4 rounded-full bg-black/50 md:bg-white/5 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/10 hover:scale-110 active:scale-95 shadow-2xl"
+              >
+                <ChevronLeft size={28} className="md:w-8 md:h-8" />
+              </button>
+              <button 
+                onClick={handleNextZoom}
+                className="absolute right-2 md:right-8 z-[100] p-4 rounded-full bg-black/50 md:bg-white/5 hover:bg-white/20 text-white transition-all backdrop-blur-md border border-white/10 hover:scale-110 active:scale-95 shadow-2xl"
+              >
+                <ChevronRight size={28} className="md:w-8 md:h-8" />
+              </button>
+            </>
+          )}
+
+          {/* Image Container */}
+          <div 
+            className={`w-full h-full flex items-center justify-center transition-all duration-300 ${isDeepZoom ? 'cursor-zoom-out' : 'cursor-zoom-in p-4 md:p-12'}`}
             onClick={(e) => {
               e.stopPropagation();
-              setZoomedImage(null);
+              if (!isDeepZoom) setMousePos({ x: 50, y: 50 });
+              setIsDeepZoom(!isDeepZoom);
             }}
-            className="absolute top-4 right-4 md:top-8 md:right-8 z-50 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all border border-white/20"
+            onMouseMove={(e) => {
+              if (!isDeepZoom) return;
+              const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+              const x = ((e.clientX - left) / width) * 100;
+              const y = ((e.clientY - top) / height) * 100;
+              setMousePos({ x, y });
+            }}
           >
-            <X size={28} />
-          </button>
-          <img 
-            src={zoomedImage} 
-            alt="Zoomed Product" 
-            className="max-w-full max-h-[90vh] object-contain cursor-zoom-out animate-in zoom-in duration-300 pointer-events-none"
-          />
+            <img 
+              src={images[activeImage]} 
+              alt="Zoomed Product" 
+              style={isDeepZoom ? {
+                transform: 'scale(2.5)',
+                transformOrigin: `${mousePos.x}% ${mousePos.y}%`
+              } : {}}
+              className={`max-w-full max-h-full object-contain transition-transform duration-300 select-none ${isDeepZoom ? 'animate-none' : 'animate-in zoom-in'}`}
+            />
+          </div>
         </div>,
         document.body
       )}
