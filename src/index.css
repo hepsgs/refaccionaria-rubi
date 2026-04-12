@@ -111,6 +111,15 @@
     animation: marquee 30s linear infinite;
   }
 
+  .animate-shine {
+    animation: shine 2s ease-in-out infinite;
+  }
+
+  @keyframes shine {
+    0% { left: -100%; transform: skewX(-25deg); }
+    100% { left: 200%; transform: skewX(-25deg); }
+  }
+
   @media (max-width: 640px) {
     .animate-marquee {
       animation: marquee 15s linear infinite;
