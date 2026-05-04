@@ -29,10 +29,12 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      
       // Step 1: Verify OTP
       const { error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token,
+        email: cleanEmail,
+        token: token.trim(),
         type: 'recovery'
       });
 
@@ -49,7 +51,8 @@ const ResetPassword = () => {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      toast.error(err.message);
+      console.error('Reset error:', err);
+      toast.error(err.message === 'Token has expired or is invalid' ? 'El código es incorrecto o ha caducado. Por favor solicita uno nuevo.' : err.message);
     } finally {
       setLoading(false);
     }

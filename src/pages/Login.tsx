@@ -14,8 +14,9 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: cleanEmail,
       password,
     });
 
@@ -93,13 +94,14 @@ const Login = () => {
                     return;
                   }
                   setLoading(true);
-                  const { error } = await supabase.auth.resetPasswordForEmail(email);
+                  const cleanEmail = email.trim().toLowerCase();
+                  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
                   setLoading(false);
                   if (error) {
                     toast.error(error.message);
                   } else {
                     toast.success('Código de recuperación enviado.');
-                    navigate('/restablecer-password', { state: { email } });
+                    navigate('/restablecer-password', { state: { email: cleanEmail } });
                   }
                 }}
                 className="text-xs font-bold text-primary hover:underline uppercase tracking-widest transition-all"
