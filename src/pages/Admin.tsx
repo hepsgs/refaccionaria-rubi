@@ -587,7 +587,7 @@ const Admin = () => {
     const to = from + productsPageSize - 1;
 
     const { data, count, error } = await query
-      .order('creado_at', { ascending: false })
+      .order('nombre', { ascending: true })
       .range(from, to);
 
     if (error) {

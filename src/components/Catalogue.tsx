@@ -273,7 +273,7 @@ const Catalogue = () => {
 
     const { data, count } = await query
       .range(from, to)
-      .order('creado_at', { ascending: false });
+      .order('nombre', { ascending: true });
     
     if (data) setProducts(data);
     if (count !== null) setTotalCount(count);
@@ -305,7 +305,7 @@ const Catalogue = () => {
       query = query.or(`and(año_inicio.lte.${year},año_fin.gte.${year}),and(año_inicio.lte.${year},año_fin.is.null),and(año_inicio.is.null,año_fin.gte.${year})`);
     }
 
-    const { data, error } = await query.order('creado_at', { ascending: false });
+    const { data, error } = await query.order('nombre', { ascending: true });
     if (error) {
       toast.error('Error al obtener datos para exportar: ' + error.message);
       return [];
