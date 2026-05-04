@@ -215,6 +215,7 @@ const Catalogue = () => {
   const [pageSize, setPageSize] = useState(25);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [exporting, setExporting] = useState<false | 'csv' | 'pdf'>(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const { profile, config, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
   const catalogTopRef = useRef<HTMLDivElement>(null);
@@ -347,17 +348,18 @@ const Catalogue = () => {
     document.body.removeChild(link);
   };
 
-  const getBase64ImageFromURL = (url: string): Promise<string> => {
+  const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.setAttribute("crossOrigin", "anonymous");
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        const scale = Math.min(1, maxWidth / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0);
-        const dataURL = canvas.toDataURL("image/png");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL("image/jpeg", 0.6);
         resolve(dataURL);
       };
       img.onerror = (error) => reject(error);
@@ -365,7 +367,7 @@ const Catalogue = () => {
     });
   };
 
-  const exportToPDF = async (data: Product[]) => {
+  const exportToPDF = async (data: Product[], options: { includeImages: boolean, includePrice: boolean }) => {
     const doc = new jsPDF();
     const config = useStore.getState().config;
 
@@ -398,25 +400,55 @@ const Catalogue = () => {
     doc.text(`Catálogo de Productos - ${new Date().toLocaleDateString()}`, 14, 50);
     doc.text(`Total: ${data.length} ítems`, 180, 50, { align: 'right' });
     
-    const tableColumn = ["SKU", "Producto", "Marca"];
+    const tableColumn = [];
+    if (options.includeImages) tableColumn.push(""); // Column for image
+    tableColumn.push("SKU", "Producto", "Marca");
     if (config?.show_modelo !== false) tableColumn.push("Modelo");
     tableColumn.push("Año", "Tipo");
     if (config?.show_proveedor !== false) tableColumn.push("Proveedor");
-    tableColumn.push("Precio");
+    if (options.includePrice) tableColumn.push("Precio");
+
+    // Fetch images if needed
+    const imagesMap = new Map<string, string>();
+    if (options.includeImages) {
+      toast.loading('Procesando imágenes...', { id: 'pdf-images' });
+      const batchSize = 15;
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (p) => {
+          if (p.imagenes && p.imagenes.length > 0) {
+            try {
+              const base64 = await getBase64ImageFromURL(p.imagenes[0]);
+              imagesMap.set(p.id, base64);
+            } catch (e) {
+              console.warn(`Could not load image for ${p.sku}`, e);
+            }
+          }
+        }));
+        // Update toast progress
+        const progress = Math.round((Math.min(i + batchSize, data.length) / data.length) * 100);
+        toast.loading(`Procesando imágenes: ${progress}%`, { id: 'pdf-images' });
+      }
+      toast.dismiss('pdf-images');
+    }
 
     const tableRows = data.map(p => {
-      const row = [String(p.sku), p.nombre, p.marca];
+      const row = [];
+      if (options.includeImages) row.push(""); // Placeholder for image
+      row.push(String(p.sku), p.nombre, p.marca);
       if (config?.show_modelo !== false) row.push(p.modelo || 'N/A');
       
       const anoStr = p.año_inicio && p.año_fin 
-        ? `Año: ${p.año_inicio}-${p.año_fin}` 
+        ? `${p.año_inicio}-${p.año_fin}` 
         : p.año_inicio 
-          ? `Año ${p.año_inicio}` 
+          ? `${p.año_inicio}` 
           : 'N/A';
           
       row.push(anoStr, p.tipo || 'N/A');
       if (config?.show_proveedor !== false) row.push(p.proveedor || 'N/A');
-      row.push(`$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      if (options.includePrice) {
+        row.push(`$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      }
       return row;
     });
 
@@ -424,16 +456,35 @@ const Catalogue = () => {
       head: [tableColumn],
       body: tableRows,
       startY: 55,
-      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica' },
+      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', verticalAlign: 'middle' },
       headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { top: 55 },
+      columnStyles: {
+        0: options.includeImages ? { cellWidth: 20 } : {},
+      },
+      didDrawCell: (dataArg: any) => {
+        if (options.includeImages && dataArg.section === 'body' && dataArg.column.index === 0) {
+          const rowIndex = dataArg.row.index;
+          const product = data[rowIndex];
+          if (product) {
+            const base64 = imagesMap.get(product.id);
+            if (base64) {
+              const x = dataArg.cell.x + 2;
+              const y = dataArg.cell.y + 2;
+              doc.addImage(base64, 'JPEG', x, y, 16, 16);
+            }
+          }
+        }
+      },
       didDrawPage: (dataArg: any) => {
         // Simple footer
         const pageCount = (doc as any).internal.getNumberOfPages();
         doc.setFontSize(8);
         doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 196, 285, { align: 'right' });
-      }
+      },
+      // Increase row height if images are present
+      bodyStyles: options.includeImages ? { minCellHeight: 20 } : {}
     });
     
     const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
@@ -594,12 +645,7 @@ const Catalogue = () => {
               <span>{exporting === 'csv' ? 'Generando...' : 'Exportar CSV'}</span>
             </button>
             <button 
-              onClick={async () => {
-                setExporting('pdf');
-                const allData = await getFullFilteredData();
-                if (allData.length > 0) await exportToPDF(allData);
-                setExporting(false);
-              }}
+              onClick={() => setShowExportModal(true)}
               disabled={exporting !== false || loading}
               className="flex items-center space-x-2 bg-rose-50 text-rose-600 px-5 py-2.5 rounded-xl border border-rose-100 font-bold text-xs hover:bg-rose-100 transition-all hover:scale-105 active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -678,6 +724,29 @@ const Catalogue = () => {
           </button>
         </div>
       )}
+      {/* Export Options Modal */}
+      {showExportModal && (
+        <PDFExportModal 
+          isApproved={isApproved}
+          isGenerating={exporting === 'pdf'}
+          totalCount={totalCount}
+          onClose={() => setShowExportModal(false)}
+          onConfirm={async (options) => {
+            try {
+              setExporting('pdf');
+              const allData = await getFullFilteredData();
+              if (allData.length > 0) await exportToPDF(allData, options);
+            } catch (error) {
+              console.error("Error exporting PDF:", error);
+              toast.error("Error al generar el PDF");
+            } finally {
+              setExporting(false);
+              setShowExportModal(false);
+            }
+          }}
+        />
+      )}
+
       {/* Product Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal 
@@ -1029,6 +1098,117 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
         </div>,
         document.body
       )}
+    </div>
+  );
+};
+
+const PDFExportModal = ({ 
+  onClose, 
+  onConfirm,
+  isGenerating,
+  isApproved,
+  totalCount
+}: { 
+  onClose: () => void, 
+  onConfirm: (options: { includeImages: boolean, includePrice: boolean }) => void,
+  isGenerating: boolean,
+  isApproved: boolean,
+  totalCount: number
+}) => {
+  const [options, setOptions] = useState({ includeImages: totalCount <= 300, includePrice: isApproved });
+  const isLargeExport = totalCount > 300;
+  const isVeryLargeExport = totalCount > 1000;
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-secondary/80 backdrop-blur-md" onClick={onClose} />
+      <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 p-8">
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-rose-500 transition-colors">
+          <X size={20} />
+        </button>
+        
+        <div className="mb-6 text-center">
+          <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Package size={32} />
+          </div>
+          <h3 className="text-xl font-black text-secondary mb-2">Opciones de Exportación</h3>
+          <p className="text-xs text-slate-500">Personaliza tu catálogo PDF antes de descargar.</p>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          <label className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors group">
+            <div className="flex items-center space-x-3">
+              <div className={`p-2 rounded-lg transition-colors ${options.includeImages ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-400'}`}>
+                <Package size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-secondary">Incluir Imágenes</p>
+                <p className="text-[10px] text-slate-400 font-medium">Muestra la foto principal</p>
+              </div>
+            </div>
+            <div className="relative">
+              <input 
+                type="checkbox" 
+                checked={options.includeImages} 
+                onChange={() => setOptions({ ...options, includeImages: !options.includeImages })}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+            </div>
+          </label>
+
+          <label className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${!isApproved ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}>
+            <div className="flex items-center space-x-3">
+              <div className={`p-2 rounded-lg transition-colors ${options.includePrice ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                <span className="font-bold text-sm">$</span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-secondary">Incluir Precios</p>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {!isApproved ? 'Solo para mayoristas autorizados' : 'Muestra el precio unitario'}
+                </p>
+              </div>
+            </div>
+            {isApproved && (
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  checked={options.includePrice} 
+                  onChange={() => setOptions({ ...options, includePrice: !options.includePrice })}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+              </div>
+            )}
+          </label>
+
+          {(options.includeImages && isLargeExport) && (
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start space-x-2 animate-in fade-in slide-in-from-top-1">
+              <Info size={14} className="text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[9px] text-amber-700 leading-tight">
+                {isVeryLargeExport 
+                  ? "Exportar más de 1000 imágenes puede agotar la memoria del navegador. Te recomendamos filtrar los productos antes de exportar."
+                  : "Estás exportando un catálogo grande. El proceso puede tardar unos minutos debido al procesamiento de imágenes."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <button 
+          onClick={() => onConfirm(options)}
+          disabled={isGenerating}
+          className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isGenerating ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Generando Catálogo...</span>
+            </>
+          ) : (
+            <span>Descargar PDF</span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
