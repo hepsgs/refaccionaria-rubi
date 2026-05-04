@@ -35,7 +35,10 @@ const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<string> => 
       canvas.height = img.height * scale;
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataURL = canvas.toDataURL("image/jpeg", 0.6);
+      
+      // Use PNG for logos or if specified to preserve transparency
+      const isPng = url.toLowerCase().includes('.png') || maxWidth > 400;
+      const dataURL = canvas.toDataURL(isPng ? "image/png" : "image/jpeg", isPng ? 1.0 : 0.6);
       resolve(dataURL);
     };
     img.onerror = (error) => reject(error);
@@ -174,12 +177,17 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
     doc.setFont('helvetica', 'bold');
     doc.text(p.sku, currentX + 2, currentY + 33.5);
 
-    // Product Info
+    // Product Info (Brand + Name)
+    doc.setTextColor(225, 29, 72); // Red for brand
+    doc.setFontSize(5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(p.marca.toUpperCase(), currentX + 2, currentY + 37);
+
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     const nameLines = doc.splitTextToSize(p.nombre, colWidth - 4);
-    doc.text(nameLines, currentX + 2, currentY + 38);
+    doc.text(nameLines, currentX + 2, currentY + 40);
 
     // Inputs (Quantity / Price)
     doc.setDrawColor(200, 200, 200);
@@ -203,8 +211,8 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
 const addHeader = async (doc: jsPDF, config: any) => {
   if (config?.logo_url) {
     try {
-      const logoData = await getBase64ImageFromURL(config.logo_url);
-      doc.addImage(logoData, 'PNG', 160, 10, 30, 15);
+      const logoData = await getBase64ImageFromURL(config.logo_url, 400); // Higher res for logo
+      doc.addImage(logoData, 'PNG', 150, 8, 45, 20);
     } catch (e) {}
   }
 
