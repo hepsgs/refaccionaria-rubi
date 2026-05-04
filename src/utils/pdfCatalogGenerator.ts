@@ -166,8 +166,8 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
       doc.addImage(base64, 'JPEG', currentX + 3, currentY + 2, imgSize, imgSize * 0.7);
     }
 
-    // SKU Bar (Green)
-    doc.setFillColor(34, 197, 94); // emerald-500
+    // SKU Bar (Red - Platform Primary)
+    doc.setFillColor(225, 29, 72); // #e11d48
     doc.rect(currentX, currentY + 30, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
