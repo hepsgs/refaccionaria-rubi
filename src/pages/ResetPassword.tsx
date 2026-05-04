@@ -111,9 +111,9 @@ const ResetPassword = () => {
                 <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input
                   type="text"
-                  maxLength={6}
-                  className="input-rubi pl-14 font-black tracking-[0.5em] text-center"
-                  placeholder="000000"
+                  maxLength={8}
+                  className="input-rubi pl-14 font-black tracking-[0.3em] text-center"
+                  placeholder="00000000"
                   required
                   value={token}
                   onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
