@@ -3,9 +3,8 @@ import { createPortal } from 'react-dom';
 import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import { generateCatalogPDF } from '../utils/pdfCatalogGenerator';
 
 interface Product {
   id: string;
@@ -348,148 +347,7 @@ const Catalogue = () => {
     document.body.removeChild(link);
   };
 
-  const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.setAttribute("crossOrigin", "anonymous");
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const scale = Math.min(1, maxWidth / img.width);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataURL = canvas.toDataURL("image/jpeg", 0.6);
-        resolve(dataURL);
-      };
-      img.onerror = (error) => reject(error);
-      img.src = url;
-    });
-  };
-
-  const exportToPDF = async (data: Product[], options: { includeImages: boolean, includePrice: boolean }) => {
-    const doc = new jsPDF();
-    const config = useStore.getState().config;
-
-    // Add Logo if available
-    if (config?.logo_url) {
-      try {
-        const logoData = await getBase64ImageFromURL(config.logo_url);
-        doc.addImage(logoData, 'PNG', 14, 10, 30, 30);
-      } catch (e) {
-        console.error("Could not add logo to PDF", e);
-      }
-    }
-
-    doc.setFontSize(22);
-    doc.setTextColor(30, 41, 59); // slate-800
-    doc.setFont('helvetica', 'bold');
-    doc.text(config?.platform_name || 'TecnosisMX', config?.logo_url ? 50 : 14, 20);
-    
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    const headerX = config?.logo_url ? 50 : 14;
-    doc.text(`${config?.footer_contact_address || ''}`, headerX, 26, { maxWidth: 140 });
-    doc.text(`Tel: ${config?.footer_contact_phone || ''} | Email: ${config?.footer_contact_email || ''}`, headerX, 34);
-    
-    doc.setDrawColor(226, 232, 240); // slate-200
-    doc.line(14, 42, 196, 42);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Catálogo de Productos - ${new Date().toLocaleDateString()}`, 14, 50);
-    doc.text(`Total: ${data.length} ítems`, 180, 50, { align: 'right' });
-    
-    const tableColumn = [];
-    if (options.includeImages) tableColumn.push(""); // Column for image
-    tableColumn.push("SKU", "Producto", "Marca");
-    if (config?.show_modelo !== false) tableColumn.push("Modelo");
-    tableColumn.push("Año", "Tipo");
-    if (config?.show_proveedor !== false) tableColumn.push("Proveedor");
-    if (options.includePrice) tableColumn.push("Precio");
-
-    // Fetch images if needed
-    const imagesMap = new Map<string, string>();
-    if (options.includeImages) {
-      toast.loading('Procesando imágenes...', { id: 'pdf-images' });
-      const batchSize = 15;
-      for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize);
-        await Promise.all(batch.map(async (p) => {
-          if (p.imagenes && p.imagenes.length > 0) {
-            try {
-              const base64 = await getBase64ImageFromURL(p.imagenes[0]);
-              imagesMap.set(p.id, base64);
-            } catch (e) {
-              console.warn(`Could not load image for ${p.sku}`, e);
-            }
-          }
-        }));
-        // Update toast progress
-        const progress = Math.round((Math.min(i + batchSize, data.length) / data.length) * 100);
-        toast.loading(`Procesando imágenes: ${progress}%`, { id: 'pdf-images' });
-      }
-      toast.dismiss('pdf-images');
-    }
-
-    const tableRows = data.map(p => {
-      const row = [];
-      if (options.includeImages) row.push(""); // Placeholder for image
-      row.push(String(p.sku), p.nombre, p.marca);
-      if (config?.show_modelo !== false) row.push(p.modelo || 'N/A');
-      
-      const anoStr = p.año_inicio && p.año_fin 
-        ? `${p.año_inicio}-${p.año_fin}` 
-        : p.año_inicio 
-          ? `${p.año_inicio}` 
-          : 'N/A';
-          
-      row.push(anoStr, p.tipo || 'N/A');
-      if (config?.show_proveedor !== false) row.push(p.proveedor || 'N/A');
-      if (options.includePrice) {
-        row.push(`$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      }
-      return row;
-    });
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 55,
-      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
-      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      margin: { top: 55 },
-      columnStyles: {
-        0: options.includeImages ? { cellWidth: 20 } : {},
-      },
-      didDrawCell: (dataArg: any) => {
-        if (options.includeImages && dataArg.section === 'body' && dataArg.column.index === 0) {
-          const rowIndex = dataArg.row.index;
-          const product = data[rowIndex];
-          if (product) {
-            const base64 = imagesMap.get(product.id);
-            if (base64) {
-              const x = dataArg.cell.x + 2;
-              const y = dataArg.cell.y + 2;
-              doc.addImage(base64, 'JPEG', x, y, 16, 16);
-            }
-          }
-        }
-      },
-      didDrawPage: (dataArg: any) => {
-        // Simple footer
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        doc.setFontSize(8);
-        doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 196, 285, { align: 'right' });
-      },
-      // Increase row height if images are present
-      bodyStyles: options.includeImages ? { minCellHeight: 20 } : {}
-    });
-    
-    const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
-    doc.save(fileName);
-  };
+  // PDF Export functions have been moved to ../utils/pdfCatalogGenerator.ts
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -735,7 +593,7 @@ const Catalogue = () => {
             try {
               setExporting('pdf');
               const allData = await getFullFilteredData();
-              if (allData.length > 0) await exportToPDF(allData, options);
+              if (allData.length > 0) await generateCatalogPDF(allData, options, config);
             } catch (error) {
               console.error("Error exporting PDF:", error);
               toast.error("Error al generar el PDF");
@@ -1110,12 +968,20 @@ const PDFExportModal = ({
   totalCount
 }: { 
   onClose: () => void, 
-  onConfirm: (options: { includeImages: boolean, includePrice: boolean }) => void,
+  onConfirm: (options: { includeImages: boolean, includePrice: boolean, template: 'table' | 'grid' }) => void,
   isGenerating: boolean,
   isApproved: boolean,
   totalCount: number
 }) => {
-  const [options, setOptions] = useState({ includeImages: totalCount <= 300, includePrice: isApproved });
+  const [options, setOptions] = useState<{
+    includeImages: boolean, 
+    includePrice: boolean, 
+    template: 'table' | 'grid'
+  }>({ 
+    includeImages: totalCount <= 300, 
+    includePrice: isApproved,
+    template: 'table'
+  });
   const isLargeExport = totalCount > 300;
   const isVeryLargeExport = totalCount > 1000;
 
@@ -1181,6 +1047,28 @@ const PDFExportModal = ({
               </div>
             )}
           </label>
+
+          <div className="pt-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Plantilla de Diseño</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setOptions({ ...options, template: 'table' })}
+                className={`p-3 rounded-2xl border-2 transition-all text-left ${options.template === 'table' ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-slate-200'}`}
+              >
+                <p className="text-xs font-bold text-secondary">Tabla</p>
+                <p className="text-[9px] text-slate-500 font-medium">Lista compacta</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOptions({ ...options, template: 'grid' })}
+                className={`p-3 rounded-2xl border-2 transition-all text-left ${options.template === 'grid' ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-slate-200'}`}
+              >
+                <p className="text-xs font-bold text-secondary">Grilla (Folleto)</p>
+                <p className="text-[9px] text-slate-500 font-medium">5 items por fila</p>
+              </button>
+            </div>
+          </div>
 
           {(options.includeImages && isLargeExport) && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start space-x-2 animate-in fade-in slide-in-from-top-1">
