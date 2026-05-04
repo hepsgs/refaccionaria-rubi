@@ -2826,7 +2826,13 @@ const ProductManagement = ({
 
         if (!rowData.sku) return null;
 
-        const updateData: any = { sku: rowData.sku };
+        const cleanSku = rowData.sku
+          .trim()
+          .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, '-') // Normalizar guiones
+          .replace(/\s+/g, '') // Quitar espacios internos y saltos de línea
+          .toUpperCase();
+
+        const updateData: any = { sku: cleanSku };
 
         if (rowData.nombre !== undefined) updateData.nombre = rowData.nombre.replace(/^"(.*)"$/, '$1');
         if (rowData.precio !== undefined && rowData.precio !== '') updateData.precio = parseFloat(rowData.precio);
@@ -3261,9 +3267,16 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
     setSaving(true);
     setErrorMsg('');
 
+    const cleanSku = form.sku
+      .trim()
+      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, '-')
+      .replace(/\s+/g, '')
+      .toUpperCase();
+
     // Prepare data (convert empty years to null)
     const productData = {
       ...form,
+      sku: cleanSku,
       año_inicio: form.año_inicio === '' ? null : form.año_inicio,
       año_fin: form.año_fin === '' ? null : form.año_fin,
       modelo: form.modelo.trim() === '' ? null : form.modelo,
@@ -3276,6 +3289,18 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
         const { error: err } = await supabase.from('productos').update(productData).eq('id', product.id);
         error = err;
       } else {
+        // Verificar si el SKU ya existe antes de insertar
+        const { data: existing } = await supabase
+          .from('productos')
+          .select('id')
+          .eq('sku', cleanSku)
+          .maybeSingle();
+
+        if (existing) {
+          setSaving(false);
+          return setErrorMsg(`El SKU "${cleanSku}" ya existe en el catálogo.`);
+        }
+
         const { error: err } = await supabase.from('productos').insert(productData);
         error = err;
       }
