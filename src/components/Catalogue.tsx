@@ -1002,24 +1002,30 @@ const PDFExportModal = ({
         </div>
 
         <div className="space-y-4 mb-8">
-          <label className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors group">
+          <label className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${options.template === 'grid' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'} group`}>
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg transition-colors ${options.includeImages ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-400'}`}>
                 <Package size={18} />
               </div>
               <div>
                 <p className="text-sm font-bold text-secondary">Incluir Imágenes</p>
-                <p className="text-[10px] text-slate-400 font-medium">Muestra la foto principal</p>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {options.template === 'grid' ? 'Obligatorio en formato Folleto' : 'Muestra la foto principal'}
+                </p>
               </div>
             </div>
             <div className="relative">
               <input 
                 type="checkbox" 
                 checked={options.includeImages} 
-                onChange={() => setOptions({ ...options, includeImages: !options.includeImages })}
+                onChange={() => {
+                  if (options.template !== 'grid') {
+                    setOptions({ ...options, includeImages: !options.includeImages });
+                  }
+                }}
                 className="sr-only peer"
               />
-              <div className="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+              <div className={`w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all ${options.includeImages ? 'bg-rose-500' : ''}`}></div>
             </div>
           </label>
 
@@ -1061,7 +1067,7 @@ const PDFExportModal = ({
               </button>
               <button
                 type="button"
-                onClick={() => setOptions({ ...options, template: 'grid' })}
+                onClick={() => setOptions({ ...options, template: 'grid', includeImages: true })}
                 className={`p-3 rounded-2xl border-2 transition-all text-left ${options.template === 'grid' ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-slate-200'}`}
               >
                 <p className="text-xs font-bold text-secondary">Grilla (Folleto)</p>
