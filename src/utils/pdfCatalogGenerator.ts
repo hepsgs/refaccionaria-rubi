@@ -194,6 +194,11 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
     doc.rect(currentX + 2, currentY + 48, 6, 4); // Qty
     doc.rect(currentX + 10, currentY + 48, 15, 4); // Price
     doc.text('$', currentX + 11, currentY + 51);
+    
+    if (options.includePrice) {
+      doc.setFontSize(5);
+      doc.text(p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), currentX + 13, currentY + 51);
+    }
 
     // Update coordinates
     itemCount++;
