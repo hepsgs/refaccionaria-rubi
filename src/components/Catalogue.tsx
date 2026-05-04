@@ -456,7 +456,7 @@ const Catalogue = () => {
       head: [tableColumn],
       body: tableRows,
       startY: 55,
-      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', verticalAlign: 'middle' },
+      styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
       headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { top: 55 },
