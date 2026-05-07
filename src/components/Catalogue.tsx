@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -227,6 +228,8 @@ const Catalogue = () => {
   const isApproved = profile?.estatus === 'aprobado';
   const catalogTopRef = useRef<HTMLDivElement>(null);
 
+  const [searchParams] = useSearchParams();
+
   const handleShare = async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}${window.location.pathname}?sku=${product.sku}`;
@@ -256,26 +259,29 @@ const Catalogue = () => {
 
   // Deep linking: Open product if SKU is in URL
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const skuParam = params.get('sku');
+    const skuParam = searchParams.get('sku');
     if (skuParam) {
       const fetchProductBySku = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('productos')
           .select('*')
-          .eq('sku', skuParam)
+          .ilike('sku', skuParam)
           .single();
-        if (data) {
+        
+        if (data && !error) {
           setSelectedProduct(data);
-          // Small delay to ensure the page has loaded before scrolling
+          // Small delay to ensure the page has rendered before scrolling
           setTimeout(() => {
-            document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
-          }, 500);
+            const el = document.getElementById('catalogo');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 600);
+        } else if (error) {
+          console.error('Error fetching deep-linked product:', error);
         }
       };
       fetchProductBySku();
     }
-  }, []);
+  }, [searchParams]);
 
   // Fetch unique brands and other filter options
   // Uses RPC for high performance with large datasets, with a fallback to batch fetching
