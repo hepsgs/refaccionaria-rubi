@@ -1277,6 +1277,18 @@ const Admin = () => {
                       />
                       <p className="text-[10px] text-slate-400 font-medium px-2">Cada línea se convertirá en un punto con checkbox en el PDF.</p>
                     </div>
+                    <div className="flex items-center space-x-3 px-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="pdf_repeat_header"
+                        className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
+                        checked={settings.pdf_repeat_header ?? true}
+                        onChange={(e) => setSettings({ ...settings, pdf_repeat_header: e.target.checked })}
+                      />
+                      <label htmlFor="pdf_repeat_header" className="text-sm font-bold text-secondary">
+                        Repetir encabezado en todas las páginas
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>

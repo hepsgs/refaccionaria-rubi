@@ -50,18 +50,29 @@ const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: stri
 };
 
 export const generateCatalogPDF = async (data: Product[], options: ExportOptions, config: any) => {
+  // Pre-fetch logo info once to use synchronously in headers
+  let logoInfo = null;
+  if (config?.logo_url) {
+    try {
+      logoInfo = await getBase64ImageFromURL(config.logo_url, 400);
+    } catch (e) {
+      console.error("Error loading logo:", e);
+    }
+  }
+
   if (options.template === 'grid') {
-    return generateGridCatalog(data, options, config);
+    return generateGridCatalog(data, options, config, logoInfo);
   } else {
-    return generateTableCatalog(data, options, config);
+    return generateTableCatalog(data, options, config, logoInfo);
   }
 };
 
-const generateTableCatalog = async (data: Product[], options: ExportOptions, config: any) => {
+const generateTableCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any) => {
   const doc = new jsPDF();
+  const repeatHeader = config?.pdf_repeat_header !== false;
 
-  // Add Header
-  await addHeader(doc, config);
+  // Initial header
+  addHeader(doc, config, logoInfo);
 
   const tableColumn = [];
   if (options.includeImages) tableColumn.push(""); // Column for image
@@ -103,7 +114,7 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
     styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { top: 65 },
+    margin: { top: repeatHeader ? 65 : 20 },
     columnStyles: {
       0: options.includeImages ? { cellWidth: 20 } : {},
     },
@@ -117,8 +128,14 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
       }
     },
     didDrawPage: (dataArg: any) => {
+      // Draw header on subsequent pages only if repeatHeader is true
+      if (repeatHeader && dataArg.pageNumber > 1) {
+        addHeader(doc, config, logoInfo);
+      }
+      
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
       doc.text(`Página ${dataArg.pageNumber} de ${pageCount}`, 196, 285, { align: 'right' });
     },
     bodyStyles: options.includeImages ? { minCellHeight: 20 } : {}
@@ -127,7 +144,7 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
   savePDF(doc, config);
 };
 
-const generateGridCatalog = async (data: Product[], options: ExportOptions, config: any) => {
+const generateGridCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -135,18 +152,21 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   const columns = 5;
   const colWidth = (pageWidth - (margin * 2)) / columns;
   const rowHeight = 55;
-  const rowsPerPage = Math.floor((pageHeight - 70) / rowHeight);
+  
+  const repeatHeader = config?.pdf_repeat_header !== false;
+  const headerHeight = repeatHeader ? 65 : 20;
+  const rowsPerPage = Math.floor((pageHeight - headerHeight - 10) / rowHeight);
 
   const imagesMap = new Map<string, string>();
   if (options.includeImages) {
-    await fetchImagesInBatches(data, imagesMap, 300); // Higher res for grid?
+    await fetchImagesInBatches(data, imagesMap, 300);
   }
 
   let currentX = margin;
   let currentY = 65;
   let itemCount = 0;
 
-  await addHeader(doc, config);
+  addHeader(doc, config, logoInfo);
 
   for (let i = 0; i < data.length; i++) {
     const p = data[i];
@@ -154,9 +174,13 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
     // Page Break Logic
     if (itemCount > 0 && itemCount % (columns * rowsPerPage) === 0) {
       doc.addPage();
-      await addHeader(doc, config);
+      if (repeatHeader) {
+        addHeader(doc, config, logoInfo);
+        currentY = 65;
+      } else {
+        currentY = 20;
+      }
       currentX = margin;
-      currentY = 65;
     }
 
     // Draw Card Border (Dotted)
@@ -216,25 +240,20 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   savePDF(doc, config);
 };
 
-
-
-const addHeader = async (doc: jsPDF, config: any) => {
+const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
   const slogan = config?.pdf_slogan || '"CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"';
   const advantages = config?.pdf_advantages || "Calidad garantizada\nMateriales resistentes\nDisponibilidad inmediata\nExcelente relación costo-beneficio";
   
   // 1. Logo (Top Right)
-  if (config?.logo_url) {
-    try {
-      const logoInfo = await getBase64ImageFromURL(config.logo_url, 400);
-      const targetHeight = 25; 
-      const ratio = logoInfo.width / logoInfo.height;
-      const targetWidth = targetHeight * ratio;
-      
-      const finalWidth = Math.min(targetWidth, 65);
-      const finalHeight = finalWidth / ratio;
-      
-      doc.addImage(logoInfo.data, 'PNG', 196 - finalWidth, 8, finalWidth, finalHeight);
-    } catch (e) {}
+  if (logoInfo) {
+    const targetHeight = 25; 
+    const ratio = logoInfo.width / logoInfo.height;
+    const targetWidth = targetHeight * ratio;
+    
+    const finalWidth = Math.min(targetWidth, 65);
+    const finalHeight = finalWidth / ratio;
+    
+    doc.addImage(logoInfo.data, 'PNG', 196 - finalWidth, 8, finalWidth, finalHeight);
   }
 
   // 2. Company Name & Title (Top Left)
@@ -252,14 +271,17 @@ const addHeader = async (doc: jsPDF, config: any) => {
   // --- Left Column: Advantages ---
   let advY = 40;
   
-  // Green checkmark
-  doc.setTextColor(22, 163, 74); // Green color
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text("✓", 14, advY);
+  // Draw Custom Green Checkmark (Vector)
+  doc.setDrawColor(22, 163, 74); // Green color
+  doc.setLineWidth(0.8);
+  const checkX = 14;
+  const checkY = advY - 1;
+  doc.line(checkX, checkY, checkX + 1.5, checkY + 1.5); // Short stroke
+  doc.line(checkX + 1.5, checkY + 1.5, checkX + 4, checkY - 2); // Long stroke
   
   doc.setFontSize(9);
   doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
   doc.text("Ventajas de nuestros productos:", 19, advY);
 
   doc.setFont('helvetica', 'normal');
@@ -312,4 +334,3 @@ const savePDF = (doc: jsPDF, config: any) => {
   const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
   doc.save(fileName);
 };
-
