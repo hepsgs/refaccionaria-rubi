@@ -288,9 +288,9 @@ const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
   
-  const advantagesList = advantages.split('\n').filter(line => line.trim() !== '');
+  const advantagesList = advantages.split('\n').filter((line: string) => line.trim() !== '');
   advY += 6;
-  advantagesList.forEach((adv) => {
+  advantagesList.forEach((adv: string) => {
     doc.text(`•  ${adv}`, 22, advY);
     advY += 4.5;
   });
