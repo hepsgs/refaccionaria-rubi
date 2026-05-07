@@ -219,22 +219,65 @@ const Catalogue = () => {
   const isApproved = profile?.estatus === 'aprobado';
   const catalogTopRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unique brands
+  // Fetch unique brands and other filter options
+  // Uses RPC for high performance with large datasets, with a fallback to batch fetching
   useEffect(() => {
     const fetchFilterData = async () => {
-      const { data } = await supabase.from('productos').select('marca, proveedor, tipo, modelo, año_inicio, año_fin');
-      if (data) {
-        setAvailableBrands(Array.from(new Set(data.map((i: any) => i.marca).filter(Boolean))) as string[]);
-        setAvailableProviders(Array.from(new Set(data.map((i: any) => i.proveedor).filter(Boolean))) as string[]);
-        setAvailableTypes(Array.from(new Set(data.map((i: any) => i.tipo).filter(Boolean))) as string[]);
-        setAvailableModels(Array.from(new Set(data.map((i: any) => i.modelo).filter(Boolean))) as string[]);
+      try {
+        // 1. Try RPC first (Scalable solution for 15k+ products)
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_catalog_filters');
         
-        const years = new Set<number>();
-        data.forEach((p: any) => {
-          if (p.año_inicio) years.add(p.año_inicio);
-          if (p.año_fin) years.add(p.año_fin);
-        });
-        setAvailableYears(Array.from(years).sort((a, b) => b - a));
+        if (rpcData && !rpcError) {
+          setAvailableBrands(rpcData.marcas || []);
+          setAvailableProviders(rpcData.proveedores || []);
+          setAvailableTypes(rpcData.tipos || []);
+          setAvailableModels(rpcData.modelos || []);
+          setAvailableYears(rpcData.años || []);
+          return;
+        }
+
+        // 2. Fallback to batch fetching if RPC fails or is not yet created
+        let allData: any[] = [];
+        let from = 0;
+        const step = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('productos')
+            .select('marca, proveedor, tipo, modelo, año_inicio, año_fin')
+            .range(from, from + step - 1);
+          
+          if (error) {
+            console.error('Error fetching filter data (batch):', error);
+            hasMore = false;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            from += step;
+            if (data.length < step) hasMore = false;
+          } else {
+            hasMore = false;
+          }
+        }
+
+        if (allData.length > 0) {
+          setAvailableBrands(Array.from(new Set(allData.map((i: any) => i.marca).filter(Boolean))).sort() as string[]);
+          setAvailableProviders(Array.from(new Set(allData.map((i: any) => i.proveedor).filter(Boolean))).sort() as string[]);
+          setAvailableTypes(Array.from(new Set(allData.map((i: any) => i.tipo).filter(Boolean))).sort() as string[]);
+          setAvailableModels(Array.from(new Set(allData.map((i: any) => i.modelo).filter(Boolean))).sort() as string[]);
+          
+          const years = new Set<number>();
+          allData.forEach((p: any) => {
+            if (p.año_inicio) years.add(p.año_inicio);
+            if (p.año_fin) years.add(p.año_fin);
+          });
+          setAvailableYears(Array.from(years).sort((a, b) => b - a));
+        }
+      } catch (err) {
+        console.error('Unexpected error in fetchFilterData:', err);
       }
     };
     fetchFilterData();
