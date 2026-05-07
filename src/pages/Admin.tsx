@@ -1249,6 +1249,36 @@ const Admin = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* PDF Configuration Section */}
+                <div className="card-rubi bg-white border-slate-100 space-y-6 p-6">
+                  <h3 className="font-bold text-secondary text-lg flex items-center space-x-2">
+                    <span className="w-1.5 h-6 bg-red-600 rounded-full"></span>
+                    <span>Configuración de Catálogo PDF</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Eslogan del PDF</label>
+                      <input
+                        className="input-rubi"
+                        value={settings.pdf_slogan || ''}
+                        placeholder='Ej: "CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"'
+                        onChange={(e) => setSettings({ ...settings, pdf_slogan: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 font-medium px-2">Aparece en el encabezado del PDF bajo el logo.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Ventajas / Beneficios (Línea por línea)</label>
+                      <textarea
+                        className="input-rubi min-h-[100px] py-2 text-sm"
+                        placeholder="Calidad garantizada&#10;Disponibilidad inmediata&#10;Mejor precio"
+                        value={settings.pdf_advantages || ''}
+                        onChange={(e) => setSettings({ ...settings, pdf_advantages: e.target.value })}
+                      />
+                      <p className="text-[10px] text-slate-400 font-medium px-2">Cada línea se convertirá en un punto con checkbox en el PDF.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

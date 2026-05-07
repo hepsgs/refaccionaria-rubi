@@ -24,7 +24,7 @@ interface ExportOptions {
   template: 'table' | 'grid';
 }
 
-const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<string> => {
+const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: string, width: number, height: number}> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.setAttribute("crossOrigin", "anonymous");
@@ -36,10 +36,13 @@ const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<string> => 
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
       
-      // Use PNG for logos or if specified to preserve transparency
       const isPng = url.toLowerCase().includes('.png') || maxWidth > 400;
       const dataURL = canvas.toDataURL(isPng ? "image/png" : "image/jpeg", isPng ? 1.0 : 0.6);
-      resolve(dataURL);
+      resolve({
+        data: dataURL,
+        width: canvas.width,
+        height: canvas.height
+      });
     };
     img.onerror = (error) => reject(error);
     img.src = url;
@@ -96,11 +99,11 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
-    startY: 55,
+    startY: 65,
     styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { top: 55 },
+    margin: { top: 65 },
     columnStyles: {
       0: options.includeImages ? { cellWidth: 20 } : {},
     },
@@ -132,7 +135,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   const columns = 5;
   const colWidth = (pageWidth - (margin * 2)) / columns;
   const rowHeight = 55;
-  const rowsPerPage = Math.floor((pageHeight - 60) / rowHeight);
+  const rowsPerPage = Math.floor((pageHeight - 70) / rowHeight);
 
   const imagesMap = new Map<string, string>();
   if (options.includeImages) {
@@ -140,7 +143,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   }
 
   let currentX = margin;
-  let currentY = 55;
+  let currentY = 65;
   let itemCount = 0;
 
   await addHeader(doc, config);
@@ -153,7 +156,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
       doc.addPage();
       await addHeader(doc, config);
       currentX = margin;
-      currentY = 55;
+      currentY = 65;
     }
 
     // Draw Card Border (Dotted)
@@ -213,24 +216,77 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   savePDF(doc, config);
 };
 
+
+
 const addHeader = async (doc: jsPDF, config: any) => {
+  const slogan = config?.pdf_slogan || '"CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"';
+  const advantages = config?.pdf_advantages || "Calidad garantizada\nMateriales resistentes\nDisponibilidad inmediata\nExcelente relación costo-beneficio";
+  
+  // 1. Logo (Top Right)
   if (config?.logo_url) {
     try {
-      const logoData = await getBase64ImageFromURL(config.logo_url, 400); // Higher res for logo
-      doc.addImage(logoData, 'PNG', 150, 8, 45, 20);
+      const logoInfo = await getBase64ImageFromURL(config.logo_url, 400);
+      const targetHeight = 25; 
+      const ratio = logoInfo.width / logoInfo.height;
+      const targetWidth = targetHeight * ratio;
+      
+      const finalWidth = Math.min(targetWidth, 65);
+      const finalHeight = finalWidth / ratio;
+      
+      doc.addImage(logoInfo.data, 'PNG', 196 - finalWidth, 8, finalWidth, finalHeight);
     } catch (e) {}
   }
 
-  doc.setFontSize(14);
+  // 2. Company Name & Title (Top Left)
+  doc.setFontSize(18);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   doc.text(config?.platform_name || 'TecnosisMX', 14, 20);
   
-  doc.setFontSize(8);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
   doc.text(`CATÁLOGO DE PRODUCTOS - ${new Date().toLocaleDateString()}`, 14, 26);
-  doc.setDrawColor(226, 232, 240);
-  doc.line(14, 30, 196, 30);
+
+  // 3. Two Columns Section (Advantages vs Slogan)
+  // --- Left Column: Advantages ---
+  let advY = 40;
+  
+  // Green checkmark
+  doc.setTextColor(22, 163, 74); // Green color
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text("✓", 14, advY);
+  
+  doc.setFontSize(9);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Ventajas de nuestros productos:", 19, advY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  
+  const advantagesList = advantages.split('\n').filter(line => line.trim() !== '');
+  advY += 6;
+  advantagesList.forEach((adv) => {
+    doc.text(`•  ${adv}`, 22, advY);
+    advY += 4.5;
+  });
+
+  // --- Right Column: Slogan ---
+  const sloganX = 140; 
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bolditalic');
+  
+  const sloganLines = doc.splitTextToSize(slogan.startsWith('"') ? slogan : `"${slogan}"`, 70);
+  doc.text(sloganLines, sloganX, 48, { align: 'center' });
+
+  // 4. Divider line (Solid and clean)
+  const finalHeaderY = Math.max(advY + 5, 62);
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.setLineWidth(0.5);
+  doc.line(14, finalHeaderY, 196, finalHeaderY);
 };
 
 const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, string>, maxWidth = 200) => {
@@ -241,8 +297,8 @@ const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, stri
     await Promise.all(batch.map(async (p) => {
       if (p.imagenes && p.imagenes.length > 0) {
         try {
-          const base64 = await getBase64ImageFromURL(p.imagenes[0], maxWidth);
-          imagesMap.set(p.id, base64);
+          const res = await getBase64ImageFromURL(p.imagenes[0], maxWidth);
+          imagesMap.set(p.id, res.data);
         } catch (e) {}
       }
     }));
@@ -256,3 +312,4 @@ const savePDF = (doc: jsPDF, config: any) => {
   const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
   doc.save(fileName);
 };
+
