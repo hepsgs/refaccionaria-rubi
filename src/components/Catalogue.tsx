@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn } from 'lucide-react';
+import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
@@ -55,11 +55,12 @@ const QuantitySelector = ({ quantity, setQuantity, maxStock, size = 'md' }: {
   );
 };
 
-const ProductCard = ({ product, isApproved, addToCart, onSelect }: {
+const ProductCard = ({ product, isApproved, addToCart, onSelect, onShare }: {
   product: Product,
   isApproved: boolean,
   addToCart: (p: any, q?: number) => void,
-  onSelect: (p: Product) => void
+  onSelect: (p: Product) => void,
+  onShare: (e: React.MouseEvent, p: Product) => void
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState<false | 'success' | 'limit'>(false);
@@ -113,6 +114,13 @@ const ProductCard = ({ product, isApproved, addToCart, onSelect }: {
             </span>
           </div>
         )}
+        <button 
+          onClick={(e) => onShare(e, product)}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full border border-slate-100 text-slate-400 hover:text-primary transition-colors z-20 shadow-sm"
+          title="Compartir producto"
+        >
+          <Share2 size={16} />
+        </button>
       </div>
       
       <div 
@@ -218,6 +226,56 @@ const Catalogue = () => {
   const { profile, config, addToCart } = useStore();
   const isApproved = profile?.estatus === 'aprobado';
   const catalogTopRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}${window.location.pathname}?sku=${product.sku}`;
+    const shareData = {
+      title: product.nombre,
+      text: `Mira esta refacción en Refaccionaria Rubi: ${product.nombre} (SKU: ${product.sku})`,
+      url: shareUrl
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.log('Error sharing:', err);
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('¡Enlace copiado al portapapeles!');
+      } catch (err) {
+        toast.error('No se pudo copiar el enlace');
+      }
+    }
+  };
+
+  // Deep linking: Open product if SKU is in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const skuParam = params.get('sku');
+    if (skuParam) {
+      const fetchProductBySku = async () => {
+        const { data } = await supabase
+          .from('productos')
+          .select('*')
+          .eq('sku', skuParam)
+          .single();
+        if (data) {
+          setSelectedProduct(data);
+          // Small delay to ensure the page has loaded before scrolling
+          setTimeout(() => {
+            document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+          }, 500);
+        }
+      };
+      fetchProductBySku();
+    }
+  }, []);
 
   // Fetch unique brands and other filter options
   // Uses RPC for high performance with large datasets, with a fallback to batch fetching
@@ -580,6 +638,7 @@ const Catalogue = () => {
               isApproved={isApproved}
               addToCart={addToCart}
               onSelect={setSelectedProduct}
+              onShare={handleShare}
             />
           ))}
         </div>
@@ -655,17 +714,19 @@ const Catalogue = () => {
           onClose={() => setSelectedProduct(null)} 
           addToCart={addToCart}
           isApproved={isApproved}
+          onShare={handleShare}
         />
       )}
     </div>
   );
 };
 
-const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: { 
+const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }: { 
   product: Product, 
   onClose: () => void, 
   addToCart: (p: any, q?: number) => void,
-  isApproved: boolean
+  isApproved: boolean,
+  onShare: (e: React.MouseEvent, p: Product) => void
 }) => {
   const { config } = useStore();
   const [activeImage, setActiveImage] = useState(0);
@@ -742,6 +803,15 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved }: {
           className="absolute top-6 right-6 z-[110] p-2 bg-white/80 backdrop-blur-md rounded-full text-secondary hover:text-rose-500 transition-all shadow-lg border border-slate-100"
         >
           <X size={24} />
+        </button>
+
+        {/* Share button */}
+        <button 
+          onClick={(e) => onShare(e, product)}
+          className="absolute top-6 right-20 z-[110] p-2 bg-white/80 backdrop-blur-md rounded-full text-secondary hover:text-primary transition-all shadow-lg border border-slate-100 flex items-center space-x-2 px-4"
+        >
+          <Share2 size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Compartir</span>
         </button>
 
         <div className="overflow-y-auto custom-scrollbar flex-grow">
