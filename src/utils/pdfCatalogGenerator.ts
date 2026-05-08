@@ -183,48 +183,50 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
       currentX = margin;
     }
 
-    // Draw Card Border (Dotted)
+    // 1. Draw Card Border (Dotted)
     doc.setDrawColor(200, 200, 200);
     (doc as any).setLineDash([1, 1], 0);
     doc.rect(currentX, currentY, colWidth, rowHeight);
     (doc as any).setLineDash([], 0);
 
-    // Draw Image
+    // 2. Brand (Top - Blue)
+    doc.setTextColor(37, 99, 235); // Blue 600
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.text(p.marca.toUpperCase(), currentX + 2, currentY + 4);
+
+    // 3. Draw Image
     const base64 = imagesMap.get(p.id);
     if (base64) {
       const imgSize = colWidth - 6;
-      doc.addImage(base64, 'JPEG', currentX + 3, currentY + 2, imgSize, imgSize * 0.7);
+      doc.addImage(base64, 'JPEG', currentX + 3, currentY + 6, imgSize, imgSize * 0.7);
     }
 
-    // SKU Bar (Red - Platform Primary)
+    // 4. SKU Bar (Red - Platform Primary)
     doc.setFillColor(225, 29, 72); // #e11d48
-    doc.rect(currentX, currentY + 30, colWidth, 5, 'F');
+    doc.rect(currentX, currentY + 31, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text(p.sku, currentX + 2, currentY + 33.5);
+    doc.text(p.sku, currentX + 2, currentY + 34.5);
 
-    // Product Info (Brand + Name)
-    doc.setTextColor(225, 29, 72); // Red for brand
-    doc.setFontSize(5);
-    doc.setFont('helvetica', 'bold');
-    doc.text(p.marca.toUpperCase(), currentX + 2, currentY + 37);
-
+    // 5. Product Name
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     const nameLines = doc.splitTextToSize(p.nombre, colWidth - 4);
     doc.text(nameLines, currentX + 2, currentY + 40);
 
-    // Inputs (Quantity / Price)
+    // 6. Inputs (Quantity / Price) - Enlarged Price
     doc.setDrawColor(200, 200, 200);
     doc.rect(currentX + 2, currentY + 48, 6, 4); // Qty
-    doc.rect(currentX + 10, currentY + 48, 15, 4); // Price
-    doc.text('$', currentX + 11, currentY + 51);
     
     if (options.includePrice) {
-      doc.setFontSize(5);
-      doc.text(p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), currentX + 13, currentY + 51);
+      doc.setTextColor(30, 41, 59);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      const priceStr = `$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      doc.text(priceStr, currentX + 10, currentY + 52);
     }
 
     // Update coordinates

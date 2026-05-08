@@ -546,7 +546,7 @@ const Admin = () => {
     }));
     const header = "Numero de Parte,Producto,Cantidad,Folio\n";
     const rows = exportData.map((e: any) => `"${e['Numero de Parte']}","${e['Producto']}","${e['Cantidad']}","${e['Folio']}"`).join("\n");
-    downloadCSV(header + rows, `pedido_${order.folio || order.id.slice(0, 8)}.csv`);
+    downloadCSV(header + rows, `P${order.folio || order.id.slice(0, 8)}.csv`);
   };
 
   const exportSingleOrderPDF = (order: any) => {
