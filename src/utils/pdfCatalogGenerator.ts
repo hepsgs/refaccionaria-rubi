@@ -114,7 +114,7 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
     styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { top: repeatHeader ? 65 : 20 },
+    margin: { top: repeatHeader ? 70 : 20 },
     columnStyles: {
       0: options.includeImages ? { cellWidth: 20 } : {},
     },
@@ -163,7 +163,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   }
 
   let currentX = margin;
-  let currentY = 65;
+  let currentY = 70;
   let itemCount = 0;
 
   addHeader(doc, config, logoInfo);
@@ -176,7 +176,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
       doc.addPage();
       if (repeatHeader) {
         addHeader(doc, config, logoInfo);
-        currentY = 65;
+        currentY = 70;
       } else {
         currentY = 20;
       }
@@ -185,6 +185,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
 
     // 1. Draw Card Border (Dotted)
     doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.1);
     (doc as any).setLineDash([1, 1], 0);
     doc.rect(currentX, currentY, colWidth, rowHeight);
     (doc as any).setLineDash([], 0);
@@ -307,9 +308,9 @@ const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
   doc.text(sloganLines, sloganX, 48, { align: 'center' });
 
   // 4. Divider line (Solid and clean)
-  const finalHeaderY = Math.max(advY + 5, 62);
-  doc.setDrawColor(203, 213, 225); // slate-300
-  doc.setLineWidth(0.5);
+  const finalHeaderY = Math.max(advY + 2, 55);
+  doc.setDrawColor(226, 232, 240); // slate-200 (lighter)
+  doc.setLineWidth(0.3);
   doc.line(14, finalHeaderY, 196, finalHeaderY);
 };
 
