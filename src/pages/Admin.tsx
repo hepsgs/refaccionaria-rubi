@@ -44,6 +44,7 @@ import { useStore } from '../store/useStore';
 import { optimizeImage } from '../utils/imageOptimizer';
 import toast from 'react-hot-toast';
 import { generateOrderPDF } from '../utils/pdfGenerator';
+import { copyToClipboard } from '../utils/clipboard';
 
 const downloadCSV = (content: string, filename: string) => {
   const BOM = "\uFEFF";
@@ -219,10 +220,14 @@ const MediaGallery = () => {
     }
   };
 
-  const copyUrl = (name: string) => {
+  const copyUrl = async (name: string) => {
     const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(name);
-    navigator.clipboard.writeText(publicUrl);
-    toast.success('URL copiada al portapapeles');
+    const successful = await copyToClipboard(publicUrl);
+    if (successful) {
+      toast.success('URL copiada al portapapeles');
+    } else {
+      toast.error('No se pudo copiar la URL');
+    }
   };
 
   const deleteImage = async (name: string) => {

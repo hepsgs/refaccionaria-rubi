@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
 import { generateCatalogPDF } from '../utils/pdfCatalogGenerator';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface Product {
   id: string;
@@ -239,20 +240,29 @@ const Catalogue = () => {
       url: shareUrl
     };
 
+    let shared = false;
+
+    // 1. Try Native Share API
     if (navigator.share) {
       try {
         await navigator.share(shareData);
+        shared = true;
       } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          console.log('Error sharing:', err);
+        // If user cancelled, we consider it "done" without error
+        if ((err as Error).name === 'AbortError') {
+          return;
         }
+        console.log('Native share failed, falling back to clipboard:', err);
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
+    }
+
+    // 2. Fallback to Clipboard if not shared or share API not available
+    if (!shared) {
+      const successful = await copyToClipboard(shareUrl);
+      if (successful) {
         toast.success('¡Enlace copiado al portapapeles!');
-      } catch (err) {
-        toast.error('No se pudo copiar el enlace');
+      } else {
+        toast.error('No se pudo compartir ni copiar el enlace');
       }
     }
   };
