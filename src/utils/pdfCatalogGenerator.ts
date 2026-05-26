@@ -206,29 +206,29 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
 
     // 4. SKU Bar (Red - Platform Primary)
     doc.setFillColor(225, 29, 72); // #e11d48
-    doc.rect(currentX, currentY + 23.5, colWidth, 4.5, 'F');
+    doc.rect(currentX, currentY + 24, colWidth, 4.5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.text(p.sku, currentX + 2, currentY + 26.8);
+    doc.text(p.sku, currentX + 2, currentY + 27.3);
 
     // 5. Product Name
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     const nameLines = doc.splitTextToSize(p.nombre, colWidth - 4);
-    doc.text(nameLines, currentX + 2, currentY + 29.5);
+    doc.text(nameLines, currentX + 2, currentY + 32.5);
 
     // 6. Inputs (Quantity / Price) - Enlarged Price
     doc.setDrawColor(200, 200, 200);
-    doc.rect(currentX + 2, currentY + 38.5, 5, 3.5); // Qty
+    doc.rect(currentX + 2, currentY + 39.5, 5, 3.5); // Qty
     
     if (options.includePrice) {
       doc.setTextColor(30, 41, 59);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       const priceStr = `$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      doc.text(priceStr, currentX + 9, currentY + 41.5);
+      doc.text(priceStr, currentX + 9, currentY + 42.5);
     }
 
     // Update coordinates
