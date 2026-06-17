@@ -43,7 +43,6 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { optimizeImage } from '../utils/imageOptimizer';
 import toast from 'react-hot-toast';
-import { generateOrderPDF } from '../utils/pdfGenerator';
 import { copyToClipboard } from '../utils/clipboard';
 
 const downloadCSV = (content: string, filename: string) => {
@@ -549,7 +548,8 @@ const Admin = () => {
     downloadCSV(header + rows, `P${order.folio || order.id.slice(0, 8)}.csv`);
   };
 
-  const exportSingleOrderPDF = (order: any) => {
+  const exportSingleOrderPDF = async (order: any) => {
+    const { generateOrderPDF } = await import('../utils/pdfGenerator');
     generateOrderPDF(order, config);
   };
 
@@ -625,6 +625,22 @@ const Admin = () => {
       });
     }
   }, [config]);
+
+  // Load full configuration for admin settings (including sensitive columns)
+  useEffect(() => {
+    const fetchFullConfig = async () => {
+      if (profile?.rol === 'admin' || profile?.rol === 'empleado') {
+        const { data } = await supabase.from('configuracion').select('*').single();
+        if (data) {
+          setSettings((prev: any) => ({
+            ...prev,
+            ...data,
+          }));
+        }
+      }
+    };
+    fetchFullConfig();
+  }, [profile]);
 
   if (!profile || (profile.rol !== 'admin' && profile.rol !== 'empleado')) {
     return <div className="p-20 text-center font-bold">Acceso Denegado</div>;

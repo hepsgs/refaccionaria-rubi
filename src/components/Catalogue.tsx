@@ -5,7 +5,6 @@ import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
-import { generateCatalogPDF } from '../utils/pdfCatalogGenerator';
 import { copyToClipboard } from '../utils/clipboard';
 
 interface Product {
@@ -95,6 +94,7 @@ const ProductCard = ({ product, isApproved, addToCart, onSelect, onShare }: {
             <img 
               src={product.imagenes[0]} 
               alt={product.nombre} 
+              loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
             {product.imagenes.length > 1 && (
@@ -731,7 +731,10 @@ const Catalogue = () => {
             try {
               setExporting('pdf');
               const allData = await getFullFilteredData();
-              if (allData.length > 0) await generateCatalogPDF(allData, options, config);
+              if (allData.length > 0) {
+                const { generateCatalogPDF } = await import('../utils/pdfCatalogGenerator');
+                await generateCatalogPDF(allData, options, config);
+              }
             } catch (error) {
               console.error("Error exporting PDF:", error);
               toast.error("Error al generar el PDF");

@@ -16,7 +16,7 @@ function App() {
   const { setProfile, setConfig } = useStore();
 
   const fetchConfig = useCallback(async () => {
-    const { data } = await supabase.from('configuracion').select('*').single();
+    const { data } = await supabase.from('configuracion_publica').select('*').single();
     if (data) setConfig(data);
   }, [setConfig]);
 

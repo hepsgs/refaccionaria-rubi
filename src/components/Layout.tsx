@@ -558,12 +558,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex animate-marquee">
             <div className="flex items-center gap-12 px-6 flex-none min-w-max">
               {config.branding_images.map((img: string, i: number) => (
-                <img key={i} src={img} alt={`Marca ${i}`} className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
+                <img key={i} src={img} alt={`Marca ${i}`} loading="lazy" className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
               ))}
             </div>
             <div className="flex items-center gap-12 px-6 flex-none min-w-max">
               {config.branding_images.map((img: string, i: number) => (
-                <img key={`dup-${i}`} src={img} alt={`Marca Dup ${i}`} className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
+                <img key={`dup-${i}`} src={img} alt={`Marca Dup ${i}`} loading="lazy" className="h-24 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all object-contain flex-none" />
               ))}
             </div>
           </div>

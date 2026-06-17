@@ -87,7 +87,7 @@ const Home = () => {
                         i === currentAboutIndex ? 'opacity-100' : 'opacity-0'
                       }`}
                     >
-                      <img src={img} alt={`Nosotros ${i}`} className="w-full h-full object-cover" />
+                      <img src={img} alt={`Nosotros ${i}`} loading="lazy" className="w-full h-full object-cover" />
                     </div>
                   ))}
                   
@@ -245,7 +245,7 @@ const Home = () => {
             <div className="relative reveal reveal-right">
               <div className="aspect-[16/10] rounded-[30px] overflow-hidden shadow-2xl border-4 border-white/10 relative group">
                 {config?.distributors_image_url ? (
-                  <img src={config.distributors_image_url} alt="Distribuidores" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
+                  <img src={config.distributors_image_url} alt="Distribuidores" loading="lazy" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                 ) : (
                   <div className="w-full h-full bg-slate-800 flex items-center justify-center">
                     <Warehouse size={120} className="text-slate-700 animate-pulse" />

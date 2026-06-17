@@ -3,7 +3,6 @@ import { User, Building, Mail, Save, Clock, Package, X, FileText } from 'lucide-
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
-import { generateOrderPDF } from '../utils/pdfGenerator';
 
 const Profile = () => {
   const { profile, setProfile } = useStore();
@@ -388,7 +387,10 @@ const Profile = () => {
               </div>
               <div className="flex gap-3 mt-8">
                 <button 
-                  onClick={() => generateOrderPDF(selectedOrder, useStore.getState().config)}
+                  onClick={async () => {
+                    const { generateOrderPDF } = await import('../utils/pdfGenerator');
+                    generateOrderPDF(selectedOrder, useStore.getState().config);
+                  }}
                   className="flex-1 bg-rose-50 text-rose-600 py-4 px-6 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center space-x-2 border border-rose-100 hover:bg-rose-100 transition-all shadow-sm group"
                 >
                   <FileText size={18} className="group-hover:scale-110 transition-transform" />
