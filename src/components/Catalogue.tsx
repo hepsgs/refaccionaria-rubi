@@ -398,36 +398,56 @@ const Catalogue = () => {
   }, [search, filters, page, pageSize]);
 
   const getFullFilteredData = async () => {
-    let query = supabase.from('productos').select('*');
+    let allData: Product[] = [];
+    let from = 0;
+    const step = 1000;
+    let hasMore = true;
 
-    if (search) {
-      const formattedSearch = search
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .map(word => `${word}:*`)
-        .join(' & ');
+    while (hasMore) {
+      let query = supabase.from('productos').select('*');
 
-      query = query.textSearch('fts_vector', formattedSearch, { 
-        config: 'spanish'
-      });
+      if (search) {
+        const formattedSearch = search
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map(word => `${word}:*`)
+          .join(' & ');
+
+        query = query.textSearch('fts_vector', formattedSearch, { 
+          config: 'spanish'
+        });
+      }
+
+      if (filters.marca) query = query.eq('marca', filters.marca);
+      if (filters.proveedor) query = query.eq('proveedor', filters.proveedor);
+      if (filters.tipo) query = query.eq('tipo', filters.tipo);
+      if (filters.modelo) query = query.eq('modelo', filters.modelo);
+      if (filters.año) {
+        const year = parseInt(filters.año);
+        query = query.or(`and(año_inicio.lte.${year},año_fin.gte.${year}),and(año_inicio.lte.${year},año_fin.is.null),and(año_inicio.is.null,año_fin.gte.${year})`);
+      }
+
+      const { data, error } = await query
+        .range(from, from + step - 1)
+        .order('nombre', { ascending: true });
+
+      if (error) {
+        toast.error('Error al obtener datos para exportar: ' + error.message);
+        return [];
+      }
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        from += step;
+        if (data.length < step) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
     }
-
-    if (filters.marca) query = query.eq('marca', filters.marca);
-    if (filters.proveedor) query = query.eq('proveedor', filters.proveedor);
-    if (filters.tipo) query = query.eq('tipo', filters.tipo);
-    if (filters.modelo) query = query.eq('modelo', filters.modelo);
-    if (filters.año) {
-      const year = parseInt(filters.año);
-      query = query.or(`and(año_inicio.lte.${year},año_fin.gte.${year}),and(año_inicio.lte.${year},año_fin.is.null),and(año_inicio.is.null,año_fin.gte.${year})`);
-    }
-
-    const { data, error } = await query.order('nombre', { ascending: true });
-    if (error) {
-      toast.error('Error al obtener datos para exportar: ' + error.message);
-      return [];
-    }
-    return (data as Product[]) || [];
+    return allData;
   };
 
   const exportToCSV = (data: Product[]) => {

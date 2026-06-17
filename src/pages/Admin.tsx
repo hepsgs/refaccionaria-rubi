@@ -3022,15 +3022,35 @@ const ProductManagement = ({
               onClick={async () => {
                 setExporting(true);
                 try {
-                  let query = supabase.from('productos').select('*');
-                  if (searchTerm) {
-                    query = query.or(`sku.ilike.%${searchTerm}%,nombre.ilike.%${searchTerm}%`);
+                  let allProducts: any[] = [];
+                  let from = 0;
+                  const step = 1000;
+                  let hasMore = true;
+
+                  while (hasMore) {
+                    let query = supabase.from('productos').select('*');
+                    if (searchTerm) {
+                      query = query.or(`sku.ilike.%${searchTerm}%,nombre.ilike.%${searchTerm}%`);
+                    }
+                    
+                    const { data, error } = await query
+                      .range(from, from + step - 1)
+                      .order('creado_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    if (data && data.length > 0) {
+                      allProducts = [...allProducts, ...data];
+                      from += step;
+                      if (data.length < step) {
+                        hasMore = false;
+                      }
+                    } else {
+                      hasMore = false;
+                    }
                   }
-                  
-                  const { data: allProducts, error } = await query.order('creado_at', { ascending: false });
-                  
-                  if (error) throw error;
-                  if (!allProducts) return;
+
+                  if (allProducts.length === 0) return;
 
                   const headers = ['sku', 'nombre', 'precio', 'stock', 'marca'];
                   if (config?.show_modelo !== false) headers.push('modelo');
@@ -3698,22 +3718,44 @@ const OrderManagement = ({ selectedOrder: _selectedOrder, setSelectedOrder }: { 
       ? `*, perfiles!pedidos_cliente_id_fkey!inner (nombre_completo, empresa)`
       : `*, perfiles!pedidos_cliente_id_fkey (nombre_completo, empresa)`;
 
-    let query = supabase
-      .from('pedidos')
-      .select(selectStr)
-      .order('creado_at', { ascending: false });
+    let allOrders: any[] = [];
+    let from = 0;
+    const step = 1000;
+    let hasMore = true;
 
-    if (clientSearch) {
-      query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
-    }
+    try {
+      while (hasMore) {
+        let query = supabase
+          .from('pedidos')
+          .select(selectStr);
 
-    const { data: allOrders, error } = await query;
-    setLoading(false);
+        if (clientSearch) {
+          query = query.or(`nombre_completo.ilike.%${clientSearch}%,empresa.ilike.%${clientSearch}%`, { foreignTable: 'perfiles' });
+        }
 
-    if (error) {
+        const { data, error } = await query
+          .range(from, from + step - 1)
+          .order('creado_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allOrders = [...allOrders, ...data];
+          from += step;
+          if (data.length < step) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+    } catch (error: any) {
+      setLoading(false);
       toast.error("Error exportando pedidos: " + error.message);
       return;
     }
+
+    setLoading(false);
 
     const headers = "Folio,ID Cliente,Cliente,Empresa,Estatus,Total,Fecha\n";
     const rows = (allOrders || []).map((o: any) => {
