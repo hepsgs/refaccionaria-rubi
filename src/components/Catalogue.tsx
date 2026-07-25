@@ -1238,9 +1238,9 @@ export const PDFExportModal = ({
     includePrice: boolean, 
     template: 'table' | 'grid'
   }>({ 
-    includeImages: true, 
+    includeImages: false, 
     includePrice: isApproved,
-    template: 'grid'
+    template: 'table'
   });
   const isLargeExport = totalCount > 300;
   const isVeryLargeExport = totalCount > 1000;
@@ -1263,7 +1263,14 @@ export const PDFExportModal = ({
 
         {/* Options Controls (Always visible, as originally designed) */}
         <div className="space-y-4 mb-6">
-          <label className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${options.template === 'grid' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'} group`}>
+          <div 
+            onClick={() => {
+              if (options.template !== 'grid') {
+                setOptions({ ...options, includeImages: !options.includeImages });
+              }
+            }}
+            className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${options.template === 'grid' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}
+          >
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg transition-colors ${options.includeImages ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-400'}`}>
                 <Package size={18} />
@@ -1275,22 +1282,19 @@ export const PDFExportModal = ({
                 </p>
               </div>
             </div>
-            <div className="relative">
-              <input 
-                type="checkbox" 
-                checked={options.includeImages} 
-                onChange={() => {
-                  if (options.template !== 'grid') {
-                    setOptions({ ...options, includeImages: !options.includeImages });
-                  }
-                }}
-                className="sr-only peer"
-              />
-              <div className={`w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all ${options.includeImages ? 'bg-rose-500' : ''}`}></div>
+            <div className={`w-11 h-6 rounded-full transition-colors relative ${options.includeImages ? 'bg-rose-500' : 'bg-slate-300'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full absolute top-[2px] transition-transform ${options.includeImages ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
             </div>
-          </label>
+          </div>
 
-          <label className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${!isApproved ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}>
+          <div 
+            onClick={() => {
+              if (isApproved) {
+                setOptions({ ...options, includePrice: !options.includePrice });
+              }
+            }}
+            className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${!isApproved ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}
+          >
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg transition-colors ${options.includePrice ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
                 <span className="font-bold text-sm">$</span>
@@ -1303,24 +1307,18 @@ export const PDFExportModal = ({
               </div>
             </div>
             {isApproved && (
-              <div className="relative">
-                <input 
-                  type="checkbox" 
-                  checked={options.includePrice} 
-                  onChange={() => setOptions({ ...options, includePrice: !options.includePrice })}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+              <div className={`w-11 h-6 rounded-full transition-colors relative ${options.includePrice ? 'bg-rose-500' : 'bg-slate-300'}`}>
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-[2px] transition-transform ${options.includePrice ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
               </div>
             )}
-          </label>
+          </div>
 
           <div className="pt-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Plantilla de Diseño</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setOptions({ ...options, template: 'table' })}
+                onClick={() => setOptions({ ...options, template: 'table', includeImages: false })}
                 className={`p-3 rounded-2xl border-2 transition-all text-left ${options.template === 'table' ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-slate-200'}`}
               >
                 <p className="text-xs font-bold text-secondary">Tabla</p>
