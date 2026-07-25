@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { PDFExportModal } from '../components/Catalogue';
 import {
   Users,
   Package,
@@ -19,6 +20,7 @@ import {
   Settings as SettingsIcon,
   Send,
   Download,
+  RefreshCw,
   FileText,
   ChevronLeft,
   Settings2,
@@ -2761,6 +2763,57 @@ const ProductManagement = ({
 }) => {
   const { config } = useStore();
   const [exporting, setExporting] = useState(false);
+  const [generatingPdfAdmin, setGeneratingPdfAdmin] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+
+  const handleRegenerateServerPDF = async (options: { includeImages: boolean, includePrice: boolean, template: 'table' | 'grid' }) => {
+    try {
+      setGeneratingPdfAdmin(true);
+      toast.loading('Cargando productos para generar el PDF...', { id: 'admin-pdf-gen' });
+      
+      let allProducts: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('productos')
+          .select('*')
+          .order('nombre', { ascending: true })
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...data];
+          if (data.length < step) hasMore = false;
+          else from += step;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allProducts.length === 0) {
+        toast.error('No hay productos en la base de datos', { id: 'admin-pdf-gen' });
+        return;
+      }
+
+      toast.loading(`Procesando PDF (${options.template === 'grid' ? 'Grilla/Folleto' : 'Tabla'}) con ${allProducts.length} productos...`, { id: 'admin-pdf-gen' });
+      const { generateCatalogPDF } = await import('../utils/pdfCatalogGenerator');
+      await generateCatalogPDF(
+        allProducts,
+        { ...options, uploadToStorage: true },
+        config
+      );
+      toast.success('¡PDF del Catálogo General actualizado en el servidor!', { id: 'admin-pdf-gen' });
+    } catch (err: any) {
+      console.error('Error generating PDF in admin:', err);
+      toast.error('Error al actualizar el PDF: ' + err.message, { id: 'admin-pdf-gen' });
+    } finally {
+      setGeneratingPdfAdmin(false);
+      setShowPdfModal(false);
+    }
+  };
 
   const handleDelete = async (id: string, name: string) => {
     toast((t) => (
@@ -2784,6 +2837,7 @@ const ProductManagement = ({
               } else {
                 toast.success('Producto eliminado.');
                 onRefresh();
+                import('../utils/pdfCatalogGenerator').then(m => m.triggerAutoCatalogPDFRefresh(config));
               }
             }}
             className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
@@ -2823,6 +2877,7 @@ const ProductManagement = ({
               } else {
                 toast.success('Catálogo vaciado correctamente.');
                 onRefresh();
+                import('../utils/pdfCatalogGenerator').then(m => m.triggerAutoCatalogPDFRefresh(config));
               }
             }}
             className="flex-1 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-rose-600 transition-colors"
@@ -2961,6 +3016,7 @@ const ProductManagement = ({
       if (!error) {
         toast.success('Importación completada con éxito');
         onRefresh();
+        import('../utils/pdfCatalogGenerator').then(m => m.triggerAutoCatalogPDFRefresh(config));
       } else {
         if (error.code === '23502') {
           toast.error('Faltan datos obligatorios (Nombre). Use la plantilla completa para productos nuevos.');
@@ -3113,6 +3169,20 @@ const ProductManagement = ({
             title="Vaciar Catálogo"
           >
             <Trash2 size={20} />
+          </button>
+
+          <button
+            onClick={() => setShowPdfModal(true)}
+            disabled={generatingPdfAdmin}
+            className="btn-secondary flex items-center space-x-2 py-2.5 px-4 text-sm disabled:opacity-50"
+            title="Actualizar archivo PDF del Catálogo General en el servidor"
+          >
+            {generatingPdfAdmin ? (
+              <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+            ) : (
+              <RefreshCw size={18} />
+            )}
+            <span>Actualizar PDF Catálogo</span>
           </button>
 
           <label className="btn-secondary flex items-center space-x-2 py-2.5 px-5 cursor-pointer text-sm">
@@ -3286,7 +3356,20 @@ const ProductManagement = ({
         </div>
       )}
 
-      {/* Modals moved to Admin root */}
+      {showPdfModal && (
+        <PDFExportModal
+          isApproved={true}
+          isGenerating={generatingPdfAdmin}
+          totalCount={totalCount}
+          hasActiveFilters={true}
+          hasPdfInStorage={true}
+          hasNewChanges={false}
+          checkingPdfStatus={false}
+          onClose={() => setShowPdfModal(false)}
+          onDownloadDirect={() => {}}
+          onConfirm={(opts) => handleRegenerateServerPDF(opts)}
+        />
+      )}
     </div>
   );
 };
@@ -3392,6 +3475,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
         toast.success(product ? 'Producto actualizado correctamente.' : 'Producto creado con éxito.');
         onRefresh();
         onClose();
+        import('../utils/pdfCatalogGenerator').then(m => m.triggerAutoCatalogPDFRefresh(config));
       } else {
         throw error;
       }

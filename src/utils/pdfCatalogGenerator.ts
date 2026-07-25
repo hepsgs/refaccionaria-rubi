@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 interface Product {
   id: string;
@@ -18,10 +19,11 @@ interface Product {
   tipo?: string;
 }
 
-interface ExportOptions {
+export interface ExportOptions {
   includeImages: boolean;
   includePrice: boolean;
   template: 'table' | 'grid';
+  uploadToStorage?: boolean;
 }
 
 const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: string, width: number, height: number}> => {
@@ -49,8 +51,37 @@ const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: stri
   });
 };
 
+export const savePDFToStorage = async (doc: jsPDF) => {
+  try {
+    const blob = doc.output('blob');
+    const { error } = await supabase.storage.from('branding').upload('catalogo_general.pdf', blob, {
+      contentType: 'application/pdf',
+      upsert: true
+    });
+    if (error) {
+      console.warn('Storage upload notice (non-critical):', error.message || error);
+      return false;
+    } else {
+      const nowIso = new Date().toISOString();
+      try {
+        localStorage.setItem('pdf_catalog_updated_at', nowIso);
+      } catch (e) {}
+
+      try {
+        await supabase.from('configuracion').update({
+          pdf_catalog_updated_at: nowIso
+        }).eq('id', 1);
+      } catch (e) {}
+
+      return true;
+    }
+  } catch (err) {
+    console.warn('Failed to save PDF to storage (non-critical):', err);
+    return false;
+  }
+};
+
 export const generateCatalogPDF = async (data: Product[], options: ExportOptions, config: any) => {
-  // Pre-fetch logo info once to use synchronously in headers
   let logoInfo = null;
   if (config?.logo_url) {
     try {
@@ -60,14 +91,25 @@ export const generateCatalogPDF = async (data: Product[], options: ExportOptions
     }
   }
 
-  if (options.template === 'grid') {
-    return generateGridCatalog(data, options, config, logoInfo);
-  } else {
-    return generateTableCatalog(data, options, config, logoInfo);
+  const doc = options.template === 'grid'
+    ? await buildGridCatalog(data, options, config, logoInfo)
+    : await buildTableCatalog(data, options, config, logoInfo);
+
+  if (options.uploadToStorage) {
+    toast.loading('Guardando copia en el servidor...', { id: 'pdf-storage' });
+    const uploaded = await savePDFToStorage(doc);
+    if (uploaded) {
+      toast.success('¡Catálogo guardado en el servidor!', { id: 'pdf-storage' });
+    } else {
+      toast.dismiss('pdf-storage');
+    }
   }
+
+  savePDF(doc, config);
+  return doc;
 };
 
-const generateTableCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any) => {
+const buildTableCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any): Promise<jsPDF> => {
   const doc = new jsPDF();
   const repeatHeader = config?.pdf_repeat_header !== false;
 
@@ -139,10 +181,10 @@ const generateTableCatalog = async (data: Product[], options: ExportOptions, con
     bodyStyles: options.includeImages ? { minCellHeight: 20 } : {}
   });
 
-  savePDF(doc, config);
+  return doc;
 };
 
-const generateGridCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any) => {
+const buildGridCatalog = async (data: Product[], options: ExportOptions, config: any, logoInfo: any): Promise<jsPDF> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -244,7 +286,7 @@ const generateGridCatalog = async (data: Product[], options: ExportOptions, conf
   // Draw footer on the last page of the grid catalog
   addFooter(doc, config, currentPageNum);
 
-  savePDF(doc, config);
+  return doc;
 };
 
 const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
@@ -480,4 +522,44 @@ const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, stri
 const savePDF = (doc: jsPDF, config: any) => {
   const fileName = `Catalogo_${config?.platform_name?.replace(/\s+/g, '_') || 'TecnosisMX'}_${new Date().getTime()}.pdf`;
   doc.save(fileName);
+};
+
+export const triggerAutoCatalogPDFRefresh = (config: any) => {
+  setTimeout(async () => {
+    try {
+      let allProducts: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('productos')
+          .select('*')
+          .order('nombre', { ascending: true })
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...data];
+          if (data.length < step) hasMore = false;
+          else from += step;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allProducts.length > 0) {
+        await generateCatalogPDF(
+          allProducts,
+          { includeImages: true, includePrice: true, template: 'grid', uploadToStorage: true },
+          config
+        );
+        const nowIso = new Date().toISOString();
+        try { localStorage.setItem('pdf_catalog_updated_at', nowIso); } catch (e) {}
+      }
+    } catch (err) {
+      console.warn('Background auto catalog PDF refresh notice:', err);
+    }
+  }, 1000);
 };

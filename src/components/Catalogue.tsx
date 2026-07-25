@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn, Share2 } from 'lucide-react';
+import { Search, Package, ShieldCheck, X, ChevronLeft, ChevronRight, CheckCircle2, Info, ZoomIn, Share2, Download, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
@@ -230,6 +230,97 @@ const Catalogue = () => {
   const catalogTopRef = useRef<HTMLDivElement>(null);
 
   const [searchParams] = useSearchParams();
+
+  const [hasNewChanges, setHasNewChanges] = useState(false);
+  const [hasPdfInStorage, setHasPdfInStorage] = useState(false);
+  const [checkingPdfStatus, setCheckingPdfStatus] = useState(false);
+
+  const hasActiveFilters = Boolean(
+    search.trim() !== '' ||
+    filters.categoria ||
+    filters.marca ||
+    filters.proveedor ||
+    filters.tipo ||
+    filters.modelo ||
+    filters.año
+  );
+
+  const checkPdfStatus = useCallback(async () => {
+    setCheckingPdfStatus(true);
+    try {
+      const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl('catalogo_general.pdf');
+      const pdfUrl = publicUrlData?.publicUrl;
+
+      if (!pdfUrl) {
+        setHasPdfInStorage(false);
+        setHasNewChanges(true);
+        return;
+      }
+
+      const res = await fetch(pdfUrl, { method: 'HEAD', cache: 'no-cache' });
+      if (res.ok) {
+        setHasPdfInStorage(true);
+
+        const localTimeStr = localStorage.getItem('pdf_catalog_updated_at');
+        const localPdfTime = localTimeStr ? new Date(localTimeStr).getTime() : 0;
+        const configPdfTime = config?.pdf_catalog_updated_at ? new Date(config.pdf_catalog_updated_at).getTime() : 0;
+        const lastModHeader = res.headers.get('last-modified');
+        const headerPdfTime = lastModHeader ? new Date(lastModHeader).getTime() : 0;
+
+        const pdfTime = Math.max(localPdfTime, configPdfTime, headerPdfTime);
+
+        if (pdfTime === 0) {
+          setHasNewChanges(false);
+        } else {
+          const { data: latestProd } = await supabase
+            .from('productos')
+            .select('creado_at')
+            .order('creado_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (latestProd?.creado_at) {
+            const prodTime = new Date(latestProd.creado_at).getTime();
+            setHasNewChanges(prodTime > pdfTime);
+          } else {
+            setHasNewChanges(false);
+          }
+        }
+      } else {
+        setHasPdfInStorage(false);
+        setHasNewChanges(true);
+      }
+    } catch (err) {
+      console.error("Error checking PDF status via HEAD:", err);
+      setHasPdfInStorage(false);
+      setHasNewChanges(true);
+    } finally {
+      setCheckingPdfStatus(false);
+    }
+  }, [config]);
+
+  useEffect(() => {
+    if (showExportModal && !hasActiveFilters) {
+      checkPdfStatus();
+    }
+  }, [showExportModal, hasActiveFilters, checkPdfStatus]);
+
+  const handleDownloadDirectPDF = () => {
+    const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl('catalogo_general.pdf');
+    if (publicUrlData?.publicUrl) {
+      const link = document.createElement('a');
+      link.href = publicUrlData.publicUrl;
+      link.download = `Catalogo_General_${config?.platform_name || 'Rubi'}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Descargando catálogo...');
+      setShowExportModal(false);
+    } else {
+      toast.error('No se pudo obtener el archivo del catálogo.');
+    }
+  };
 
   const handleShare = async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
@@ -726,7 +817,12 @@ const Catalogue = () => {
           isApproved={isApproved}
           isGenerating={exporting === 'pdf'}
           totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          hasPdfInStorage={hasPdfInStorage}
+          hasNewChanges={hasNewChanges}
+          checkingPdfStatus={checkingPdfStatus}
           onClose={() => setShowExportModal(false)}
+          onDownloadDirect={handleDownloadDirectPDF}
           onConfirm={async (options) => {
             try {
               setExporting('pdf');
@@ -734,6 +830,9 @@ const Catalogue = () => {
               if (allData.length > 0) {
                 const { generateCatalogPDF } = await import('../utils/pdfCatalogGenerator');
                 await generateCatalogPDF(allData, options, config);
+                if (options.uploadToStorage) {
+                  await checkPdfStatus();
+                }
               }
             } catch (error) {
               console.error("Error exporting PDF:", error);
@@ -1102,7 +1201,6 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }
                 transform: 'scale(2.5)',
                 transformOrigin: `${mousePos.x}% ${mousePos.y}%`
               } : {}}
-              className={`max-w-full max-h-full object-contain transition-transform duration-300 select-none ${isDeepZoom ? 'animate-none' : 'animate-in zoom-in'}`}
             />
           </div>
         </div>,
@@ -1112,18 +1210,28 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }
   );
 };
 
-const PDFExportModal = ({ 
+export const PDFExportModal = ({ 
   onClose, 
   onConfirm,
+  onDownloadDirect,
   isGenerating,
   isApproved,
-  totalCount
+  totalCount,
+  hasActiveFilters,
+  hasPdfInStorage,
+  hasNewChanges,
+  checkingPdfStatus
 }: { 
   onClose: () => void, 
-  onConfirm: (options: { includeImages: boolean, includePrice: boolean, template: 'table' | 'grid' }) => void,
+  onConfirm: (options: { includeImages: boolean, includePrice: boolean, template: 'table' | 'grid', uploadToStorage?: boolean }) => void,
+  onDownloadDirect: () => void,
   isGenerating: boolean,
   isApproved: boolean,
-  totalCount: number
+  totalCount: number,
+  hasActiveFilters: boolean,
+  hasPdfInStorage: boolean,
+  hasNewChanges: boolean,
+  checkingPdfStatus: boolean
 }) => {
   const [options, setOptions] = useState<{
     includeImages: boolean, 
@@ -1153,7 +1261,8 @@ const PDFExportModal = ({
           <p className="text-xs text-slate-500">Personaliza tu catálogo PDF antes de descargar.</p>
         </div>
 
-        <div className="space-y-4 mb-8">
+        {/* Options Controls (Always visible, as originally designed) */}
+        <div className="space-y-4 mb-6">
           <label className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${options.template === 'grid' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'} group`}>
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg transition-colors ${options.includeImages ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-400'}`}>
@@ -1228,32 +1337,90 @@ const PDFExportModal = ({
             </div>
           </div>
 
-          {(options.includeImages && isLargeExport) && (
+          {(options.includeImages && isLargeExport && (hasActiveFilters || !hasPdfInStorage)) && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start space-x-2 animate-in fade-in slide-in-from-top-1">
               <Info size={14} className="text-amber-600 mt-0.5 shrink-0" />
               <p className="text-[9px] text-amber-700 leading-tight">
                 {isVeryLargeExport 
-                  ? "Exportar más de 1000 imágenes puede agotar la memoria del navegador. Te recomendamos filtrar los productos antes de exportar."
-                  : "Estás exportando un catálogo grande. El proceso puede tardar unos minutos debido al procesamiento de imágenes."}
+                  ? "Exportar más de 1000 imágenes en vivo puede agotar la memoria del navegador. Te recomendamos usar la descarga instantánea o filtrar."
+                  : "Estás exportando un catálogo grande en vivo. El proceso puede tardar unos minutos."}
               </p>
             </div>
           )}
         </div>
 
-        <button 
-          onClick={() => onConfirm(options)}
-          disabled={isGenerating}
-          className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGenerating ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Generando Catálogo...</span>
-            </>
-          ) : (
-            <span>Descargar PDF</span>
-          )}
-        </button>
+        {/* Action Buttons Section */}
+        {!hasActiveFilters ? (
+          <div className="space-y-3">
+            {checkingPdfStatus ? (
+              <div className="py-4 flex flex-col items-center justify-center space-y-2 text-slate-400">
+                <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-bold">Verificando catálogo en servidor...</p>
+              </div>
+            ) : (
+              <>
+                {/* Instant Download Button */}
+                {hasPdfInStorage ? (
+                  <button
+                    onClick={onDownloadDirect}
+                    className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Download size={18} />
+                    <span>Descargar Catálogo PDF (Instantáneo)</span>
+                  </button>
+                ) : null}
+
+                {/* Live Generation Button / Notice */}
+                {hasNewChanges || !hasPdfInStorage ? (
+                  <button 
+                    onClick={() => onConfirm({ ...options, uploadToStorage: true })}
+                    disabled={isGenerating}
+                    className={`w-full ${hasPdfInStorage ? 'h-11 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'h-14 bg-rose-500 text-white shadow-xl shadow-rose-200 hover:bg-rose-600'} rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center space-x-2 disabled:opacity-50`}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
+                        <span>Generando y Guardando PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={14} />
+                        <span>{hasPdfInStorage ? 'Generar versión actualizada en vivo' : 'Generar y Guardar Catálogo PDF'}</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onConfirm({ ...options, uploadToStorage: true })}
+                      disabled={isGenerating}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-medium transition-colors"
+                    >
+                      {isGenerating ? 'Generando en vivo...' : '¿Querés volver a generarlo en vivo con estas opciones?'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          /* Filtered Catalog Action Button */
+          <button 
+            onClick={() => onConfirm({ ...options, uploadToStorage: false })}
+            disabled={isGenerating}
+            className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Generando Catálogo...</span>
+              </>
+            ) : (
+              <span>Descargar PDF</span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
