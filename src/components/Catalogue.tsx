@@ -1238,9 +1238,9 @@ export const PDFExportModal = ({
     includePrice: boolean, 
     template: 'table' | 'grid'
   }>({ 
-    includeImages: totalCount <= 300, 
+    includeImages: true, 
     includePrice: isApproved,
-    template: 'table'
+    template: 'grid'
   });
   const isLargeExport = totalCount > 300;
   const isVeryLargeExport = totalCount > 1000;
@@ -1337,13 +1337,13 @@ export const PDFExportModal = ({
             </div>
           </div>
 
-          {(options.includeImages && isLargeExport && (hasActiveFilters || !hasPdfInStorage)) && (
+          {(options.includeImages && isLargeExport && (hasActiveFilters || !hasPdfInStorage || options.template === 'table')) && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start space-x-2 animate-in fade-in slide-in-from-top-1">
               <Info size={14} className="text-amber-600 mt-0.5 shrink-0" />
               <p className="text-[9px] text-amber-700 leading-tight">
                 {isVeryLargeExport 
-                  ? "Exportar más de 1000 imágenes en vivo puede agotar la memoria del navegador. Te recomendamos usar la descarga instantánea o filtrar."
-                  : "Estás exportando un catálogo grande en vivo. El proceso puede tardar unos minutos."}
+                  ? "Exportar más de 1000 imágenes en vivo puede agotar la memoria del navegador. Se recomienda la descarga instantánea en formato Folleto."
+                  : "Generar un catálogo grande en vivo puede tardar unos momentos debido al procesamiento de imágenes."}
               </p>
             </div>
           )}
@@ -1359,47 +1359,67 @@ export const PDFExportModal = ({
               </div>
             ) : (
               <>
-                {/* Instant Download Button */}
-                {hasPdfInStorage ? (
-                  <button
-                    onClick={onDownloadDirect}
-                    className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2"
-                  >
-                    <Download size={18} />
-                    <span>Descargar Catálogo PDF (Instantáneo)</span>
-                  </button>
-                ) : null}
+                {/* Instant Download Button (For Folleto / Grid template) */}
+                {options.template === 'grid' && hasPdfInStorage ? (
+                  <>
+                    <button
+                      onClick={onDownloadDirect}
+                      className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Download size={18} />
+                      <span>Descargar Catálogo Folleto (Instantáneo)</span>
+                    </button>
 
-                {/* Live Generation Button / Notice */}
-                {hasNewChanges || !hasPdfInStorage ? (
+                    {hasNewChanges ? (
+                      <button 
+                        onClick={() => onConfirm({ ...options, uploadToStorage: true })}
+                        disabled={isGenerating}
+                        className="w-full h-11 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
+                            <span>Generando y Guardando PDF...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={14} />
+                            <span>Generar versión actualizada en vivo</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => onConfirm({ ...options, uploadToStorage: true })}
+                          disabled={isGenerating}
+                          className="text-[10px] text-slate-400 hover:text-slate-600 underline font-medium transition-colors"
+                        >
+                          {isGenerating ? 'Generando en vivo...' : '¿Querés volver a generarlo en vivo con estas opciones?'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* Live generation for Tabla format or when no stored PDF exists */
                   <button 
-                    onClick={() => onConfirm({ ...options, uploadToStorage: true })}
+                    onClick={() => onConfirm({ ...options, uploadToStorage: options.template === 'grid' })}
                     disabled={isGenerating}
-                    className={`w-full ${hasPdfInStorage ? 'h-11 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'h-14 bg-rose-500 text-white shadow-xl shadow-rose-200 hover:bg-rose-600'} rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center space-x-2 disabled:opacity-50`}
+                    className="w-full h-14 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-rose-200 hover:bg-rose-600 hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
                   >
                     {isGenerating ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
-                        <span>Generando y Guardando PDF...</span>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Generando Catálogo...</span>
                       </>
                     ) : (
                       <>
-                        <RefreshCw size={14} />
-                        <span>{hasPdfInStorage ? 'Generar versión actualizada en vivo' : 'Generar y Guardar Catálogo PDF'}</span>
+                        <Download size={18} />
+                        <span>{options.template === 'table' ? 'Descargar Catálogo Tabla' : 'Generar y Guardar Catálogo Folleto'}</span>
                       </>
                     )}
                   </button>
-                ) : (
-                  <div className="text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => onConfirm({ ...options, uploadToStorage: true })}
-                      disabled={isGenerating}
-                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-medium transition-colors"
-                    >
-                      {isGenerating ? 'Generando en vivo...' : '¿Querés volver a generarlo en vivo con estas opciones?'}
-                    </button>
-                  </div>
                 )}
               </>
             )}
