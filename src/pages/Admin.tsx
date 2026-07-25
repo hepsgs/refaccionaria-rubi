@@ -2769,7 +2769,7 @@ const ProductManagement = ({
   const handleRegenerateServerPDF = async (options: { includeImages: boolean, includePrice: boolean, template: 'table' | 'grid' }) => {
     try {
       setGeneratingPdfAdmin(true);
-      toast.loading('Cargando productos para generar el PDF...', { id: 'admin-pdf-gen' });
+      toast.loading('Cargando productos para generar el PDF...', { id: 'pdf-export-toast' });
       
       let allProducts: any[] = [];
       let from = 0;
@@ -2794,21 +2794,21 @@ const ProductManagement = ({
       }
 
       if (allProducts.length === 0) {
-        toast.error('No hay productos en la base de datos', { id: 'admin-pdf-gen' });
+        toast.error('No hay productos en la base de datos', { id: 'pdf-export-toast' });
         return;
       }
 
-      toast.loading(`Procesando PDF (${options.template === 'grid' ? 'Grilla/Folleto' : 'Tabla'}) con ${allProducts.length} productos...`, { id: 'admin-pdf-gen' });
+      toast.loading(`Procesando PDF (${options.template === 'grid' ? 'Grilla/Folleto' : 'Tabla'}) con ${allProducts.length} productos...`, { id: 'pdf-export-toast' });
       const { generateCatalogPDF } = await import('../utils/pdfCatalogGenerator');
       await generateCatalogPDF(
         allProducts,
         { ...options, uploadToStorage: true },
         config
       );
-      toast.success('¡PDF del Catálogo General actualizado en el servidor!', { id: 'admin-pdf-gen' });
+      toast.success('¡PDF del Catálogo General actualizado en el servidor!', { id: 'pdf-export-toast' });
     } catch (err: any) {
       console.error('Error generating PDF in admin:', err);
-      toast.error('Error al actualizar el PDF: ' + err.message, { id: 'admin-pdf-gen' });
+      toast.error('Error al actualizar el PDF: ' + err.message, { id: 'pdf-export-toast' });
     } finally {
       setGeneratingPdfAdmin(false);
       setShowPdfModal(false);

@@ -308,8 +308,9 @@ const Catalogue = () => {
   const handleDownloadDirectPDF = () => {
     const { data: publicUrlData } = supabase.storage.from('branding').getPublicUrl('catalogo_general.pdf');
     if (publicUrlData?.publicUrl) {
+      const cacheBustUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
       const link = document.createElement('a');
-      link.href = publicUrlData.publicUrl;
+      link.href = cacheBustUrl;
       link.download = `Catalogo_General_${config?.platform_name || 'Rubi'}.pdf`;
       link.target = '_blank';
       document.body.appendChild(link);
@@ -1245,8 +1246,8 @@ export const PDFExportModal = ({
   const isLargeExport = totalCount > 300;
   const isVeryLargeExport = totalCount > 1000;
 
-  return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-secondary/80 backdrop-blur-md" onClick={onClose} />
       <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 p-8">
         <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-rose-500 transition-colors">
@@ -1440,7 +1441,8 @@ export const PDFExportModal = ({
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

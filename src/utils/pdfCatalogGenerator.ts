@@ -24,6 +24,7 @@ export interface ExportOptions {
   includePrice: boolean;
   template: 'table' | 'grid';
   uploadToStorage?: boolean;
+  skipLocalDownload?: boolean;
 }
 
 const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: string, width: number, height: number}> => {
@@ -98,16 +99,18 @@ export const generateCatalogPDF = async (data: Product[], options: ExportOptions
     : await buildTableCatalog(data, options, config, logoInfo);
 
   if (options.uploadToStorage) {
-    toast.loading('Guardando copia en el servidor...', { id: 'pdf-storage' });
+    toast.loading('Guardando copia en el servidor...', { id: 'pdf-export-toast' });
     const uploaded = await savePDFToStorage(doc);
     if (uploaded) {
-      toast.success('¡Catálogo guardado en el servidor!', { id: 'pdf-storage' });
+      toast.success('¡Catálogo guardado en el servidor!', { id: 'pdf-export-toast' });
     } else {
-      toast.dismiss('pdf-storage');
+      toast.dismiss('pdf-export-toast');
     }
   }
 
-  savePDF(doc, config);
+  if (!options.skipLocalDownload) {
+    savePDF(doc, config);
+  }
   return doc;
 };
 
@@ -503,7 +506,7 @@ const addFooter = (doc: jsPDF, _config: any, pageNum: number) => {
 };
 
 const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, string>, maxWidth = 200) => {
-  toast.loading('Procesando imágenes...', { id: 'pdf-images' });
+  toast.loading('Procesando imágenes...', { id: 'pdf-export-toast' });
   const batchSize = 15;
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
@@ -516,9 +519,8 @@ const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, stri
       }
     }));
     const progress = Math.round((Math.min(i + batchSize, data.length) / data.length) * 100);
-    toast.loading(`Procesando imágenes: ${progress}%`, { id: 'pdf-images' });
+    toast.loading(`Procesando imágenes: ${progress}%`, { id: 'pdf-export-toast' });
   }
-  toast.dismiss('pdf-images');
 };
 
 const savePDF = (doc: jsPDF, config: any) => {
@@ -526,8 +528,14 @@ const savePDF = (doc: jsPDF, config: any) => {
   doc.save(fileName);
 };
 
+let autoRefreshTimer: any = null;
+
 export const triggerAutoCatalogPDFRefresh = (config: any) => {
-  setTimeout(async () => {
+  if (autoRefreshTimer) {
+    clearTimeout(autoRefreshTimer);
+  }
+
+  autoRefreshTimer = setTimeout(async () => {
     try {
       let allProducts: any[] = [];
       let from = 0;
@@ -554,7 +562,7 @@ export const triggerAutoCatalogPDFRefresh = (config: any) => {
       if (allProducts.length > 0) {
         await generateCatalogPDF(
           allProducts,
-          { includeImages: true, includePrice: true, template: 'grid', uploadToStorage: true },
+          { includeImages: true, includePrice: true, template: 'grid', uploadToStorage: true, skipLocalDownload: true },
           config
         );
         const nowIso = new Date().toISOString();
@@ -563,5 +571,5 @@ export const triggerAutoCatalogPDFRefresh = (config: any) => {
     } catch (err) {
       console.warn('Background auto catalog PDF refresh notice:', err);
     }
-  }, 1000);
+  }, 30000); // 30 seconds debounce delay
 };
