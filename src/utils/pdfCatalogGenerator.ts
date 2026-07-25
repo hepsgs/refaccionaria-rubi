@@ -32,14 +32,16 @@ const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: stri
     img.setAttribute("crossOrigin", "anonymous");
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const scale = Math.min(1, maxWidth / img.width);
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      const scale = Math.min(1, maxWidth / Math.max(img.width, 1));
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
       const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      const isPng = url.toLowerCase().includes('.png') || maxWidth > 400;
-      const dataURL = canvas.toDataURL(isPng ? "image/png" : "image/jpeg", isPng ? 1.0 : 0.6);
+      if (ctx) {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      const dataURL = canvas.toDataURL("image/jpeg", 0.7);
       resolve({
         data: dataURL,
         width: canvas.width,
