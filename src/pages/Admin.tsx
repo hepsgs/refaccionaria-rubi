@@ -194,25 +194,29 @@ const MediaGallery = () => {
   }, [fetchImages]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-      const watermarkedFile = await addWatermark(file, config);
-      const processedFile = await optimizeImage(watermarkedFile as File);
+        // 1. Optimize first (scale down to max 1200px to avoid heavy full-resolution canvas operations)
+        const optimizedFile = await optimizeImage(file);
+        // 2. Add watermark on optimized lightweight image
+        const processedFile = await addWatermark(optimizedFile as File, config);
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, processedFile);
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, processedFile);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
+      }
 
-      toast.success('Imagen subida correctamente');
+      toast.success(files.length > 1 ? `${files.length} imágenes subidas correctamente` : 'Imagen subida correctamente');
       fetchImages();
     } catch (error: any) {
       toast.error('Error al subir: ' + error.message);
@@ -293,7 +297,7 @@ const MediaGallery = () => {
             <label className={`btn-primary py-2.5 px-6 flex items-center justify-center space-x-2 cursor-pointer w-full sm:w-auto shrink-0 min-w-max ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
               {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" /> : <Upload size={18} className="shrink-0" />}
               <span className="shrink-0 whitespace-nowrap">{uploading ? 'Subiendo...' : 'Subir Imagen'}</span>
-              <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+              <input type="file" className="hidden" accept="image/*" multiple onChange={handleUpload} disabled={uploading} />
             </label>
           </div>
         </div>
@@ -3396,30 +3400,39 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     setUploading(true);
     setErrorMsg('');
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
       const { config } = useStore.getState();
-      const watermarkedFile = await addWatermark(file, config);
-      const processedFile = await optimizeImage(watermarkedFile as File);
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, processedFile);
+      const uploadedUrls: string[] = [];
 
-      if (uploadError) throw uploadError;
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
+        // 1. Optimize first (scale down to max 1200px)
+        const optimizedFile = await optimizeImage(file);
+        // 2. Add watermark on optimized image
+        const processedFile = await addWatermark(optimizedFile as File, config);
 
-      setForm({ ...form, imagenes: [...form.imagenes, publicUrl] });
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, processedFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      setForm((prev: any) => ({ ...prev, imagenes: [...prev.imagenes, ...uploadedUrls] }));
     } catch (error: any) {
       console.error('Error uploading file:', error);
       setErrorMsg('Error al subir imagen: ' + (error.message || 'Verifica que el bucket "product-images" exista.'));
@@ -3659,6 +3672,7 @@ const ProductModal = ({ product, catalogues, onClose, onRefresh }: { product?: a
                   type="file"
                   className="hidden"
                   accept="image/*"
+                  multiple
                   onChange={handleFileUpload}
                   disabled={uploading}
                 />

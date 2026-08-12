@@ -530,46 +530,11 @@ const savePDF = (doc: jsPDF, config: any) => {
 
 let autoRefreshTimer: any = null;
 
-export const triggerAutoCatalogPDFRefresh = (config: any) => {
+export const triggerAutoCatalogPDFRefresh = (_config: any) => {
+  // Disabled background client-side auto refresh to avoid freezing admin panel and throttling image uploads.
+  // The catalog PDF can be updated manually from the Admin panel ("Actualizar Catálogo PDF").
   if (autoRefreshTimer) {
     clearTimeout(autoRefreshTimer);
+    autoRefreshTimer = null;
   }
-
-  autoRefreshTimer = setTimeout(async () => {
-    try {
-      let allProducts: any[] = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('productos')
-          .select('*')
-          .order('nombre', { ascending: true })
-          .range(from, from + step - 1);
-
-        if (error) throw error;
-        if (data && data.length > 0) {
-          allProducts = [...allProducts, ...data];
-          if (data.length < step) hasMore = false;
-          else from += step;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      if (allProducts.length > 0) {
-        await generateCatalogPDF(
-          allProducts,
-          { includeImages: true, includePrice: true, template: 'grid', uploadToStorage: true, skipLocalDownload: true },
-          config
-        );
-        const nowIso = new Date().toISOString();
-        try { localStorage.setItem('pdf_catalog_updated_at', nowIso); } catch (e) {}
-      }
-    } catch (err) {
-      console.warn('Background auto catalog PDF refresh notice:', err);
-    }
-  }, 30000); // 30 seconds debounce delay
 };
