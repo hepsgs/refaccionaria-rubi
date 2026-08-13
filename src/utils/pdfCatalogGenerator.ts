@@ -157,11 +157,11 @@ const buildTableCatalog = async (data: Product[], options: ExportOptions, config
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
-    startY: 65,
+    startY: 28,
     styles: { fontSize: 8, cellPadding: 3, font: 'helvetica', valign: 'middle' },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { top: repeatHeader ? 70 : 20, bottom: 40 },
+    margin: { top: repeatHeader ? 32 : 15, bottom: 40 },
     columnStyles: {
       0: options.includeImages ? { cellWidth: 20 } : {},
     },
@@ -196,12 +196,12 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
   const margin = 10;
   const columns = 5;
   const colWidth = (pageWidth - (margin * 2)) / columns;
-  const rowHeight = 46;
+  const rowHeight = 58;
   
   const repeatHeader = config?.pdf_repeat_header !== false;
-  const headerHeight = repeatHeader ? 65 : 20;
+  const headerHeight = repeatHeader ? 28 : 15;
   const footerHeight = 35;
-  const rowsPerPage = Math.floor((pageHeight - headerHeight - footerHeight - 10) / rowHeight);
+  const rowsPerPage = Math.floor((pageHeight - headerHeight - footerHeight - 2) / rowHeight);
 
   const imagesMap = new Map<string, string>();
   if (options.includeImages) {
@@ -209,7 +209,7 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
   }
 
   let currentX = margin;
-  let currentY = 70;
+  let currentY = repeatHeader ? 28 : 15;
   let itemCount = 0;
   let currentPageNum = 1;
 
@@ -225,9 +225,9 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
       currentPageNum++;
       if (repeatHeader) {
         addHeader(doc, config, logoInfo);
-        currentY = 70;
+        currentY = 28;
       } else {
-        currentY = 20;
+        currentY = 15;
       }
       currentX = margin;
     }
@@ -245,37 +245,37 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
     doc.setFont('helvetica', 'bold');
     doc.text(p.marca.toUpperCase(), currentX + 2, currentY + 3);
 
-    // 3. Draw Image
+    // 3. Draw Image (Enlarged to max cell capacity 35.5 x 28.5 mm)
     const base64 = imagesMap.get(p.id);
     if (base64) {
-      doc.addImage(base64, 'JPEG', currentX + 6, currentY + 4.5, 26, 18.2);
+      doc.addImage(base64, 'JPEG', currentX + 1.25, currentY + 3.8, 35.5, 28.5);
     }
 
     // 4. SKU Bar (Red - Platform Primary)
     doc.setFillColor(225, 29, 72); // #e11d48
-    doc.rect(currentX, currentY + 24, colWidth, 4.5, 'F');
+    doc.rect(currentX, currentY + 33, colWidth, 4.5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.text(p.sku, currentX + 2, currentY + 27.3);
+    doc.text(p.sku, currentX + 2, currentY + 36.3);
 
     // 5. Product Name
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     const nameLines = doc.splitTextToSize(p.nombre, colWidth - 4);
-    doc.text(nameLines, currentX + 2, currentY + 32.5);
+    doc.text(nameLines, currentX + 2, currentY + 41.5);
 
     // 6. Inputs (Quantity / Price) - Enlarged Price
     doc.setDrawColor(200, 200, 200);
-    doc.rect(currentX + 2, currentY + 39.5, 5, 3.5); // Qty
+    doc.rect(currentX + 2, currentY + 51.5, 5, 3.5); // Qty
     
     if (options.includePrice) {
       doc.setTextColor(30, 41, 59);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       const priceStr = `$${p.precio.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      doc.text(priceStr, currentX + 9, currentY + 42.5);
+      doc.text(priceStr, currentX + 9, currentY + 54.5);
     }
 
     // Update coordinates
@@ -298,71 +298,63 @@ const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
   const slogan = config?.pdf_slogan || '"CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"';
   const advantages = config?.pdf_advantages || "Calidad garantizada\nMateriales resistentes\nDisponibilidad inmediata\nExcelente relación costo-beneficio";
   
-  // 1. Logo (Top Right)
+  // 1. Logo (Top Right - Compact)
   if (logoInfo) {
-    const targetHeight = 25; 
+    const targetHeight = 18; 
     const ratio = logoInfo.width / logoInfo.height;
     const targetWidth = targetHeight * ratio;
     
-    const finalWidth = Math.min(targetWidth, 65);
+    const finalWidth = Math.min(targetWidth, 55);
     const finalHeight = finalWidth / ratio;
     
-    doc.addImage(logoInfo.data, 'PNG', 196 - finalWidth, 8, finalWidth, finalHeight);
+    doc.addImage(logoInfo.data, 'PNG', 196 - finalWidth, 4, finalWidth, finalHeight);
   }
 
-  // 2. Company Name & Title (Top Left)
-  doc.setFontSize(18);
+  // 2. Company Name (Top Left)
+  doc.setFontSize(15);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text(config?.platform_name || 'TecnosisMX', 14, 20);
+  doc.text(config?.platform_name || 'TecnosisMX', 14, 12);
   
-  doc.setFontSize(9);
+  // 3. Subtitle + Slogan (Side-by-side on same line)
+  doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(`CATÁLOGO DE PRODUCTOS - ${new Date().toLocaleDateString()}`, 14, 26);
-
-  // 3. Two Columns Section (Advantages vs Slogan)
-  // --- Left Column: Advantages ---
-  let advY = 40;
+  const catTitle = `CATÁLOGO DE PRODUCTOS - ${new Date().toLocaleDateString()}`;
+  doc.text(catTitle, 14, 17.5);
   
-  // Draw Custom Green Checkmark (Vector)
-  doc.setDrawColor(22, 163, 74); // Green color
+  const titleWidth = doc.getTextWidth(catTitle);
+  const sloganText = slogan.startsWith('"') ? slogan : `"${slogan}"`;
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.text(sloganText, 14 + titleWidth + 5, 17.5);
+
+  // 4. Advantages (Single horizontal line)
+  doc.setDrawColor(22, 163, 74); // Green checkmark
   doc.setLineWidth(0.8);
   const checkX = 14;
-  const checkY = advY - 1;
-  doc.line(checkX, checkY, checkX + 1.5, checkY + 1.5); // Short stroke
-  doc.line(checkX + 1.5, checkY + 1.5, checkX + 4, checkY - 2); // Long stroke
+  const checkY = 22.5;
+  doc.line(checkX, checkY, checkX + 1.2, checkY + 1.2);
+  doc.line(checkX + 1.2, checkY + 1.2, checkX + 3.2, checkY - 1.5);
   
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text("Ventajas de nuestros productos:", 19, advY);
+  doc.text("Ventajas:", 18.5, 23.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
   
-  const advantagesList = advantages.split('\n').filter((line: string) => line.trim() !== '');
-  advY += 6;
-  advantagesList.forEach((adv: string) => {
-    doc.text(`•  ${adv}`, 22, advY);
-    advY += 4.5;
-  });
+  const advCleanList = advantages.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+  const advInlineStr = advCleanList.join('   •   ');
+  doc.text(`•   ${advInlineStr}`, 33, 23.5);
 
-  // --- Right Column: Slogan ---
-  const sloganX = 140; 
-  doc.setFontSize(10);
-  doc.setTextColor(30, 41, 59);
-  doc.setFont('helvetica', 'bolditalic');
-  
-  const sloganLines = doc.splitTextToSize(slogan.startsWith('"') ? slogan : `"${slogan}"`, 70);
-  doc.text(sloganLines, sloganX, 48, { align: 'center' });
-
-  // 4. Divider line (Solid and clean)
-  const finalHeaderY = Math.max(advY + 2, 55);
-  doc.setDrawColor(226, 232, 240); // slate-200 (lighter)
+  // 5. Divider line
+  doc.setDrawColor(226, 232, 240); // slate-200
   doc.setLineWidth(0.3);
-  doc.line(14, finalHeaderY, 196, finalHeaderY);
+  doc.line(14, 26.5, 196, 26.5);
 };
 
 // --- Footer Utility & Helper Functions ---
