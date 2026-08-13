@@ -295,8 +295,8 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
 };
 
 const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
-  const slogan = config?.pdf_slogan || '"CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"';
-  const advantages = config?.pdf_advantages || "Calidad garantizada\nMateriales resistentes\nDisponibilidad inmediata\nExcelente relación costo-beneficio";
+  const slogan: string = config?.pdf_slogan || '"CRECIENDO, LA RUTA HACIA LA EXCELENCIA AUTOMOTRIZ"';
+  const advantages: string = config?.pdf_advantages || "Calidad garantizada\nMateriales resistentes\nDisponibilidad inmediata\nExcelente relación costo-beneficio";
   
   // 1. Logo (Top Right - Compact)
   if (logoInfo) {
@@ -347,7 +347,7 @@ const addHeader = (doc: jsPDF, config: any, logoInfo: any) => {
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
   
-  const advCleanList = advantages.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+  const advCleanList = String(advantages || '').split(/[\r\n]+/).map((s: string) => s.trim()).filter(Boolean);
   const advInlineStr = advCleanList.join('   •   ');
   doc.text(`•   ${advInlineStr}`, 33, 23.5);
 
