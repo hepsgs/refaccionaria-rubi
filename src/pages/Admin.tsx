@@ -584,14 +584,17 @@ const Admin = () => {
     if (productsSearch) {
       const formattedSearch = productsSearch
         .trim()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .split(/\s+/)
         .filter(Boolean)
         .map(word => `${word}:*`)
         .join(' & ');
 
-      query = query.textSearch('fts_vector', formattedSearch, { 
-        config: 'spanish'
-      });
+      if (formattedSearch) {
+        query = query.textSearch('fts_vector', formattedSearch, { 
+          config: 'spanish'
+        });
+      }
     }
 
     const from = (productsPage - 1) * productsPageSize;

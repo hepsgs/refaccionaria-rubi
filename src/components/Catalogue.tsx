@@ -458,14 +458,17 @@ const Catalogue = () => {
     if (search) {
       const formattedSearch = search
         .trim()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .split(/\s+/)
         .filter(Boolean)
         .map(word => `${word}:*`)
         .join(' & ');
 
-      query = query.textSearch('fts_vector', formattedSearch, { 
-        config: 'spanish'
-      });
+      if (formattedSearch) {
+        query = query.textSearch('fts_vector', formattedSearch, { 
+          config: 'spanish'
+        });
+      }
     }
 
     if (filters.marca) query = query.eq('marca', filters.marca);
@@ -501,14 +504,17 @@ const Catalogue = () => {
       if (search) {
         const formattedSearch = search
           .trim()
+          .replace(/[^\p{L}\p{N}]+/gu, ' ')
           .split(/\s+/)
           .filter(Boolean)
           .map(word => `${word}:*`)
           .join(' & ');
 
-        query = query.textSearch('fts_vector', formattedSearch, { 
-          config: 'spanish'
-        });
+        if (formattedSearch) {
+          query = query.textSearch('fts_vector', formattedSearch, { 
+            config: 'spanish'
+          });
+        }
       }
 
       if (filters.marca) query = query.eq('marca', filters.marca);
