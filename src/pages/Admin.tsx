@@ -2233,14 +2233,22 @@ const UserManagement = ({
                           {u.permisos.usuarios && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Usuarios">USR</span>}
                           {u.permisos.aprobar_usuarios && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Aprobar Usuarios">APR</span>}
                           {u.permisos.configuracion && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 rounded" title="Ajustes">CONF</span>}
+                          {u.permisos.importar_pedidos && <span className="text-[8px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-100" title="Importar Pedidos Excel">XLSX</span>}
                         </div>
                       )}
                     </div>
                   )}
                   {u.rol === 'cliente' && (
-                    <div className="flex items-center space-x-1 justify-center w-max px-3 py-1 bg-slate-50 text-slate-500 rounded-full">
-                      <Users size={12} />
-                      <span className="text-[10px] font-black uppercase tracking-wider">Cliente</span>
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center space-x-1 justify-center w-max px-3 py-1 bg-slate-50 text-slate-500 rounded-full">
+                        <Users size={12} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Cliente</span>
+                      </div>
+                      {u.permisos?.importar_pedidos && (
+                        <div className="flex space-x-1 mt-1">
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-100" title="Importar Pedidos Excel">XLSX</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </td>
@@ -2352,7 +2360,8 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
       configuracion: false,
       usuarios: false,
       aprobar_usuarios: false,
-      galeria: false
+      galeria: false,
+      importar_pedidos: false
     }
   });
   const [saving, setSaving] = useState(false);
@@ -2535,7 +2544,27 @@ const AddUserModal = ({ onClose, onRefresh }: { onClose: () => void, onRefresh: 
                   />
                   <span>Galería de Medios</span>
                 </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.importar_pedidos}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, importar_pedidos: e.target.checked } })}
+                  />
+                  <span>Importar Pedidos (Excel/CSV)</span>
+                </label>
               </div>
+            </div>
+          )}
+
+          {form.rol === 'cliente' && (
+            <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Permisos de Pedido</label>
+              <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  checked={form.permisos.importar_pedidos}
+                  onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, importar_pedidos: e.target.checked } })}
+                />
+                <span>Importar Pedidos (Excel / CSV)</span>
+              </label>
             </div>
           )}
 
@@ -2575,7 +2604,8 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
         configuracion: !!p.configuracion,
         usuarios: !!p.usuarios,
         aprobar_usuarios: !!p.aprobar_usuarios,
-        galeria: !!p.galeria
+        galeria: !!p.galeria,
+        importar_pedidos: !!p.importar_pedidos
       }
     };
   });
@@ -2718,7 +2748,27 @@ const EditUserModal = ({ user, onClose, onRefresh }: { user: any, onClose: () =>
                   />
                   <span>Galería de Medios</span>
                 </label>
+                <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    checked={form.permisos.importar_pedidos}
+                    onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, importar_pedidos: e.target.checked } })}
+                  />
+                  <span>Importar Pedidos (Excel/CSV)</span>
+                </label>
               </div>
+            </div>
+          )}
+
+          {form.rol === 'cliente' && (
+            <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block">Permisos de Pedido</label>
+              <label className="flex items-center space-x-2 text-sm font-bold text-secondary">
+                <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  checked={form.permisos.importar_pedidos}
+                  onChange={(e) => setForm({ ...form, permisos: { ...form.permisos, importar_pedidos: e.target.checked } })}
+                />
+                <span>Importar Pedidos (Excel / CSV)</span>
+              </label>
             </div>
           )}
 

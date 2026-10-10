@@ -19,11 +19,13 @@ interface UserProfile {
   es_admin: boolean;
   rol: 'admin' | 'empleado' | 'cliente';
   permisos?: {
-    productos: boolean;
-    pedidos: boolean;
-    configuracion: boolean;
-    usuarios: boolean;
-    aprobar_usuarios: boolean;
+    productos?: boolean;
+    pedidos?: boolean;
+    configuracion?: boolean;
+    usuarios?: boolean;
+    aprobar_usuarios?: boolean;
+    galeria?: boolean;
+    importar_pedidos?: boolean;
   };
 }
 
@@ -34,6 +36,7 @@ interface AppState {
   setProfile: (profile: UserProfile | null) => void;
   setConfig: (config: any | null) => void;
   addToCart: (item: Omit<CartItem, 'cantidad'>, requestedQuantity?: number) => void;
+  addMultipleToCart: (items: { item: Omit<CartItem, 'cantidad'>; requestedQuantity: number }[]) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, cantidad: number) => void;
   clearCart: () => void;
@@ -57,6 +60,23 @@ export const useStore = create<AppState>((set) => ({
     }
     const initialQuantity = Math.min(requestedQuantity, item.stock);
     return { cart: [...state.cart, { ...item, cantidad: initialQuantity }] };
+  }),
+  addMultipleToCart: (items) => set((state) => {
+    const newCart = [...state.cart];
+    for (const { item, requestedQuantity } of items) {
+      const existingIndex = newCart.findIndex((i) => i.id === item.id);
+      if (existingIndex >= 0) {
+        const existing = newCart[existingIndex];
+        const newQuantity = Math.min(existing.cantidad + requestedQuantity, item.stock);
+        newCart[existingIndex] = { ...existing, cantidad: newQuantity };
+      } else {
+        const initialQuantity = Math.min(requestedQuantity, item.stock);
+        if (initialQuantity > 0) {
+          newCart.push({ ...item, cantidad: initialQuantity });
+        }
+      }
+    }
+    return { cart: newCart };
   }),
   removeFromCart: (id) => set((state) => ({
     cart: state.cart.filter((i) => i.id !== id),

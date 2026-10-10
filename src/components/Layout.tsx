@@ -1,14 +1,16 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp, ChevronDown } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, Shield, Package, Plus, CheckCircle2, MessageCircle, ArrowUp, ChevronDown, FileSpreadsheet } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import InstallPWA from './InstallPWA';
+import { ImportOrderModal } from './ImportOrderModal';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = React.useState(false);
   const [isTermsOpen, setIsTermsOpen] = React.useState(false);
   const [orderSuccess, setOrderSuccess] = React.useState(false);
@@ -189,6 +191,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   ];
 
   const cartCount = cart.reduce((acc, item) => acc + item.cantidad, 0);
+  const canImportOrders = Boolean(profile && (profile.rol === 'admin' || profile.permisos?.importar_pedidos));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -369,6 +372,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </button>
             </div>
 
+            {/* Quick bulk import bar */}
+            {canImportOrders && (
+              <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-secondary block leading-tight">Carga masiva</span>
+                  <span className="text-[10px] text-slate-400">Desde Excel (.xlsx) o CSV</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="inline-flex items-center space-x-1.5 text-xs font-bold text-primary bg-white hover:bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 shadow-xs transition-all hover:scale-105 active:scale-95"
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>Importar archivo</span>
+                </button>
+              </div>
+            )}
+
             <div className="flex-grow overflow-y-auto p-6 space-y-6">
               {cart.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
@@ -376,7 +397,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <ShoppingCart size={40} />
                   </div>
                   <p className="text-slate-500 font-medium">Tu carrito está vacío</p>
-                  <button onClick={() => setIsCartOpen(false)} className="btn-secondary px-6">Ver catálogo</button>
+                  <div className="flex flex-col w-full max-w-xs space-y-2">
+                    {canImportOrders && (
+                      <button 
+                        onClick={() => setIsImportModalOpen(true)} 
+                        className="btn-primary py-2.5 flex items-center justify-center space-x-2 text-xs uppercase tracking-wider"
+                      >
+                        <FileSpreadsheet size={16} />
+                        <span>Importar Pedido (Excel/CSV)</span>
+                      </button>
+                    )}
+                    <button onClick={() => setIsCartOpen(false)} className="btn-secondary py-2.5 text-xs uppercase tracking-wider">
+                      Ver catálogo
+                    </button>
+                  </div>
                 </div>
               ) : (
                 cart.map((item) => (
@@ -547,6 +581,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import Order Modal */}
+      {canImportOrders && (
+        <ImportOrderModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => setIsCartOpen(true)}
+        />
       )}
 
       {/* Allied Brands Slider */}
