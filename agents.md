@@ -27,6 +27,13 @@ Ubicado en `src/components/Catalogue.tsx`.
 - **Compresión**: Las imágenes se redimensionan a 200px y se comprimen como JPEG (60% calidad) antes de incluirse en el PDF.
 - **Permisos**: La visibilidad de precios en la exportación depende del estado `isApproved` del perfil del usuario.
 
+### Importación Masiva de Pedidos (Excel / CSV)
+Ubicado en `src/components/ImportOrderModal.tsx`, integrado en `src/components/Layout.tsx` (panel del carrito).
+- **Formatos**: `.xlsx`, `.xls`, `.csv` (procesados client-side con librería `xlsx`).
+- **Columnas**: Reconocimiento flexible de "No Parte" (mapeado a `sku`) y "Cantidad".
+- **Comportamiento**: Suma cantidades a ítems que ya estén en el carrito (`useStore.addMultipleToCart`), respeta tope de stock disponible en `productos` y descarta o alerta los agotados/no encontrados.
+- **Control de Acceso**: Controlado por `canImportOrders = profile?.rol === 'admin' || profile?.permisos?.importar_pedidos`. Administrable desde el panel `/admin` para roles `cliente` y `empleado`.
+
 ### Gestión de Inventario
 - El stock se maneja directamente desde Supabase.
 - Los filtros de búsqueda utilizan `fts_vector` (Full Text Search) en PostgreSQL para mayor eficiencia.
