@@ -27,30 +27,85 @@ export interface ExportOptions {
   skipLocalDownload?: boolean;
 }
 
-const getBase64ImageFromURL = (url: string, maxWidth = 200): Promise<{data: string, width: number, height: number}> => {
+const fetchImageWithRetry = async (url: string, retries = 2, timeoutMs = 8000): Promise<Blob> => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const fetchUrl = url.includes('?') ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`;
+      const res = await fetch(fetchUrl, {
+        mode: 'cors',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      return await res.blob();
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+    }
+  }
+  throw new Error('Failed to fetch image after retries');
+};
+
+const getBase64ImageFromURL = async (url: string, maxWidth = 200): Promise<{data: string, width: number, height: number}> => {
+  let blob: Blob | null = null;
+  try {
+    blob = await fetchImageWithRetry(url);
+  } catch (err) {
+    console.warn(`Fetch with CORS failed for ${url}, trying fallback Image load`, err);
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.setAttribute("crossOrigin", "anonymous");
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const scale = Math.min(1, maxWidth / Math.max(img.width, 1));
-      canvas.width = Math.max(1, Math.round(img.width * scale));
-      canvas.height = Math.max(1, Math.round(img.height * scale));
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    let objectUrl = '';
+
+    if (blob) {
+      objectUrl = URL.createObjectURL(blob);
+      img.src = objectUrl;
+    } else {
+      img.setAttribute("crossOrigin", "anonymous");
+      img.src = url;
+    }
+
+    const cleanup = () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
       }
-      const dataURL = canvas.toDataURL("image/jpeg", 0.7);
-      resolve({
-        data: dataURL,
-        width: canvas.width,
-        height: canvas.height
-      });
     };
-    img.onerror = (error) => reject(error);
-    img.src = url;
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, maxWidth / Math.max(img.width, 1));
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        const dataURL = canvas.toDataURL("image/jpeg", 0.7);
+        cleanup();
+        resolve({
+          data: dataURL,
+          width: canvas.width,
+          height: canvas.height
+        });
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    };
+
+    img.onerror = (error) => {
+      cleanup();
+      reject(error);
+    };
   });
 };
 
@@ -171,6 +226,12 @@ const buildTableCatalog = async (data: Product[], options: ExportOptions, config
         const base64 = imagesMap.get(product?.id);
         if (base64) {
           doc.addImage(base64, 'JPEG', dataArg.cell.x + 2, dataArg.cell.y + 2, 16, 16);
+        } else {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(dataArg.cell.x + 2, dataArg.cell.y + 2, 16, 16, 'F');
+          doc.setTextColor(148, 163, 184);
+          doc.setFontSize(5);
+          doc.text('S/I', dataArg.cell.x + 10, dataArg.cell.y + 10, { align: 'center' });
         }
       }
     },
@@ -249,6 +310,14 @@ const buildGridCatalog = async (data: Product[], options: ExportOptions, config:
     const base64 = imagesMap.get(p.id);
     if (base64) {
       doc.addImage(base64, 'JPEG', currentX + 1.25, currentY + 3.8, 35.5, 28.5);
+    } else {
+      // Elegant placeholder box when image is missing or failed
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.rect(currentX + 1.25, currentY + 3.8, 35.5, 28.5, 'F');
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.text('SIN IMAGEN', currentX + (colWidth / 2), currentY + 18, { align: 'center' });
     }
 
     // 4. SKU Bar (Red - Platform Primary)
@@ -499,7 +568,7 @@ const addFooter = (doc: jsPDF, _config: any, pageNum: number) => {
 
 const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, string>, maxWidth = 200) => {
   toast.loading('Procesando imágenes...', { id: 'pdf-export-toast' });
-  const batchSize = 15;
+  const batchSize = 8;
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
     await Promise.all(batch.map(async (p) => {
@@ -507,11 +576,17 @@ const fetchImagesInBatches = async (data: Product[], imagesMap: Map<string, stri
         try {
           const res = await getBase64ImageFromURL(p.imagenes[0], maxWidth);
           imagesMap.set(p.id, res.data);
-        } catch (e) {}
+        } catch (e) {
+          console.warn(`[PDF Export] No se pudo cargar imagen para producto ${p.sku}:`, e);
+        }
       }
     }));
     const progress = Math.round((Math.min(i + batchSize, data.length) / data.length) * 100);
     toast.loading(`Procesando imágenes: ${progress}%`, { id: 'pdf-export-toast' });
+    // Micro-delay to yield thread to browser UI and avoid socket exhaustion
+    if (i + batchSize < data.length) {
+      await new Promise(r => setTimeout(r, 40));
+    }
   }
 };
 

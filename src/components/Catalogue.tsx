@@ -94,6 +94,7 @@ const ProductCard = ({ product, isApproved, addToCart, onSelect, onShare }: {
             <img 
               src={product.imagenes[0]} 
               alt={product.nombre} 
+              crossOrigin="anonymous"
               loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
@@ -972,6 +973,7 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }
                     <img 
                       src={images[activeImage]} 
                       alt={product.nombre} 
+                      crossOrigin="anonymous"
                       className="w-full h-full object-contain animate-in fade-in duration-500 p-4 transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
@@ -1003,11 +1005,11 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }
                 <div className="flex space-x-3 overflow-x-auto mt-4 pb-2 custom-scrollbar">
                   {images.map((img: string, i: number) => (
                     <button 
-                      key={i}
+                      key={i} 
                       onClick={() => setActiveImage(i)}
                       className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 bg-white ${i === activeImage ? 'border-primary shadow-md' : 'border-transparent opacity-60 hover:opacity-100'}`}
                     >
-                      <img src={img} className="w-full h-full object-contain p-1" alt="" />
+                      <img src={img} crossOrigin="anonymous" className="w-full h-full object-contain p-1" alt="" />
                     </button>
                   ))}
                 </div>
@@ -1204,6 +1206,7 @@ const ProductDetailModal = ({ product, onClose, addToCart, isApproved, onShare }
             <img 
               src={images[activeImage]} 
               alt="Zoomed Product" 
+              crossOrigin="anonymous"
               style={isDeepZoom ? {
                 transform: 'scale(2.5)',
                 transformOrigin: `${mousePos.x}% ${mousePos.y}%`
