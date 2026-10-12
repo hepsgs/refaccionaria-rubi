@@ -22,9 +22,11 @@ Este documento sirve como referencia para los asistentes de IA que colaboren en 
 ## 🚀 Flujos Críticos
 
 ### Exportación de Catálogo (PDF/CSV)
-Ubicado en `src/components/Catalogue.tsx`.
-- **Batching**: Para catálogos grandes (>300 items), se procesan las imágenes en lotes de 15 para evitar bloqueos de memoria.
-- **Compresión**: Las imágenes se redimensionan a 200px y se comprimen como JPEG (60% calidad) antes de incluirse en el PDF.
+Ubicado en `src/components/Catalogue.tsx` y `src/utils/pdfCatalogGenerator.ts`.
+- **Carga de Imágenes Robusta**: Se descargan con `fetch` (`mode: 'cors'`), timeout con `AbortController` (8s) y 2 reintentos con backoff exponencial, convirtiéndose a `Blob` local (`URL.createObjectURL`) para evitar envenenamiento de caché CORS o canvas tainted.
+- **Batching & Throttling**: Se procesan en lotes controlados de 8 imágenes concurrentes con una micro-pausa de 40ms entre lotes para no saturar los sockets del navegador ni disparar rate-limiting de Cloudflare.
+- **Compresión**: Las imágenes se redimensionan a 200px/300px y se comprimen como JPEG (70% calidad) antes de incluirse en el PDF.
+- **Fallbacks**: Si una imagen falla o no existe, se dibuja un recuadro limpio con la leyenda "SIN IMAGEN" (o "S/I" en tabla) en vez de dejar recuadros en blanco.
 - **Permisos**: La visibilidad de precios en la exportación depende del estado `isApproved` del perfil del usuario.
 
 ### Importación Masiva de Pedidos (Excel / CSV)
